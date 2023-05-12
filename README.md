@@ -1,31 +1,4 @@
-# Hugo Guide Page
-
-This is the sample repo used to host the Hugo Guide Page 
-
-The Hugo page built by GitActions (every time this repo is updated) is here: https://fortinetcloudcse.github.io/DemoFrontEndDocker/, and it explains in a few steps how to get started and how to interact with Hugo to build a static website for your TECWorkshop guide
-
-### To run the Dockerized Hugo 
-
-Prequisite: Docker 
-
-To build and run via docker locally:
-```sh
-docker build -t demo-frontend .
-docker run -p 1313:1313 demo-frontend:latest
-```
-In a browser, navigate to: http://localhost:1313/DemoFrontEnd/
-
-
-### To run fetch-config.sh (copy config and other files into new repo)
-
-In .config-files, add link to remote file and path from top of repo, e.g.
-
-http://my-config-file.txt remote-files/config-files
-
-```shell
-cd scripts
-./fetch-configs.sh
-```
+# Fortinet Hugo Customizations
 
 
 ### To run setup-gh-jenkins.sh (Create a New Workshop repo in https://github.com/FortinetCloudCSE with testing, and adding collaborator users )
