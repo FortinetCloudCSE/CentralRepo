@@ -1,6 +1,6 @@
 <a id="logo" href='{{ (cond (and (ne .Site.Params.landingPageURL nil) (.Site.IsMultiLingual)) .Site.Params.landingPageURL "/") }}' title="Fortinet Demos">
     <img style="vertical-align:middle" src="/Fortinet-logo-rgb-white-red.svg" height="70px">
-    {{ with .Site.Params.logoBanner }}
+    {{ with .Site.Params.themeVariant }}
         <style>
             logoBanner {
                 font: 40px bold;
