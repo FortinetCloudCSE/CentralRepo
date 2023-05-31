@@ -3,10 +3,17 @@
     {{ with .Site.Params.themeVariant }}
         <style>
             logoBanner {
-                font: 40px bold;
+                font:  bold 40px Verdana, sans-serif;
                 color: {{ $.Site.Params.logoBannerColor }};
+                display: block;
+                }
+            logoBannerFreeForm {
+                font: italic 20px Verdana, sans-serif;
+                color: {{ $.Site.Params.logoBannerColor }};
+                display: block;
                 }
         </style>
         <logoBanner> {{ . }} </logoBanner>
+        <logoBannerFreeForm> {{ $.Site.Params.logoBannerText }} </logoBannerFreeForm>
     {{ end}}
 </a>
