@@ -1,19 +1,4 @@
-<a id="logo" href='{{ (cond (and (ne .Site.Params.landingPageURL nil) (.Site.IsMultiLingual)) .Site.Params.landingPageURL "/") }}' title="Fortinet Demos">
-    <img style="vertical-align:middle" src="/Fortinet-logo-rgb-white-red.svg" height="70px">
-    {{ with .Site.Params.themeVariant }}
-        <style>
-            logoBanner {
-                font:  bold 40px Verdana, sans-serif;
-                color: {{ $.Site.Params.logoBannerColor }};
-                display: block;
-                }
-            logoBannerFreeForm {
-                font: italic 20px Verdana, sans-serif;
-                color: {{ $.Site.Params.logoBannerColor }};
-                display: block;
-                }
-        </style>
-        <logoBanner> {{ . }} </logoBanner>
-        <logoBannerFreeForm> {{ $.Site.Params.logoBannerText }} </logoBannerFreeForm>
-    {{ end}}
+<a id="logo" href='/DemoFrontEnd' title="Fortinet Demos">
+    <img style="vertical-align:middle" src="{{absURL "images/white-logo.svg"}}" height="70px">
+        <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerText }} </logoBannerFreeForm>
 </a>
