@@ -1,66 +1,101 @@
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Medium.ttf') format('truetype');
+	font-weight: normal;
+}
 
-/* here in this showcase we use our own modified chroma syntax highlightning style;
-   if you want to use a predefined style instead:
-   - remove `markup.highlight.noClasses` from your config.toml
-   - set `markup.highlight.style` to a predefined style name in your config.toml
-   - remove the following `@import` of the self-defined chroma stylesheet */
-/*@import "chroma-relearn-dark.css";*/
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Regular.ttf') format('truetype');
+	font-weight: 400;
+}
 
-:root{
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Bold.ttf') format('truetype');
+	font-weight: bold;
+}
 
-    --PRIMARY-color: #da291c; /*#dc1010; /* brand primary color */
-    --SECONDARY-color: #da291c; /*#486ac9; /* brand secondary color */
-    --ACCENT-color: #fda1a1; /*#c8c8c8; /*#ff88ff; /* brand accent color, used for search highlights */
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Bold.ttf') format('truetype');
+	font-weight: 700;
+}
 
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Light.ttf') format('truetype');
+	font-weight: lighter;
+}
 
-    --MAIN-TEXT-color:#323232; /* Color of text by default */
-    --MAIN-TITLES-TEXT-color: #da291c; /*#5e5e5e; /* Color of titles h2-h3-h4-h5 */
-    --MAIN-LINK-color: #1C90F3; /* << blue; >> red#f31c1c; /* Color of links */
-    --MAIN-LINK-HOVER-color: #167ad0; /* #d01616; /* Color of hovered links */
-    --MAIN-ANCHOR-color: 1C90F3; /* #f31c1c; /* color of anchors on titles */
-    /* added */
-     --MAIN-TITLES-H1-color: #222222; /* text color of h1 titles */
-     --MAIN-BG-color: #ffffff; /* color of text by default */
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-Light.ttf') format('truetype');
+	font-weight: 300;
+}
 
-    /* added adjusted to base16-snazzy chroma style */
-    --CODE-BLOCK-color: #e2e4e5; /* fallback color for code text */
-    --CODE-BLOCK-BG-color: #282a36; /* fallback color for code background */
-    --CODE-BLOCK-BORDER-color: #282a36; /* color of block code border */
+@font-face {
+  font-family: 'inter';
+	src: url('../fonts/Inter-ExtraLight.ttf') format('truetype');
+	font-weight: 100;
+}
 
-    /* added */
-    --CODE-INLINE-color: #5e5e5e; /* color for inline code text */
-    --CODE-INLINE-BG-color: #fffae9; /* color for inline code background */
-    --CODE-INLINE-BORDER-color: #f8e8c8; /* color of inline code border */
+:root {
 
+    /* Colors */
+    --fortinet-white: 255,255,255;
+    --fortinet-black: 0,0,0;
+    --fortinet-red: 218,41,28;  
+    --fortinet-blue: 48,127,226;  
+    --fortinet-green: 72,213,151;  
+    --fortinet-teel: 44,204,211;
+    --fortinet-purple: 144,99,205;  
 
-    --MENU-HOME-LINK-color: #ccc; /* Color of the home button text */
-    --MENU-HOME-LINK-HOVER-color: #e6e6e6; /* Color of the hovered home button text */
+    /* Workshop */
+    --theme-color: var(--fortinet-red); 
 
-    --MENU-HEADER-BG-color: #000000; /* Background color of menu header */
-    --MENU-HEADER-BORDER-color:#e23131; /*Color of menu header border */
+    --INTERNAL-MENU-HEADER-BG-color: rgb(var(--theme-color)) !important;
+    --INTERNAL-MAIN-BG-color: rgb(var(--fortinet-white)) !important;
+    --INTERNAL-MAIN-TEXT-color: rgb(var(--fortinet-black)) !important;
+    --INTERNAL-MENU-SECTIONS-LINK-color: rgb(var(--fortinet-white)) !important;
+    --INTERNAL-MAIN-font: inter !important;
+    --INTERNAL-MENU-SEARCH-color: rgba(var(--fortinet-white)) !important;
+    --INTERNAL-MENU-VISITED-color: rgb(var(--theme-color)) !important;
+    --INTERNAL-MENU-SECTIONS-ACTIVE-BG-color: rgb(var(--fortinet-black)) !important;
 
-    --MENU-SEARCH-BG-color: #323232; /* Search field background color (by default borders + icons) */
-    --MENU-SEARCH-BOX-color: #080808; /* #ef2020; /* Override search field border color */
-    --MENU-SEARCH-BOX-ICONS-color: #fda1a1; /* Override search field icons color */
+    /* notifications */
+    --INTERNAL-BOX-WARNING-color: rgb(var(--fortinet-red)) !important;
+    --INTERNAL-BOX-NOTE-color: rgb(var(--fortinet-teel)) !important;
+    --INTERNAL-BOX-TIP-color: rgb(var(--fortinet-green)) !important;
+    --INTERNAL-BOX-INFO-color: rgb(var(--fortinet-blue)) !important;
 
-    --MENU-SECTIONS-ACTIVE-BG-color: #2b2020; /* Background color of the active section and its childs */
-    --MENU-SECTIONS-BG-color: #312525; /* Background color of other sections */
-    --MENU-SECTIONS-LINK-color: #ccc; /* Color of links in menu */
-    --MENU-SECTIONS-LINK-HOVER-color: #e6e6e6;  /* Color of links in menu, when hovered */
-    --MENU-SECTION-ACTIVE-CATEGORY-color: #777; /* Color of active category text */
-    --MENU-SECTION-ACTIVE-CATEGORY-BG-color: #fff; /* Color of background for the active category (only) */
+  }
 
-    --MENU-VISITED-color: #da291c; /*#dc1010; /* Color of 'page visited' icons in menu */
-    --MENU-SECTION-HR-color: #2b2020; /* Color of <hr> separator in menu */
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: rgb(var(--fortinet-white)) !important;
+  opacity: 1; /* Firefox */
+}
 
-    /* added base styling for boxes */
-    --BOX-CAPTION-color: rgba( 255, 255, 255, 1 ); /* color of the title text */
-    --BOX-BG-color: rgba( 255, 255, 255, .833 ); /* color of the content background */
-    --BOX-TEXT-color: rgba( 16, 16, 16, 1 ); /* fixed color of the content text */
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  color: rgb(var(--fortinet-white)) !important;
+}
 
-    --BROWSER-theme: light; /* name of the theme for browser scrollbars of the main section */
-    --MERMAID-theme: default; /* name of the default Mermaid theme for this variant, can be overridden in config.toml */
-    --SWAGGER-theme: light; /* name of the default Swagger theme for this variant, can be overridden in config.toml */
+::-ms-input-placeholder { /* Microsoft Edge */
+  color: rgb(var(--fortinet-white)) !important;
+}
 
+#subtitle {
+  font-size: 2rem;
+}  
 
+#sidebar .searchbox > :first-child, #sidebar .searchbox button, .searchbox span {
+  opacity: 1;
+}
+
+.searchbox  {
+  border: 1px solid rgba(var(--theme-color), .85) !important;
+}
+
+.searchbox input {
+  background: rgba(var(--theme-color), .75) !important;
 }
