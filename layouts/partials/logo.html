@@ -1,9 +1,9 @@
-<a id="logo" href='/DemoFrontEnd' title="Fortinet Demos">
-    {{ if eq $.Site.Params.themeVariant "workshop" }}
-    <img style="vertical-align:middle" src="{{absURL "images/white-logo.svg"}}" height="70px">
+<a id="logo" href='/' title="Fortinet Demos">
+    {{ if eq $.Site.Params.themeVariant "Workshop" }}
+        <img style="vertical-align:middle" src="{{absURL "images/white-logo.svg"}}" height="70px">
     {{ else }}
-    <img style="vertical-align:middle" src="{{absURL "images/logo.svg"}}" height="70px">
+        <img style="vertical-align:middle" src="{{absURL "images/logo.svg"}}" height="70px">
     {{end}}
-        <logoBanner id="title"> {{ $.Site.Params.logoBannerText }} </logoBanner>
-        <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerSubText }} </logoBannerFreeForm>
+    <logoBanner id="title"> {{ $.Site.Params.logoBannerText }} </logoBanner>
+    <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerSubText }} </logoBannerFreeForm>
 </a>

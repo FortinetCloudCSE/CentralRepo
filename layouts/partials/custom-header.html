@@ -1,7 +1,7 @@
 <style>
     @font-face {
         font-family: 'inter';
-        src: url('{{.Site.Params.landingPageUrl}}/fonts/Inter-V.ttf') format('truetype');
+        src: url('{{absURL "/fonts/Inter-V.ttf"}}') format('truetype');
     }
 
 :root{
@@ -29,6 +29,10 @@
     --INTERNAL-BOX-NOTE-color: rgb(var(--fortinet-teel)) !important;
     --INTERNAL-BOX-TIP-color: rgb(var(--fortinet-green)) !important;
     --INTERNAL-BOX-INFO-color: rgb(var(--fortinet-blue)) !important;
+}
+
+#sidebar ul > li > a:hover {
+    color: red;
 }
 
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
