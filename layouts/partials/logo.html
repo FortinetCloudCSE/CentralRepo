@@ -1,4 +1,15 @@
-<a id="logo" href='/DemoFrontEnd' title="Fortinet Demos">
-    <img style="vertical-align:middle" src="{{absURL "images/white-logo.svg"}}" height="70px">
-        <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerText }} </logoBannerFreeForm>
+<a id="logo" href='{{relURL "index.html"}}' title="Fortinet TEC Program">
+    {{ if eq $.Site.Params.themeVariant "Workshop" }}
+    <img style="vertical-align:middle" src="{{relURL "images/white-logo.svg"}}" height="70px">
+    {{ else }}
+    <img style="vertical-align:middle" src="{{relURL "images/logo.svg"}}" height="70px">
+    {{end}}
+
+    {{ with .Site.Params.logoBannerText }}
+        <logoBanner id="title"> {{ . }} </logoBanner>
+    {{ else }}
+        <logoBanner id="title"> {{ $.Site.Params.themeVariant }} </logoBanner>
+    {{ end }}
+
+        <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerSubText }} </logoBannerFreeForm>
 </a>
