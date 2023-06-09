@@ -1,4 +1,80 @@
 <style>
+    @font-face {
+        font-family: 'inter';
+        src: url('{{absURL "/fonts/Inter-V.ttf"}}') format('truetype');
+    }
+
+:root{
+    /* Colors */
+    --fortinet-white: 255,255,255;
+    --fortinet-black: 0,0,0;
+    --fortinet-red: 218,41,28;  
+    --fortinet-blue: 48,127,226;  
+    --fortinet-green: 72,213,151;  
+    --fortinet-teel: 44,204,211;
+    --fortinet-purple: 144,99,205;  
+
+    --INTERNAL-PRIMARY-color: rgb(var(--theme-color)) !important;
+    --INTERNAL-MENU-HEADER-BG-color: rgb(var(--theme-color)) !important;
+    --INTERNAL-MAIN-BG-color: rgb(var(--fortinet-white)) !important;
+    --INTERNAL-MAIN-TEXT-color: rgb(var(--fortinet-black)) !important;
+    --INTERNAL-MENU-SECTIONS-LINK-color: rgb(var(--fortinet-white)) !important;
+    --INTERNAL-MAIN-font: inter !important;
+    --INTERNAL-MENU-SEARCH-color: rgba(var(--fortinet-white)) !important;
+    --INTERNAL-MENU-VISITED-color: rgb(var(--theme-color)) !important;
+    --INTERNAL-MENU-SECTIONS-ACTIVE-BG-color: rgb(var(--fortinet-black)) !important;
+
+    /* notifications */
+    --INTERNAL-BOX-WARNING-color: rgb(var(--fortinet-red)) !important;
+    --INTERNAL-BOX-NOTE-color: rgb(var(--fortinet-teel)) !important;
+    --INTERNAL-BOX-TIP-color: rgb(var(--fortinet-green)) !important;
+    --INTERNAL-BOX-INFO-color: rgb(var(--fortinet-blue)) !important;
+}
+
+#sidebar ul > li > a:hover {
+    color: rgb(var(--theme-color));
+}
+
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: rgb(var(--fortinet-white)) !important;
+  opacity: 1; /* Firefox */
+}
+
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  color: rgb(var(--fortinet-white)) !important;
+}
+
+::-ms-input-placeholder { /* Microsoft Edge */
+  color: rgb(var(--fortinet-white)) !important;
+}
+
+#title {
+  font-size: 2.2rem;
+}  
+
+#subtitle {
+  font-size: 1rem;
+  /* font-style: italic; */
+}
+
+#sidebar .searchbox > :first-child, #sidebar .searchbox button, .searchbox span {
+  opacity: 1;
+}
+
+.searchbox  {
+  border: 1px solid rgba(var(--theme-color), .85) !important;
+}
+
+.searchbox input {
+  background: rgba(var(--theme-color), .75) !important;
+}
+
+#header #logo {
+    display: flex;
+    justify-content: space-around;
+    flex-direction: column;
+}
+
     @media screen and (min-width: 1300px) {
 
         /* sidebar/width + ./max-width */
