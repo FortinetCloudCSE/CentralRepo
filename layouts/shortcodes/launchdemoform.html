@@ -1,9 +1,12 @@
 <script>
   function formSubmit() {
 
+    var customer = document.getElementById("customer").value;
+    var smartticket = document.getElementById("smartticket").value;
     var useremail = document.getElementById("useremail").value;
+
     var postdata =
-      "useremail=" + useremail + "&userop=Create&odlconfigname=sdwan-lab";
+      "customer=" + customer + "&smartticket=" +  smartticket + "&useremail=" + useremail + "&userop=Create&odlconfigname=fgtauto-lab";
 
     var xhr = new XMLHttpRequest();
     xhr.open(
@@ -30,7 +33,11 @@
 </script>
 
 <form id="provision-lab" onsubmit="return formSubmit();">
-  <label for="useremail">Please enter your email address</label>
-  <input type="email" id="useremail" name="useremail" value="" />
+  <label for="useremail">Please enter your email address (required)</label>
+  <input type="email" required id="useremail" name="useremail" value="" />
+  <label for="customer">Please enter an associated customer name (if any)</label>
+  <input type="text" id="customer" name="customer" value="" />
+  <label for="smartticket">Please enter an associated SMART Ticket (if any)</label>
+  <input type="text" id="smartticket" name="smartticket" value="" />
   <input type="submit" value="Provision" />
 </form>
