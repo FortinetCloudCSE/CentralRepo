@@ -1,12 +1,14 @@
 <script>
   function formSubmit() {
 
+    var labdefinition = "{{ .Get `labdefinition` }}";
+
     var customer = document.getElementById("customer").value;
     var smartticket = document.getElementById("smartticket").value;
     var useremail = document.getElementById("useremail").value;
 
     var postdata =
-      "customer=" + customer + "&smartticket=" +  smartticket + "&useremail=" + useremail + "&userop=Create&odlconfigname=fgtauto-lab";
+      "customer=" + customer + "&smartticket=" +  smartticket + "&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
 
     var xhr = new XMLHttpRequest();
     xhr.open(
@@ -17,8 +19,8 @@
     xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     xhr.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
-        alert("ok");
-        console.log(this.responseText);
+        var json = eval("(" + this.responseText +")");
+        alert("Success. Result:" + json);
       }
     };
     xhr.onload = function () {
@@ -27,7 +29,7 @@
 
     xhr.send(postdata);
 
-    document.getElementById("useremail").setAttribute('value','Provisioning Started... An email will be sent to the provided address with status');
+    document.getElementById("useremail").getElementsByTagName("input")[0].value = 'Provisioning Started.';
     return false;
   }
 </script>
