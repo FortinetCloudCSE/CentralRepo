@@ -6,7 +6,7 @@ case "$1" in
     ;;
 
   "shell")
-    cmd="/bin/bash"
+    cmd="sh"
     ;;
 
   "build" | "")
