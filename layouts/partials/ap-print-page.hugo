@@ -1,0 +1,8 @@
+<h1>{{ .Title }}</h1>
+{{ $pageFolder := path.Dir .RelPermalink }}
+{{ $contentString := string .Content }}
+{{ $replaceString := printf "<img src=\"%s/" $pageFolder }} 
+{{ $modifiedContent :=replace $contentString "<img src=\"" $replaceString }} 
+{{ $modifiedContent :=replace $modifiedContent " loading=\"lazy\"" "" }} 
+{{ $modifiedContent | safeHTML }} 
+<div class="pagebreak"></div>

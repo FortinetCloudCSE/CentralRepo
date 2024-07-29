@@ -1,0 +1,9 @@
+:root {
+  /* Workshop */
+  --theme-color: var(--fortinet-red);
+}
+
+#header-wrapper {
+  background-image: url("/images/xperts-2024-background.png");
+  background-size: cover;
+}

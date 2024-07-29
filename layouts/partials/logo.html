@@ -6,9 +6,9 @@
     {{end}}
 
     {{ with .Site.Params.logoBannerText }}
-        <logoBanner id="title"> {{ . }} </logoBanner>
+        <logoBanner id="title"> {{ . }} <br> </logoBanner>
     {{ else }}
-        <logoBanner id="title"> {{ $.Site.Params.themeVariant }} </logoBanner>
+        <logoBanner id="title"> {{ $.Site.Params.themeVariant }} <br> </logoBanner>
     {{ end }}
 
         <logoBannerFreeForm id="subtitle"> {{ $.Site.Params.logoBannerSubText }} </logoBannerFreeForm>
