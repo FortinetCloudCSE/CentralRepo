@@ -13,7 +13,7 @@ case "$1" in
     ;;
 
   "generate_toml")
-    cmd="python scripts/generate_toml.py"
+    cmd="./scripts/generate_toml.sh"
     ;;
 
   "update_scripts")
