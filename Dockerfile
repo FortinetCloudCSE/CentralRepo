@@ -10,9 +10,7 @@ ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/Cen
 
 WORKDIR /home/CentralRepo
 
-RUN apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
-RUN python3 -m ensurepip
-RUN pip3 install --no-cache --upgrade pip setuptools
+RUN apk add --update --no-cache python3 py3-pip && ln -sf python3 /usr/bin/python
 
 ENTRYPOINT ["/home/CentralRepo/scripts/local_copy.sh"]
 
@@ -21,8 +19,6 @@ ADD https://github.com/FortinetCloudCSE/CentralRepo.git#main /home/CentralRepo
 
 WORKDIR /home/CentralRepo
 
-RUN apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
-RUN python3 -m ensurepip
-RUN pip3 install --no-cache --upgrade pip setuptools
+RUN apk add --update --no-cache python3 py3-pip && ln -sf python3 /usr/bin/python
 
 ENTRYPOINT ["/home/CentralRepo/scripts/local_copy.sh"]

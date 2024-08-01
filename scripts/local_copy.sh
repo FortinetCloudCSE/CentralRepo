@@ -2,8 +2,6 @@
 
 cp ../UserRepo/layouts/shortcodes/* layouts/shortcodes
 cp ../UserRepo/layouts/partials/* layouts/partials
-cp -r ../UserRepo/content content
-cp ../UserRepo/hugo.toml hugo.toml
 
 case "$1" in
   "server")
