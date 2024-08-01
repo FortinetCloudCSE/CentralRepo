@@ -11,7 +11,7 @@ data = json.load(jsonFile)
 
 content = template.render(data)
 
-filename = "/home/CentralRepo/hugo.toml"
+filename = "/home/UserRepo/hugo.toml"
 with open(filename, mode="w", encoding="utf-8") as document:
     document.write(content)
     print(f"... wrote {filename}")
