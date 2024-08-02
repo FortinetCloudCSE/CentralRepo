@@ -5,7 +5,7 @@ cp ../UserRepo/layouts/partials/* layouts/partials
 
 case "$1" in
   "server")
-    cmd="hugo server --bind=0.0.0.0"
+    cmd="hugo server --contentDir /home/UserRepo/content --bind=0.0.0.0"
     ;;
 
   "shell")
@@ -25,7 +25,7 @@ case "$1" in
     ;;
 
   "build" | "")
-    cmd="hugo --minify --cleanDestinationDir"
+    cmd="hugo --minify --cleanDestinationDir --contentDir /home/UserRepo/content"
     ;;
 
   *)
