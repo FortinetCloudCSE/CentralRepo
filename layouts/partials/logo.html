@@ -1,9 +1,17 @@
 <a id="logo" href='{{relURL "index.html"}}' title="Fortinet TEC Program">
-    {{ if eq $.Site.Params.themeVariant "Workshop" }}
-    <img style="vertical-align:middle" src="{{relURL "images/white-logo.svg"}}" height="70px">
+  <img
+    style="vertical-align: middle"
+    src='{{if (eq .Site.Params.themeVariant "Xperts2023") }}
+        {{- "/images/xperts-2023-2-lines.svg" -}}
+        {{ else if (eq .Site.Params.themeVariant "Xperts2024")}}
+         {{- "/images/xperts-2024-2-lines.svg" -}}
+    {{ else if (eq .Site.Params.themeVariant "Workshop")}}
+        {{- "/images/white-logo.svg" -}}
     {{ else }}
-    <img style="vertical-align:middle" src="{{relURL "images/logo.svg"}}" height="70px">
-    {{end}}
+        {{- "/images/logo.svg" -}}
+    {{end}}'
+    height="70px"
+  />
 
     {{ with .Site.Params.logoBannerText }}
         <logoBanner id="title"> {{ . }} <br> </logoBanner>
