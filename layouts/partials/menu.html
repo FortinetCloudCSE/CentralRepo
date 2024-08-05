@@ -12,8 +12,6 @@
       {{- $currentNode := . }}
       <div id="R-header-topbar" class="default-animation"></div>
       <div id="R-header-wrapper" class="default-animation">
-        background-image: url("/images/xperts-2024-background.png");
-        background-size: cover;
         <div id="R-header" class="default-animation">
 {{ partial "logo.html" . }}
         </div>
@@ -61,7 +59,7 @@
         </div>
         {{- end }}
         {{- $siteLanguages := .Site.Languages }}
-        {{- $showlangswitch := and .Site.IsMultiLingual (not .Site.Params.disableLanguageSwitchingButton) (gt (int (len $siteLanguages)) 1) }}
+        {{- $showlangswitch := and hugo.IsMultiLingual (not .Site.Params.disableLanguageSwitchingButton) (gt (int (len $siteLanguages)) 1) }}
         {{- $themevariants := partialCached "get-theme-variants.hugo" . }}
         {{- $showvariantswitch := gt (int (len $themevariants)) 1 }}
         {{- $footer := partial "menu-footer.html" . }}
