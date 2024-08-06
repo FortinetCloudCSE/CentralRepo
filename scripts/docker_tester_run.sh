@@ -1,6 +1,6 @@
 #!/bin/bash
 
-myarray=( "build" "server" "shell" "generate_toml" "update_scripts" "update_fdevsec" " )
+myarray=( "build" "server" "shell" "generate_toml" "update_scripts" "update_fdevsec" )
 
 [[ "$#" > "1" ]] || [[ ! " ${myarray[*]} " =~ " $1 " ]] && echo "Usage: ./scripts/docker_run.sh [ build | server | generate_toml | update_scripts | update_fdevsec | shell ]" && exit 1
 
