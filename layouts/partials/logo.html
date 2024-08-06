@@ -1,15 +1,16 @@
 <a id="logo" href='{{relURL "index.html"}}' title="Fortinet TEC Program">
   <img
     style="vertical-align: middle"
-    src='{{if (eq .Site.Params.themeVariant "Xperts2023") }}
-        {{- "/images/xperts-2023-2-lines.svg" -}}
+    src='
+        {{if (eq .Site.Params.themeVariant "Xperts2023") }}
+            {{ relURL "images/xperts-2023-2-lines.svg" }}
         {{ else if (eq .Site.Params.themeVariant "Xperts2024")}}
-         {{- "/images/xperts-2024-2-lines.svg" -}}
-    {{ else if (eq .Site.Params.themeVariant "Workshop")}}
-        {{- "/images/white-logo.svg" -}}
-    {{ else }}
-        {{- "/images/logo.svg" -}}
-    {{end}}'
+            {{ relURL "images/xperts-2024-2-lines.svg" }}
+        {{ else if (eq .Site.Params.themeVariant "Workshop")}}
+            {{ relURL "images/white-logo.svg" }}
+        {{ else }}
+            {{ relURL "images/logo.svg" }}
+        {{end}}'
     height="70px"
   />
 
