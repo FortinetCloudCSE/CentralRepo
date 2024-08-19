@@ -1,3 +1,4 @@
 config.toml
 content
 *.DS_Store
+venv/
