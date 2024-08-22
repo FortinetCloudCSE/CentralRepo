@@ -13,3 +13,8 @@ if ! test -f ../UserRepo/scripts/repoConfig.json; then
   cp scripts/repoConfig.json ../UserRepo/scripts/repoConfig.json
   echo "copied Hugo config file into ../UserRepo/scripts/repoConfig.json"
 fi
+
+if ! test -f ../UserRepo/hugo.toml; then
+  touch hugo.toml
+  echo "Created emtpy hugo.toml file to be able to run update_scripts"
+fi
