@@ -39,5 +39,7 @@ case "$1" in
     ;;
 esac
 
-echo "**** Here's the docker run command we're using:   $cmd ****"
+echo "************ Here's the docker run command we're using:  "
+echo "$cmd"
+echo "************"
 $cmd

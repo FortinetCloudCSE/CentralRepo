@@ -3,7 +3,7 @@
 cp ../UserRepo/layouts/shortcodes/* layouts/shortcodes
 cp ../UserRepo/layouts/partials/* layouts/partials
 
-echo "**** IF YOU DON'T HAVE any custom layouts, disregard error 'cp: can't stat '../UserRepo/layouts/partials/*': No such file or directory' ****"
+echo "**** IF YOU DON'T HAVE any custom layouts, DISREGARD MESSAGE: 'cp: can't stat '../UserRepo/layouts/partials/*': No such file or directory' ****"
 
 case "$1" in
   "server")
