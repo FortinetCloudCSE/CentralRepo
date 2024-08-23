@@ -1,9 +1,18 @@
 #!/bin/sh
 
+### After QA testing docker_run_latest and docker_build_latest.sh: rm docker_tester_run, docker_run, docker_tester_build, docker_build
+
+cp scripts/docker_run_latest.sh ../UserRepo/scripts/docker_run_latest.sh
+cp scripts/docker_build_latest.sh ../UserRepo/scripts/docker_build_latest.sh
+
 cp scripts/docker_tester_run.sh ../UserRepo/scripts/docker_tester_run.sh
+cp scripts/docker_tester_build.sh ../UserRepo/scripts/docker_tester_build.sh
 cp scripts/docker_run.sh ../UserRepo/scripts/docker_run.sh
+
+
 cp scripts/static.yml ../UserRepo/.github/workflows/static.yml
 cp Dockerfile ../UserRepo/Dockerfile
+
 
 echo "updated docker_tester_run.sh, docker_run.sh, Github action, and Dockerfile"
 
