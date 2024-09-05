@@ -1,0 +1,11 @@
+{{- partial "tags.html" . }}
+{{ if eq .Kind "home"}}
+  {{ if eq .Site.Params.themeVariant "Xperts2024" }}
+  {{- partial "shortcodes/Xperts24Banner.html" (dict
+    "page" .
+    "line1" .Site.Params.bannerLine1
+    "line2" .Site.Params.bannerLine2
+    "line3" .Site.Params.bannerLine3
+  ) }}
+  {{end}}
+{{end}}

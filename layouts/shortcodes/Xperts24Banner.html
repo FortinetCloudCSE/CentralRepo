@@ -1,0 +1,7 @@
+{{- $_hugo_config := `{ "version": 1 }` }}
+{{- partial "shortcodes/Xperts24Banner.html" (dict
+  "page"    .Page
+  "line1"    (.Get "line1" | default (.Get 0))
+  "line2"    (.Get "line2" | default (.Get 0))
+  "line3"    (.Get "line3" | default (.Get 0))
+) }}
