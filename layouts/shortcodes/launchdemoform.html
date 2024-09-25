@@ -1,45 +1,56 @@
+<div id="display-form"></div>
 <script>
-  function formSubmit() {
 
-    var labdefinition = "{{ .Get `labdefinition` }}";
+// todo:  handle refreshing page, bypasses checkin
 
-    var customer = document.getElementById("customer").value;
-    var smartticket = document.getElementById("smartticket").value;
-    var useremail = document.getElementById("useremail").value;
+const container = document.getElementById('display-form');
 
-    var postdata =
-      "customer=" + customer + "&smartticket=" +  smartticket + "&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open(
-      "POST",
-      "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d",
-      false
-    );
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.onreadystatechange = function () {
-      if (this.readyState == 4 && this.status == 200) {
-        var json = eval("(" + this.responseText +")");
-        alert("Success. Result:" + json);
-      }
-    };
-    xhr.onload = function () {
-      console.log(this.responseText);
-    };
-
-    xhr.send(postdata);
-
-    document.getElementById("useremail").getElementsByTagName("input")[0].value = 'Provisioning Started.';
-    return false;
+function getCookie(cname) {
+  let name = cname + "=";
+  let decodedCookie = decodeURIComponent(document.cookie);
+  let ca = decodedCookie.split(';');
+  for(let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) == ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
   }
-</script>
+  return "";
+}
 
-<form id="provision-lab" onsubmit="return formSubmit();">
-  <label for="useremail">Please enter your email address (required)</label>
-  <input type="email" required id="useremail" name="useremail" value="" />
-  <label for="customer">Please enter an associated customer name (if any)</label>
-  <input type="text" id="customer" name="customer" value="" />
-  <label for="smartticket">Please enter an associated SMART Ticket (if any)</label>
-  <input type="text" id="smartticket" name="smartticket" value="" />
-  <input type="submit" value="Provision" />
-</form>
+let user = getCookie("fortiuser");
+if (user == "") {
+
+// action
+//http://localhost:8080/reg/cookie.html
+// container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
+//https://tecanalytics.forticloudcse.com/checkin
+container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.forticloudcse.com/checkin">' +
+ '<label for="email">Please enter your email address (required)</label>' +
+ '<input type="email" required id="email" name="EMail" value="" />' +
+ '<input type="submit" value="Provision" />' +
+ '<input type="hidden" name="uid" id="uid" value="">' +
+ '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
+ '</form>';
+} else {
+  container.innerHTML = '<p>Thank you! Now that you have checked in..</p>';
+}
+ </script>
+
+<script>
+  const uuid = crypto.randomUUID();
+  document.getElementById('uid').value = uuid;
+  var labdefinition = "{{ .Get `labdefinition` }}";
+  document.getElementById('labdefinition').value = labdefinition;
+
+  function setCookie(cname,cvalue,exdays) {
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires=" + d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  }
+  setCookie("fortiuser", uuid, 5);
+</script>
