@@ -33,6 +33,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
  '<input type="email" required id="email" name="EMail" value="" />' +
  '<input type="submit" value="Provision" />' +
  '<input type="hidden" name="uid" id="uid" value="">' +
+ '<input type="hidden" name="current_page" id="current_page" value="">' +
  '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
  '</form>';
 } else {
@@ -43,6 +44,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
 <script>
   const uuid = crypto.randomUUID();
   document.getElementById('uid').value = uuid;
+  document.getElementById('current_page').value = window.location.href;
   var labdefinition = "{{ .Get `labdefinition` }}";
   document.getElementById('labdefinition').value = labdefinition;
 
