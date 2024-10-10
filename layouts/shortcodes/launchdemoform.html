@@ -29,7 +29,7 @@ if (user == "") {
 // container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
 //https://tecanalytics.forticloudcse.com/checkin
 container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.forticloudcse.com/checkin">' +
- '<label for="email">Please enter your email address (required)</label>' +
+ '<label for="email">Please enter your email address for session check-in (required)</label>' +
  '<input type="email" required id="email" name="EMail" value="" />' +
  '<input type="submit" value="Provision" />' +
  '<input type="hidden" name="uid" id="uid" value="">' +
@@ -37,7 +37,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
  '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
  '</form>';
 } else {
-  container.innerHTML = '<p>Thank you! Now that you have checked in..</p>';
+  container.innerHTML = '<p><b>Thank you for checking into this session!  You may now proceed with the workshop..</b></p>';
 }
  </script>
 
