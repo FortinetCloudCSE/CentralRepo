@@ -31,6 +31,10 @@ if (user == "") {
 container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.forticloudcse.com/checkin">' +
  '<label for="email">Please enter your email address for session check-in (required)</label>' +
  '<input type="email" required id="email" name="EMail" value="" />' +
+ '<label for="customer">Please enter an associated customer name (if any)</label>' +
+ '<input type="customer" required id="customer" name="Customer" value="" />' +
+ '<label for="event">Please enter the Event Name/Code or Smart Ticket (if any)</label>' +
+ '<input type="event" required id="event" name="Event" value="" />' +
  '<input type="submit" value="Provision" />' +
  '<input type="hidden" name="uid" id="uid" value="">' +
  '<input type="hidden" name="current_page" id="current_page" value="">' +
