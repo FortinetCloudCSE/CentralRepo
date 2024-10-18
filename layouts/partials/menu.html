@@ -64,12 +64,12 @@
         {{- $showvariantswitch := gt (int (len $themevariants)) 1 }}
         {{- $footer := partial "menu-footer.html" . }}
         {{- $showfooter := not (eq 0 (int (len ($footer | plainify)))) }}
-        <div class="padding footermargin footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter{{if $showlangswitch}} showLangSwitch{{end}}{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}{{if $showfooter}} showFooter{{end}}"></div>
+        <div class="padding footermargin footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}{{if $showfooter}} showFooter{{end}}"></div>
         <div id="R-menu-footer">
-          <hr class="padding default-animation footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter{{if $showlangswitch}} showLangSwitch{{end}}{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}{{if $showfooter}} showFooter{{end}}">
-          <div id="R-prefooter" class="footerLangSwitch footerVariantSwitch footerVisitedLinks{{if $showlangswitch}} showLangSwitch{{end}}{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}">
+          <hr class="padding default-animation footerLangSwitch footerVariantSwitch footerVisitedLinks footerFooter{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}{{if $showfooter}} showFooter{{end}}">
+          <div id="R-prefooter" class="footerLangSwitch footerVariantSwitch footerVisitedLinks{{if $showvariantswitch}} showVariantSwitch{{end}}{{if $showvisitedlinks}} showVisitedLinks{{end}}">
             <ul>
-              <li id="R-select-language-container" class="footerLangSwitch{{if $showlangswitch}} showLangSwitch{{end}}">
+              <li id="R-select-language-container" class="footerLangSwitch">
                 <div class="padding menu-control">
                   <i class="fa-fw fas fa-language"></i>
                   <span>&nbsp;</span>
