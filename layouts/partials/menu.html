@@ -59,7 +59,6 @@
         </div>
         {{- end }}
         {{- $siteLanguages := .Site.Languages }}
-        {{- $showlangswitch := and hugo.IsMultiLingual (not .Site.Params.disableLanguageSwitchingButton) (gt (int (len $siteLanguages)) 1) }}
         {{- $themevariants := partialCached "get-theme-variants.hugo" . }}
         {{- $showvariantswitch := gt (int (len $themevariants)) 1 }}
         {{- $footer := partial "menu-footer.html" . }}
