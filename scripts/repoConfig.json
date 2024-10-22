@@ -7,11 +7,12 @@
   "logoBannerSubText":"",
   "errorLevel":"warning",
   "googleServicesID":"G-5RZBH288ST",
+  "marketingCode": "",
   "shortcuts": [
   {
     "text": "Fortinet Cloud CSE GitHub Org",
     "URL": "https://github.com/FortinetCloudCSE",
-    "icon": "fa-tools",
+    "icon": "fa-graduation-cap",
     "weight":10
   },
   {
