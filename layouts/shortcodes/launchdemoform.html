@@ -1,4 +1,4 @@
-{{- $marketingCode := .Site.Params.marketingCode | default "" }}
+{{- $marketingCode := .Site.Params.marketingCode | default " " }}
 
 <div id="display-form"></div>
 <script>
@@ -37,7 +37,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
  '<label for="customer">Please enter an associated customer name (if any)</label>' +
  '<input type="customer" id="customer" name="Customer" value="" />' +
  '<label for="event">Please enter the Event Name/Code or Smart Ticket (if any)</label>' +
- '<input type="event" id="event" name="Event" value={{ $marketingCode }} />' +
+ '<input type="event" id="event" name="Event" value="{{ $marketingCode }}" />' +
  '<input type="submit" value="Provision" />' +
  '<input type="hidden" name="uid" id="uid" value="">' +
  '<input type="hidden" name="current_page" id="current_page" value="">' +
