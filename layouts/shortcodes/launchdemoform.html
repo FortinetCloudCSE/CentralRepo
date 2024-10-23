@@ -56,18 +56,22 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie(5)" action="
   let uuid = crypto.randomUUID();
   document.getElementById('uid').value = uuid;
   function setCookie(exdays) {
-    if (exdays == 0) {
-      let uuid = '';
-    }
     const cname = "fortiuser";
     const d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
     let expires = "expires=" + d.toUTCString();
     document.cookie = cname + "=" + uuid + ";" + expires + ";path=/";
   }
+  function rmCookie(exdays) {
+    const cname = "fortiuser";
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires=" + d.toUTCString();
+    document.cookie = cname + "=" + '' + ";" + expires + ";path=/";
+  }
 
 function reProvision() {
-  setCookie(0);
+  rmCookie(0);
   location.reload();
 }
 
