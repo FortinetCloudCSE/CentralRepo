@@ -57,7 +57,7 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie(5)" action="
   document.getElementById('uid').value = uuid;
   function setCookie(exdays) {
     if (exdays == 0) {
-      uuid = '';
+      let uuid = '';
     }
     const cname = "fortiuser";
     const d = new Date();
