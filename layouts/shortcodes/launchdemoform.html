@@ -48,6 +48,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
  </script>
 
 <script>
+  document.getElementById('current_page').value = window.location.href;
   var labdefinition = "{{ .Get `labdefinition` }}";
   document.getElementById('labdefinition').value = labdefinition;
 </script>
