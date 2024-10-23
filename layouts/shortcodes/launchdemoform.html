@@ -53,9 +53,12 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie(5)" action="
   var labdefinition = "{{ .Get `labdefinition` }}";
   document.getElementById('labdefinition').value = labdefinition;
 
-  const uuid = crypto.randomUUID();
+  let uuid = crypto.randomUUID();
   document.getElementById('uid').value = uuid;
   function setCookie(exdays) {
+    if (exdays == 0) {
+      uuid = '';
+    }
     const cname = "fortiuser";
     const d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
