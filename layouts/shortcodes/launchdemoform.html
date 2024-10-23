@@ -31,7 +31,7 @@ if (user == "") {
 //http://localhost:8080/reg/cookie.html
 // container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
 //https://tecanalytics.forticloudcse.com/checkin
-container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.forticloudcse.com/checkin">' +
+container.innerHTML = '<form id="provision-lab" onsubmit="setCookie()" action="https://tecanalytics.forticloudcse.com/checkin">' +
  '<label for="email">Please enter your email address for session check-in (required)</label>' +
  '<input type="email" required id="email" name="EMail" value="" />' +
  '<label for="customer">Please enter an associated customer name (if any)</label>' +
@@ -39,6 +39,7 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
  '<label for="event">Please enter the Event Name/Code or Smart Ticket (if any)</label>' +
  '<input type="event" id="event" name="Event" value="{{ $marketingCode }}" />' +
  '<input type="submit" value="Provision" />' +
+ '<input type="hidden" name="uid" id="uid" value="">' +
  '<input type="hidden" name="current_page" id="current_page" value="">' +
  '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
  '</form>';
@@ -51,4 +52,15 @@ container.innerHTML = '<form id="provision-lab" action="https://tecanalytics.for
   document.getElementById('current_page').value = window.location.href;
   var labdefinition = "{{ .Get `labdefinition` }}";
   document.getElementById('labdefinition').value = labdefinition;
+
+  const uuid = crypto.randomUUID();
+  document.getElementById('uid').value = uuid;
+  function setCookie() {
+    const cname = "fortiuser";
+    const exdays = 5;
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires=" + d.toUTCString();
+    document.cookie = cname + "=" + uuid + ";" + expires + ";path=/";
+  }
 </script>
