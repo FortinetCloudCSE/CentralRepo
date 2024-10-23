@@ -44,7 +44,7 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie()" action="h
  '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
  '</form>';
 } else {
-  container.innerHTML = '<p><b>Thank you for checking into this session!  You may now proceed with the workshop..</b></p>';
+  container.innerHTML = '<p><b>Thank you for checking into this session!  You may now proceed with the workshop..</b> <button onclick="reProvision(0)">Reprovision</button></p>';
 }
  </script>
 
@@ -63,4 +63,10 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie()" action="h
     let expires = "expires=" + d.toUTCString();
     document.cookie = cname + "=" + uuid + ";" + expires + ";path=/";
   }
+
+function reProvision(exdays) {
+  setCookie(exdays);
+  location.reload();
+}
+
 </script>
