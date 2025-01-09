@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1.5-labs
 
 #alpine has shell, busybox does not
-#FROM klakegg/hugo:0.107.0-busybox AS hugo
-#FROM klakegg/hugo:0.107.0-alpine AS base
 FROM hugomods/hugo:std as base
 
 FROM base as dev
