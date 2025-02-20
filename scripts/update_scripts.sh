@@ -21,5 +21,3 @@ if ! test -f ../UserRepo/scripts/repoConfig.json; then
   cp scripts/repoConfig.json ../UserRepo/scripts/repoConfig.json
   echo "copied Hugo config file into ../UserRepo/scripts/repoConfig.json"
 fi
-
-cp scripts/update_scripts.sh ../UserRepo/scripts/update_scripts.sh
