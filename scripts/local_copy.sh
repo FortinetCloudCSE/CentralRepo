@@ -7,7 +7,7 @@ echo "**** IF YOU DON'T HAVE any custom layouts, DISREGARD MESSAGE: 'cp: can't s
 
 case "$1" in
   "server")
-    cmd="hugo server --contentDir /home/UserRepo/content --bind=0.0.0.0"
+    cmd="./scripts/hugoServer_authorMode.sh"
     ;;
 
   "shell")
