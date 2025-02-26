@@ -6,14 +6,18 @@
 #cp scripts/docker_run_latest.sh ../UserRepo/scripts/docker_run_latest.sh
 #cp scripts/docker_build_latest.sh ../UserRepo/scripts/docker_build_latest.sh
 
-cp scripts/docker_tester_run.sh ../UserRepo/scripts/docker_tester_run.sh
-cp scripts/docker_tester_build.sh ../UserRepo/scripts/docker_tester_build.sh
+#cp scripts/docker_tester_run.sh ../UserRepo/scripts/docker_tester_run.sh
+#cp scripts/docker_tester_build.sh ../UserRepo/scripts/docker_tester_build.sh
 cp scripts/docker_run.sh ../UserRepo/scripts/docker_run.sh
 cp scripts/docker_build.sh ../UserRepo/scripts/docker_build.sh
 
 cp scripts/static.yml ../UserRepo/.github/workflows/static.yml
 cp Dockerfile ../UserRepo/Dockerfile
 
+rm -f ../UserRepo/scripts/docker_tester_run.sh
+rm -f ../UserRepo/scripts/docker_tester_build.sh
+rm -f ../UserRepo/scripts/docker_run_latest.sh
+rm -f ../UserRepo/scripts/docker_build_latest.sh
 
 echo "updated docker_tester_run.sh, docker_run.sh, docker_build.sh, Github action (static.yaml), and Dockerfile"
 
