@@ -2,8 +2,8 @@ import toml
 import json
 
 # File paths
-toml_file = "config.toml"
-json_file = "scripts/repoConfig.json"
+toml_file = "/home/UserRepo/config.toml"
+json_file = "/home/UserRepo/scripts/repoConfig.json"
 
 # Load TOML file
 configToml = toml.load(toml_file)
