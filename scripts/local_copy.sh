@@ -23,7 +23,7 @@ case "$1" in
     ;;
 
   "upgrade_repo")
-    cmd="/scripts/upgrade_repo"
+    cmd="/scripts/upgrade_repo.sh"
     ;;
 
   "update_fdevsec")

@@ -26,7 +26,7 @@ case "$1" in
       -v $(pwd):/home/UserRepo
       --mount type=bind,source=$(pwd)/hugo.toml,target=/home/CentralRepo/hugo.toml
       -p 1313:1313 $container_name:latest $1"
-
+    ;;
 
 
   "generate_toml" | "update_scripts" | "update_fdevsec" | "upgrade_repo" )
