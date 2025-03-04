@@ -22,6 +22,10 @@ case "$1" in
     cmd="./scripts/update_scripts.sh"
     ;;
 
+  "upgrade_repo")
+    cmd="/scripts/upgrade_repo"
+    ;;
+
   "update_fdevsec")
     cmd="./scripts/update_fdevsec.sh"
     ;;
