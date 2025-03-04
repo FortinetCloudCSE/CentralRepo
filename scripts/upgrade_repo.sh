@@ -10,7 +10,7 @@ pip install Jinja2
 pip install toml
 
 echo "Running toml_to_json.py which extracts key fields from old config.toml and stores them in repoConfig.json"
-python scripts/generate_toml.py
+python scripts/toml_to_json.py
 
 
 echo "Running generate_toml.py which uses Jinja2 template to generate new TOML file from repoConfig.json"

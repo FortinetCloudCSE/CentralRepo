@@ -4,7 +4,7 @@ myarray=( "build" "server" "shell" "generate_toml" "update_scripts" "update_fdev
 
 envarray=( "prod" "dev")
 
-[[ "$#" > "2" ]] || [[ ! " ${myarray[*]} " =~ " $1 " ]] || [[ ! " ${envarray[*]} " =~ " $2 " ]] && echo "Usage: ./scripts/docker_run.sh [ build | server | generate_toml | update_scripts | update_fdevsec | shell | upgrade_repo] [ prod | dev ]" && exit 1
+[[ "$#" > "2" ]] || [[ ! " ${myarray[*]} " =~ " $1 " ]] || [[ ! " ${envarray[*]} " =~ " $2 " ]] && echo "Usage: ./scripts/docker_run.sh [ build | server | generate_toml | update_scripts | update_fdevsec | shell | upgrade_repo ] [ prod | dev ]" && exit 1
 
 
 case "$2" in
@@ -29,7 +29,7 @@ case "$1" in
 
 
 
-  "generate_toml" | "update_scripts" | "update_fdevsec" | "upgrade_repo")
+  "generate_toml" | "update_scripts" | "update_fdevsec" | "upgrade_repo" )
     cmd="docker run --rm -it
     -v $(pwd):/home/UserRepo
     $container_name:latest $1"
