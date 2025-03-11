@@ -19,6 +19,8 @@ rm -f ../UserRepo/scripts/docker_tester_build.sh
 rm -f ../UserRepo/scripts/docker_run_latest.sh
 rm -f ../UserRepo/scripts/docker_build_latest.sh
 rm -f ../UserRepo/docker-compose.yml
+rm -f ../UserRepo/hugo.toml
+rm -f ../UserRepo/config.toml
 
 echo "updated docker_tester_run.sh, docker_run.sh, docker_build.sh, Github action (static.yaml), and Dockerfile.  Removed old docker_ scripts and docker_compose.yml"
 

@@ -31,7 +31,7 @@ case "$1" in
     ;;
 
   "build" | "")
-    cmd="hugo --minify --cleanDestinationDir --contentDir /home/UserRepo/content"
+    cmd="./scripts/hugo_build.sh"
     ;;
 
   *)
