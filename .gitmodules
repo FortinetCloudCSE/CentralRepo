@@ -1,6 +1,3 @@
 [submodule "themes/hugo-theme-relearn"]
 	path = themes/hugo-theme-relearn
 	url = https://github.com/McShelby/hugo-theme-relearn.git
-[submodule "themes/hugo-relearn-theme"]
-	path = themes/hugo-relearn-theme
-	url = https://github.com/McShelby/hugo-theme-relearn.git
