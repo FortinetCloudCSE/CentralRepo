@@ -1,12 +1,11 @@
 import requests
 import base64
 import os
-import subprocess
 import toml, json
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 ORG = "FortinetCloudCSE"
-REPOS = ["FortiDevSec-Workshop"]  # fill in your actual repo names
+REPOS = ['']  # fill in your actual repo names
 BRANCH = "main"
 HUGO_CONTENT_VERSION = "Hugo-v2.1"
 
@@ -27,6 +26,7 @@ FILES_TO_DELETE = [
     "scripts/docker_build_latest.sh",
     "scripts/docker_run.sh",
     "scripts/docker_build.sh",
+    "layouts/shortcodes/FTNThugoFlow.html",
     "docker-compose.yml",
     "hugo.toml",
     "config.toml",
@@ -55,12 +55,12 @@ def run_toml_to_json(toml_file, json_file):
    
         if "params" in configToml:
             repoConfig["author"] = configToml["params"]["author"] if "author" in configToml["params"] else ""
-            repoConfig["themeVariant"] = configToml["params"]["themesVariant"] if "themeVariant" in configToml["params"] else ""
+            repoConfig["themeVariant"] = configToml["params"]["themeVariant"] if "themeVariant" in configToml["params"] else ""
             repoConfig["logoBannerText"] = configToml["params"]["logoBannerText"] if "logoBannerText" in configToml["params"] else ""
-            repoConfig["logoBannerSubText"] = configToml["params"]["logoBannerSubtext"] if "logoBannerSubtext" in configToml["params"] else ""
+            repoConfig["logoBannerSubText"] = configToml["params"]["logoBannerSubText"] if "logoBannerSubText" in configToml["params"] else ""
 
-    except:
-        print("Warning: some fields in repoConfig could not be gathered from config.toml.")
+    except Exception as e:
+        print(f"Warning: repoConfig translation with: {e}")
   
     shortcuts =[]   
     for shortcut in configToml["menu"]["shortcuts"]:
@@ -83,12 +83,12 @@ def run_toml_to_json(toml_file, json_file):
     return True
 
 def get_branch_info(repo):
-    r = requests.get(f"{API}/repos/{ORG}/{repo}/branches/{BRANCH}", headers=HEADERS)
-    r.raise_for_status()
-    info = r.json()
-    commit_sha = info["commit"]["sha"]
-    tree_sha = info["commit"]["commit"]["tree"]["sha"]
-    return commit_sha, tree_sha
+        r = requests.get(f"{API}/repos/{ORG}/{repo}/branches/{BRANCH}", headers=HEADERS)
+        r.raise_for_status()
+        info = r.json()
+        commit_sha = info["commit"]["sha"]
+        tree_sha = info["commit"]["commit"]["tree"]["sha"]
+        return commit_sha, tree_sha
 
 def create_blob(repo, local_path):
     with open(local_path, "rb") as f:
@@ -226,121 +226,127 @@ ftc_keys = [a[0] for a in FILES_TO_COPY]
 mis = any(x in ftc_keys for x in FILES_TO_DELETE)
 if mis:
     print("Some files in FILES_TO_DELETE are also in FILES_TO_COPY, please reconcile, exiting...")
-    os._exit(1)
+    os.exit(1)
 
 for repo in REPOS:
     print(f"\nProcessing repo: {repo}")
 
-    commit_sha, tree_sha = get_branch_info(repo)
-    tree_elements = []
+    try:
+        commit_sha, tree_sha = get_branch_info(repo)
+        tree_elements = []
 
-    tree_info = get_tree(repo, tree_sha)
-    all_paths = [item["path"] for item in tree_info.get("tree", [])]
+        tree_info = get_tree(repo, tree_sha)
+        all_paths = [item["path"] for item in tree_info.get("tree", [])]
 
-    # 1. Add/Update all files in FILES_TO_COPY
-    for local_path, repo_path in FILES_TO_COPY:
-        if not os.path.exists(local_path):
-            print(f"Warning: {local_path} not found, skipping.")
-            continue
-        blob_sha = create_blob(repo, local_path)
-        # Mode "100755" for scripts, "100644" for text files (can adjust if you want)
-        mode = "100755" if repo_path.endswith(".sh") else "100644"
-        tree_elements.append({
-            "path": repo_path,
-            "mode": mode,
-            "type": "blob",
-            "sha": blob_sha
-        })
-    # 2. Delete files (add with sha: None)
-    for repo_path in FILES_TO_DELETE:
-        entry = get_tree_entry_for_path(tree_info, repo_path)
-        if entry and entry["type"] == "blob":
+        # 1. Add/Update all files in FILES_TO_COPY
+        for local_path, repo_path in FILES_TO_COPY:
+            if not os.path.exists(local_path):
+                print(f"Warning: {local_path} not found, skipping.")
+                continue
+            blob_sha = create_blob(repo, local_path)
+            # Mode "100755" for scripts, "100644" for text files (can adjust if you want)
+            mode = "100755" if repo_path.endswith(".sh") else "100644"
             tree_elements.append({
                 "path": repo_path,
-                "mode": entry["mode"],
+                "mode": mode,
                 "type": "blob",
-                "sha": None
+                "sha": blob_sha
             })
-    # 2a. Delete directories
-    for dir_path in FOLDERS_TO_DELETE:
-        if dir_exists_in_tree(repo, tree_sha, dir_path):
-            blobs_to_delete = get_blobs_under_dir(repo, tree_sha, dir_path)
-            if blobs_to_delete:
-                for blob in blobs_to_delete:
-                    print(f"Deleting {blob['path']}")
-                    tree_elements.append({
-                        "path": blob["path"],
-                        "mode": blob["mode"],
-                        "type": "blob",
-                        "sha": None
-                    })
+        # 2. Delete files (add with sha: None)
+        for repo_path in FILES_TO_DELETE:
+            entry = get_tree_entry_for_path(tree_info, repo_path)
+            if entry and entry["type"] == "blob":
+                tree_elements.append({
+                    "path": repo_path,
+                    "mode": entry["mode"],
+                    "type": "blob",
+                    "sha": None
+                })
+        # 2a. Delete directories
+        for dir_path in FOLDERS_TO_DELETE:
+            if dir_exists_in_tree(repo, tree_sha, dir_path):
+                blobs_to_delete = get_blobs_under_dir(repo, tree_sha, dir_path)
+                if blobs_to_delete:
+                    for blob in blobs_to_delete:
+                        print(f"Deleting {blob['path']}")
+                        tree_elements.append({
+                            "path": blob["path"],
+                            "mode": blob["mode"],
+                            "type": "blob",
+                            "sha": None
+                        })
+                else:
+                    print(f"No files to delete in directory '{dir_path}'.")
             else:
-                print(f"No files to delete in directory '{dir_path}'.")
-        else:
-            print(f"Directory '{dir_path}' not found in the tree; skipping delete.")
+                print(f"Directory '{dir_path}' not found in the tree; skipping delete.")
 
-    # 3. Download config.toml, run toml_to_json.py, upload as scripts/repoConfig.json
-    config_content = get_file_content(repo, "config.toml")
-    if config_content:
-        local_toml = f"/tmp/{repo}_config.toml"
-        output_json = f"/tmp/{repo}_repoConfig.json"
-        with open(local_toml, "wb") as f:
-            f.write(config_content)
-        if run_toml_to_json(local_toml, output_json):
-            with open(output_json, "rb") as jf:
-                repo_config_bytes = jf.read()
-            blob_sha = create_blob_from_bytes(repo, repo_config_bytes)
+        # 3. Download config.toml, run toml_to_json.py, upload as scripts/repoConfig.json
+        config_content = get_file_content(repo, "config.toml")
+        repoConfig_content  = get_file_content(repo, "scripts/repoConfig.json")
+        if repoConfig_content:
+            print ("Already have repoConfig.json, skipping config.toml conversion")
+        elif config_content:
+            local_toml = f"/tmp/{repo}_config.toml"
+            output_json = f"/tmp/{repo}_repoConfig.json"
+            with open(local_toml, "wb") as f:
+                f.write(config_content)
+            if run_toml_to_json(local_toml, output_json):
+                with open(output_json, "rb") as jf:
+                    repo_config_bytes = jf.read()
+                blob_sha = create_blob_from_bytes(repo, repo_config_bytes)
+                tree_elements.append({
+                    "path": "scripts/repoConfig.json",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob_sha
+                })
+                print(f"Added updated repoConfig.json to commit for {repo}")
+            else:
+                print(f"Failed to generate repoConfig.json for {repo}")
+            os.remove(local_toml)
+            os.remove(output_json)
+        else:
+            # (Optional) If you want to ensure repoConfig.json always exists, copy local default version:
+            print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
+            if os.path.exists(REPOCONFIG_JSON_LOCAL):
+                blob_sha = create_blob(repo, REPOCONFIG_JSON_LOCAL)
+                tree_elements.append({
+                    "path": "scripts/repoConfig.json",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob_sha
+                })
+
+        if not tree_elements:
+            print("Nothing to change for this repo.")
+            continue
+
+        # 4. Update README.md with pages link
+        pg_resp = requests.get(f"{API}/repos/{ORG}/{repo}/pages", headers=HEADERS)
+        if pg_resp.status_code == 200:
+            # GitHub pages is enabled, so update main README.md with link
+            data = pg_resp.json()
+            pg_url = data.get('html_url')
+            readme_sha=update_readme(repo, pg_url)
             tree_elements.append({
-                "path": "scripts/repoConfig.json",
+                "path": "README.md",
                 "mode": "100644",
                 "type": "blob",
-                "sha": blob_sha
+                "sha": readme_sha
             })
-            print(f"Added updated repoConfig.json to commit for {repo}")
         else:
-            print(f"Failed to generate repoConfig.json for {repo}")
-        os.remove(local_toml)
-        os.remove(output_json)
-    else:
-        # (Optional) If you want to ensure repoConfig.json always exists, copy local default version:
-        print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
-        if os.path.exists(REPOCONFIG_JSON_LOCAL):
-            blob_sha = create_blob(repo, REPOCONFIG_JSON_LOCAL)
-            tree_elements.append({
-                "path": "scripts/repoConfig.json",
-                "mode": "100644",
-                "type": "blob",
-                "sha": blob_sha
-            })
+            print(f"GitHub pages not enabled for repo: {repo}")
 
-    if not tree_elements:
-        print("Nothing to change for this repo.")
-        continue
-
-    # 4. Update README.md with pages link
-    pg_resp = requests.get(f"{API}/repos/{ORG}/{repo}/pages", headers=HEADERS)
-    if pg_resp.status_code == 200:
-        # GitHub pages is enabled, so update main README.md with link
-        data = pg_resp.json()
-        pg_url = data.get('html_url')
-        readme_sha=update_readme(repo, pg_url)
-        tree_elements.append({
-            "path": "README.md",
-            "mode": "100644",
-            "type": "blob",
-            "sha": readme_sha
-        })
-    else:
-        print(f"GitHub pages not enabled for repo: {repo}")
-
-    # 5. Create new tree, commit, and update ref
-    new_tree_sha = create_tree(repo, tree_sha, tree_elements)
-    new_commit_sha = create_commit(
-        repo,
-        "Automated bulk update: scripts, Dockerfile, config files, and repoConfig.json",
-        new_tree_sha,
-        commit_sha
-    )
-    update_branch_ref(repo, new_commit_sha)
-    update_custom_properties(repo)
-    print(f"Updated {repo}: commit {new_commit_sha}")
+        # 5. Create new tree, commit, and update ref
+        new_tree_sha = create_tree(repo, tree_sha, tree_elements)
+        new_commit_sha = create_commit(
+            repo,
+            "Automated bulk update: scripts, Dockerfile, config files, and repoConfig.json",
+            new_tree_sha,
+            commit_sha
+        )
+        update_branch_ref(repo, new_commit_sha)
+        update_custom_properties(repo)
+        print(f"Updated {repo}: commit {new_commit_sha}")
+    except:
+        print(f"Error getting branch info for {repo}.")
