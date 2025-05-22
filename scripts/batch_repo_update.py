@@ -6,14 +6,10 @@ import toml, json
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 ORG = "FortinetCloudCSE"
-<<<<<<< HEAD
+
 REPOS = ["FortiDevSec-Workshop"]  # fill in your actual repo names
 BRANCH = "main"
 HUGO_CONTENT_VERSION = "Hugo-v2.1"
-=======
-REPOS = [""]  # fill in your actual repo names
-BRANCH = "main"
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
 
 API = "https://api.github.com"
 HEADERS = {
@@ -22,13 +18,9 @@ HEADERS = {
 }
 
 FILES_TO_COPY = [
-<<<<<<< HEAD
     (".github/workflows/static.yml", ".github/workflows/static.yml"),
-=======
     ("scripts/docker_run.sh", "scripts/docker_run.sh"),
     ("scripts/docker_build.sh", "scripts/docker_build.sh"),
-    #(".github/workflows/static.yml", ".github/workflows/static.yml"),
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
     ("Dockerfile", "Dockerfile")
 ]
 FILES_TO_DELETE = [
@@ -36,21 +28,18 @@ FILES_TO_DELETE = [
     "scripts/docker_tester_build.sh",
     "scripts/docker_run_latest.sh",
     "scripts/docker_build_latest.sh",
-<<<<<<< HEAD
     "scripts/docker_run.sh",
     "scripts/docker_build.sh",
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
     "docker-compose.yml",
     "hugo.toml",
     "config.toml",
 ]
-<<<<<<< HEAD
 FOLDERS_TO_DELETE = [
     "docs"
 ]
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
+FOLDERS_TO_DELETE = [
+    "docs"
+]
 REPOCONFIG_JSON_LOCAL = "scripts/repoConfig.json"
 
 def run_toml_to_json(toml_file, json_file):
@@ -65,7 +54,6 @@ def run_toml_to_json(toml_file, json_file):
     # Extract specific values from the old config.toml
     url= configToml.get("baseURL")
     baseURL = url.rstrip("/").rsplit("/", 1)[-1]
-<<<<<<< HEAD
 
     try:    
         repoConfig["repoName"] = baseURL
@@ -77,17 +65,6 @@ def run_toml_to_json(toml_file, json_file):
             repoConfig["logoBannerText"] = configToml["params"]["logoBannerText"] if "logoBannerText" in configToml["params"] else ""
             repoConfig["logoBannerSubText"] = configToml["params"]["logoBannerSubtext"] if "logoBannerSubtext" in configToml["params"] else ""
 
-=======
-    
-    repoConfig["repoName"] = baseURL
-
-    try:
-        repoConfig["author"] = configToml["params"]["author"]
-        repoConfig["workshopTitle"] = configToml["title"]
-        repoConfig["themeVariant"] = configToml["params"]["themeVariant"]
-        repoConfig["logoBannerText"] = configToml["params"]["logoBannerText"]
-        repoConfig["logoBannerSubText"] = configToml["params"]["logoBannerSubText"]
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
     except:
         print("Warning: some fields in repoConfig could not be gathered from config.toml.")
   
@@ -181,7 +158,6 @@ def update_branch_ref(repo, commit_sha):
     )
     resp.raise_for_status()
 
-<<<<<<< HEAD
 def update_readme(repo, url):
     readme_content=f"<h1>{repo}</h1><h3>To view the workshop, please go here: <a href=\"{url}\">{repo}</a></h3><hr><h3>For more information on creating these workshops, please go here: <a href=\"https://fortinetcloudcse.github.io/UserRepo/\">FortinetCloudCSE User Repo</a></h3>"
     resp = requests.post(
@@ -192,14 +168,11 @@ def update_readme(repo, url):
     resp.raise_for_status()
     return resp.json()["sha"]
 
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
 def file_exists_in_repo(repo, path):
     url = f"{API}/repos/{ORG}/{repo}/contents/{path}"
     r = requests.get(url, headers=HEADERS)
     return r.status_code == 200
 
-<<<<<<< HEAD
 def dir_exists_in_tree(repo, tree_sha, dir_path):
     url = f"{API}/repos/{ORG}/{repo}/git/trees/{tree_sha}?recursive=1"
     r = requests.get(url, headers=HEADERS)
@@ -221,8 +194,6 @@ def get_blobs_under_dir(repo, tree_sha, dir_path):
     return entries
 
 
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
 def get_tree(repo, tree_sha):
     url = f"{API}/repos/{ORG}/{repo}/git/trees/{tree_sha}?recursive=1"
     r = requests.get(url, headers=HEADERS)
@@ -235,7 +206,6 @@ def get_tree_entry_for_path(tree_info, file_path):
             return entry
     return None
 
-<<<<<<< HEAD
 def update_custom_properties(repo):
     url = f"{API}/repos/{ORG}/{repo}/properties/values"
     g = requests.get(url, headers=HEADERS)
@@ -264,8 +234,6 @@ if mis:
     print("Some files in FILES_TO_DELETE are also in FILES_TO_COPY, please reconcile, exiting...")
     os._exit(1)
 
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
 for repo in REPOS:
     print(f"\nProcessing repo: {repo}")
 
@@ -299,7 +267,6 @@ for repo in REPOS:
                 "type": "blob",
                 "sha": None
             })
-<<<<<<< HEAD
     # 2a. Delete directories
     for dir_path in FOLDERS_TO_DELETE:
         if dir_exists_in_tree(repo, tree_sha, dir_path):
@@ -317,8 +284,6 @@ for repo in REPOS:
                 print(f"No files to delete in directory '{dir_path}'.")
         else:
             print(f"Directory '{dir_path}' not found in the tree; skipping delete.")
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
 
     # 3. Download config.toml, run toml_to_json.py, upload as scripts/repoConfig.json
     config_content = get_file_content(repo, "config.toml")
@@ -344,10 +309,8 @@ for repo in REPOS:
         os.remove(output_json)
     else:
         # (Optional) If you want to ensure repoConfig.json always exists, copy local default version:
-<<<<<<< HEAD
         print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
+        print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
         if os.path.exists(REPOCONFIG_JSON_LOCAL):
             blob_sha = create_blob(repo, REPOCONFIG_JSON_LOCAL)
             tree_elements.append({
@@ -361,7 +324,6 @@ for repo in REPOS:
         print("Nothing to change for this repo.")
         continue
 
-<<<<<<< HEAD
     # 4. Update README.md with pages link
     pg_resp = requests.get(f"{API}/repos/{ORG}/{repo}/pages", headers=HEADERS)
     if pg_resp.status_code == 200:
@@ -379,9 +341,6 @@ for repo in REPOS:
         print(f"GitHub pages not enabled for repo: {repo}")
 
     # 5. Create new tree, commit, and update ref
-=======
-    # 4. Create new tree, commit, and update ref
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
     new_tree_sha = create_tree(repo, tree_sha, tree_elements)
     new_commit_sha = create_commit(
         repo,
@@ -390,9 +349,6 @@ for repo in REPOS:
         commit_sha
     )
     update_branch_ref(repo, new_commit_sha)
-<<<<<<< HEAD
-    update_custom_properties(repo) 
-=======
->>>>>>> 75c2a9f (adding batch_repo_update.py for repo upgrades)
+    update_custom_properties(repo)
     print(f"Updated {repo}: commit {new_commit_sha}")
 
