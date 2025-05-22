@@ -6,7 +6,6 @@ import toml, json
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 ORG = "FortinetCloudCSE"
-
 REPOS = ["FortiDevSec-Workshop"]  # fill in your actual repo names
 BRANCH = "main"
 HUGO_CONTENT_VERSION = "Hugo-v2.1"
@@ -19,8 +18,6 @@ HEADERS = {
 
 FILES_TO_COPY = [
     (".github/workflows/static.yml", ".github/workflows/static.yml"),
-    ("scripts/docker_run.sh", "scripts/docker_run.sh"),
-    ("scripts/docker_build.sh", "scripts/docker_build.sh"),
     ("Dockerfile", "Dockerfile")
 ]
 FILES_TO_DELETE = [
@@ -33,9 +30,6 @@ FILES_TO_DELETE = [
     "docker-compose.yml",
     "hugo.toml",
     "config.toml",
-]
-FOLDERS_TO_DELETE = [
-    "docs"
 ]
 FOLDERS_TO_DELETE = [
     "docs"
@@ -310,7 +304,6 @@ for repo in REPOS:
     else:
         # (Optional) If you want to ensure repoConfig.json always exists, copy local default version:
         print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
-        print(f"No config.toml found in repo {repo}, copying default repoConfig.json")
         if os.path.exists(REPOCONFIG_JSON_LOCAL):
             blob_sha = create_blob(repo, REPOCONFIG_JSON_LOCAL)
             tree_elements.append({
@@ -351,4 +344,3 @@ for repo in REPOS:
     update_branch_ref(repo, new_commit_sha)
     update_custom_properties(repo)
     print(f"Updated {repo}: commit {new_commit_sha}")
-
