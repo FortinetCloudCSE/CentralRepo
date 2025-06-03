@@ -3,12 +3,10 @@
 
     var labdefinition = "{{ .Get `labdefinition` }}";
 
-    var customer = document.getElementById("customer").value;
-    var smartticket = document.getElementById("smartticket").value;
     var useremail = document.getElementById("useremail").value;
 
     var postdata =
-      "customer=" + customer + "&smartticket=" +  smartticket + "&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
+      "customer=1234&smartticket=5678&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
 
     var xhr = new XMLHttpRequest();
     xhr.open(
