@@ -1,8 +1,8 @@
 {
-  "repoName":"UserRepo",
+  "repoName":"CentralRepo",
   "author":"Jeff Kopko",
   "workshopTitle":"Hugo for Fortinet TECWorkshops",
-  "themeVariant":"Workshop",
+  "themeVariant":"Xperts2025",
   "logoBannerText":"Sample sub-banner text",
   "logoBannerSubText":"",
   "errorLevel":"warning",
