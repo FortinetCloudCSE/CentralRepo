@@ -3,11 +3,14 @@
   "author":"Jeff Kopko",
   "workshopTitle":"Hugo for Fortinet TECWorkshops",
   "themeVariant":"Xperts2025",
-  "logoBannerText":"Public Cloud 105",
-  "logoBannerSubText":"sub-banner text",
+  "logoBannerText":"Public Cloud 10x",
+  "logoBannerSubText":"Workshop Title Here",
   "errorLevel":"warning",
   "googleServicesID":"G-5RZBH288ST",
   "marketingCode": "",
+  "bannerLine1":"Workshop Type/ID: Eg Public Cloud 101",
+  "bannerLine2":"Workshop Title Here",
+  "bannerLine3":"Subtitle,Description, or 3rd line Here",
   "shortcuts": [
   {
     "text": "Fortinet Cloud CSE GitHub Org",
