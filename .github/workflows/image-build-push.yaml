@@ -119,7 +119,7 @@ jobs:
           else
             echo "No test tag image found to delete."
           fi
-      
+
       - name: Stop and remove all containers
         run: |
           docker ps -aq | xargs -r docker stop || true
