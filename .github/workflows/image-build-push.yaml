@@ -1,0 +1,81 @@
+name: Build Fortinet Hugo workshop development images.
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main", "prreviewJune23"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+     runner_type:
+       description: 'Runner Type'
+       required: false
+       default: 'ubuntu-latest'
+       type: choice
+       options:
+         - ubuntu-latest
+         - self-hosted
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - imageName: hugotester
+            testPort: 1313
+            target: dev
+          - imageName: fortinet-hugo
+            testPort: 1314
+            target: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download fortihugorunner binary for testing
+        run: |
+          gh release download --repo FortinetCloudCSE/fortihugorunner --pattern 'fortihugorunner-linux-amd64' --output ./fortihugorunner
+          chmod +x ./fortihugorunner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Clean Docker cache
+        run: docker system prune
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::228122752878:role/GitHubECRPushOIDC
+          aws-region: us-east-1
+      - name: Login to ECR Public
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | \
+            docker login --username AWS \
+            --password-stdin public.ecr.aws
+      - name: Build image
+        run: DOCKER_BUILDKIT=1 docker build -f Dockerfile -t ${{ matrix.imageName }} . --target=${{ matrix.target }}
+      - name: Run container for tests 
+        run: ./fortihugorunner launch-server --docker-image ${{ matrix.imageName }} --host-port ${{ matrix.testPort }} &
+      - name: Wait for server to be ready and test
+        run: |
+          for i in {1..20}; do
+            if curl -sf http://localhost:${{ matrix.testPort }}/CentralRepo/ > /dev/null; then
+              echo "Server is up on port ${{ matrix.testPort }}"
+              break
+            fi
+          sleep 2
+          done
+          # Check for expected homepage content
+          curl -sf http://localhost:${{ matrix.testPort }}/CentralRepo/ | grep -q "<title>Hugo for Fortinet TECWorkshops</title>"
+      - name: Stop and remove all containers
+        run: |
+          docker ps -aq | xargs -r docker stop || true
+          docker ps -aq | xargs -r docker rm || true
+      - name: Tag image
+        run: docker tag ${{ matrix.imageName }}:latest public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:latest
+      - name: Push to ECR public
+        run: docker push public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:latest
