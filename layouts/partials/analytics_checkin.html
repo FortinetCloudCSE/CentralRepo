@@ -63,7 +63,7 @@ container.innerHTML = '<form id="provision-lab" onsubmit="setCookie(5)" action="
     const d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
     let expires = "expires=" + d.toUTCString();
-    document.cookie = cname + "=" + uuid + ";" + expires + ";path=/;SameSite=None;Secure";
+    document.cookie = cname + "=" + uuid + ";Domaim=fortinetcloudcse.github.io;" + expires + ";path=/;SameSite=None;Secure";
   }
   function rmCookie(exdays) {
     const cname = "fortiuser";
