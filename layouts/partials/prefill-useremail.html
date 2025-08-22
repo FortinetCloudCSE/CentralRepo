@@ -1,0 +1,59 @@
+<script>
+// Only register once even if multiple pages include this partial
+(function () {
+  if (window.__forti_prefill_loaded) return;
+  window.__forti_prefill_loaded = true;
+
+  // Helpers to read cookies / localStorage set by analytics_checkin.html
+  function lcGetProfile() {
+    try {
+      const raw = localStorage.getItem('forti_profile');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  // Expose cookie getter globally because other scripts (e.g., launchdemoform) call it
+  window.getCookieVal = function getCookieVal(name) {
+    const n = name + '=';
+    const parts = decodeURIComponent(document.cookie).split(';');
+    for (let c of parts) {
+      while (c.charAt(0) === ' ') c = c.substring(1);
+      if (c.indexOf(n) === 0) return c.substring(n.length);
+    }
+    return '';
+  };
+
+  function prefillFromStoredProfile() {
+    // Prefill any common email field IDs/names
+    const candidates = [
+      '#useremail', '#email', 'input[name="useremail"]', 'input[name="email"]'
+    ];
+    let emailInput = null;
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (el) { emailInput = el; break; }
+    }
+
+    if (emailInput) {
+      let email = window.getCookieVal('fortiemail');
+      if (!email) {
+        const profile = lcGetProfile();
+        email = profile && profile.email ? profile.email : '';
+      }
+      if (email && !emailInput.value) emailInput.value = email;
+      // Set autocomplete if not present
+      if (!emailInput.hasAttribute('autocomplete')) {
+        emailInput.setAttribute('autocomplete', 'email');
+      }
+    }
+
+    // Also wire up hidden UUID for correlation if available
+    const uid = window.getCookieVal('fortiuser');
+    const uidHidden =
+      document.querySelector('#fortiuser, input[name=\"fortiuser\"]');
+    if (uidHidden && uid && !uidHidden.value) uidHidden.value = uid;
+  }
+
+  document.addEventListener('DOMContentLoaded', prefillFromStoredProfile);
+})();
+</script>

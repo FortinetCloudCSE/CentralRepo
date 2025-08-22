@@ -1,12 +1,16 @@
 <script>
+  {{ partial "prefill-useremail.html" . }}
+
   function formSubmit() {
 
     var labdefinition = "{{ .Get `labdefinition` }}";
 
     var useremail = document.getElementById("useremail").value;
-
+    var fortiuser = getCookieVal('fortiuser');
     var postdata =
-      "customer=1234&smartticket=5678&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
+      "customer=1234&smartticket=5678&useremail=" + encodeURIComponent(useremail) +
+      "&userop=Create&odlconfigname=" + encodeURIComponent(labdefinition) +
+      (fortiuser ? ("&fortiuser=" + encodeURIComponent(fortiuser)) : "");
 
     var xhr = new XMLHttpRequest();
     xhr.open(
@@ -26,14 +30,14 @@
     };
 
     xhr.send(postdata);
-
-    document.getElementById("useremail").getElementsByTagName("input")[0].value = 'Provisioning Started.';
+    document.getElementById("useremail").value = 'Provisioning Started.';
     return false;
   }
 </script>
 
 <form id="provision-lab" onsubmit="return formSubmit();">
   <label for="useremail">Please enter your email address (required for Workshop Provisioning)</label>
-  <input type="email" required id="useremail" name="useremail" value="" />
+  <input type="email" required id="useremail" name="useremail" autocomplete="email" value="" />
+  <input type="hidden" id="fortiuser" name="fortiuser" value="" />
   <input type="submit" value="Provision Workshop" />
 </form>
