@@ -1,0 +1,119 @@
+name: Build Fortinet Hugo workshop development images.
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["prreviewJune23"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+     runner_type:
+       description: 'Runner Type'
+       required: false
+       default: 'ubuntu-latest'
+       type: choice
+       options:
+         - ubuntu-latest
+         - self-hosted
+
+env:
+  TESTPORT: 1313
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up QEMU (multi-arch emulation)
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download fortihugorunner binary for testing
+        run: |
+          gh release download --repo FortinetCloudCSE/fortihugorunner --pattern 'fortihugorunner-linux-amd64' --output ./fortihugorunner
+          chmod +x ./fortihugorunner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Clean Docker cache
+        run: docker system prune
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::228122752878:role/GitHubECRPushOIDC
+          aws-region: us-east-1
+      - name: Login to ECR Public
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | \
+            docker login --username AWS \
+            --password-stdin public.ecr.aws
+      - name: Build and push test image (no latest tag)
+        run: |
+          # Use GITHUB_SHA as unique tag for testing
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f Dockerfile \
+            -t public.ecr.aws/k4n6m5h8/hugotester:test-${{ github.sha }} \
+            . \
+            --target=dev \
+            --push
+      - name: Pull image for test
+        run: |
+          docker pull public.ecr.aws/k4n6m5h8/hugotester:test-${{ github.sha }}
+      - name: Run container for tests 
+        run: ./fortihugorunner launch-server --docker-image public.ecr.aws/k4n6m5h8/hugotester:test-${{ github.sha }} --host-port $TESTPORT &
+      - name: Wait for server to be ready and test
+        run: |
+          for i in {1..20}; do
+            if curl -sf http://localhost:$TESTPORT/CentralRepo/ > /dev/null; then
+              echo "Server is up on port $TESTPORT"
+              break
+            fi
+          sleep 2
+          done
+          # Check for expected homepage content
+          curl -sf http://localhost:$TESTPORT/CentralRepo/ | grep -q "<title>Hugo for Fortinet TECWorkshops</title>"
+      - name: Build and push multi-arch latest image (after tests pass)
+        if: success()
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f Dockerfile \
+            -t public.ecr.aws/k4n6m5h8/hugotester:latest \
+            . \
+            --target=dev \
+            --push
+
+      - name: Delete test tag from ECR Public (cleanup)
+        if: success()
+        run: |
+          IMAGE="public.ecr.aws/k4n6m5h8/hugotester"
+          TAG="test-${{ github.sha }}"
+          REGION="us-east-1"
+          REPO_NAME="hugotester"
+      
+          DIGEST=$(aws ecr-public describe-images --region $REGION \
+            --repository-name $REPO_NAME \
+            --query "imageDetails[?imageTags && contains(imageTags, \`${TAG}\`)].imageDigest" \
+            --output text)
+      
+          if [ -n "$DIGEST" ]; then
+            echo "Deleting $IMAGE@$DIGEST"
+            aws ecr-public batch-delete-image \
+              --region $REGION \
+              --repository-name $REPO_NAME \
+              --image-ids imageDigest=$DIGEST
+          else
+            echo "No test tag image found to delete."
+          fi
+      
+      - name: Stop and remove all containers
+        run: |
+          docker ps -aq | xargs -r docker stop || true
+          docker ps -aq | xargs -r docker rm || true
