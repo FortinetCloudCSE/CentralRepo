@@ -1,9 +1,9 @@
-name: Build Fortinet Hugo workshop development images.
+name: Build Fortinet Hugo workshop prod images.
 
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["main", "prreviewJune23"]
+    branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -17,6 +17,9 @@ on:
          - ubuntu-latest
          - self-hosted
 
+env:
+  TESTPORT: 1314
+
 permissions:
   id-token: write
   contents: read
@@ -24,16 +27,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        include:
-          - imageName: hugotester
-            testPort: 1313
-            target: dev
-          - imageName: fortinet-hugo
-            testPort: 1314
-            target: prod
 
     steps:
       - name: Set up QEMU (multi-arch emulation)
@@ -66,44 +59,44 @@ jobs:
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             -f Dockerfile \
-            -t public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:test-${{ github.sha }} \
+            -t public.ecr.aws/k4n6m5h8/fortinet-hugo:test-${{ github.sha }} \
             . \
-            --target=${{ matrix.target }} \
+            --target=prod \
             --push
       - name: Pull image for test
         run: |
-          docker pull public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:test-${{ github.sha }}
+          docker pull public.ecr.aws/k4n6m5h8/fortinet-hugo:test-${{ github.sha }}
       - name: Run container for tests 
-        run: ./fortihugorunner launch-server --docker-image public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:test-${{ github.sha }} --host-port ${{ matrix.testPort }} &
+        run: ./fortihugorunner launch-server --docker-image public.ecr.aws/k4n6m5h8/fortinet-hugo:test-${{ github.sha }} --host-port $TESTPORT &
       - name: Wait for server to be ready and test
         run: |
           for i in {1..20}; do
-            if curl -sf http://localhost:${{ matrix.testPort }}/CentralRepo/ > /dev/null; then
-              echo "Server is up on port ${{ matrix.testPort }}"
+            if curl -sf http://localhost:$TESTPORT/CentralRepo/ > /dev/null; then
+              echo "Server is up on port $TESTPORT"
               break
             fi
           sleep 2
           done
           # Check for expected homepage content
-          curl -sf http://localhost:${{ matrix.testPort }}/CentralRepo/ | grep -q "<title>Hugo for Fortinet TECWorkshops</title>"
+          curl -sf http://localhost:$TESTPORT/CentralRepo/ | grep -q "<title>Hugo for Fortinet TECWorkshops</title>"
       - name: Build and push multi-arch latest image (after tests pass)
         if: success()
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             -f Dockerfile \
-            -t public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}:latest \
+            -t public.ecr.aws/k4n6m5h8/fortinet-hugo:latest \
             . \
-            --target=${{ matrix.target }} \
+            --target=prod \
             --push
 
       - name: Delete test tag from ECR Public (cleanup)
         if: success()
         run: |
-          IMAGE="public.ecr.aws/k4n6m5h8/${{ matrix.imageName }}"
+          IMAGE="public.ecr.aws/k4n6m5h8/fortinet-hugo"
           TAG="test-${{ github.sha }}"
           REGION="us-east-1"
-          REPO_NAME="${{ matrix.imageName }}"
+          REPO_NAME="fortinet-hugo"
       
           DIGEST=$(aws ecr-public describe-images --region $REGION \
             --repository-name $REPO_NAME \
