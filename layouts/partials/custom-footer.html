@@ -1,0 +1,26 @@
+<style>
+  /* Ensure zoom overlay and image sit above theme chrome */
+  .medium-zoom-overlay { z-index: 2147483646 !important; background: #000 !important; }
+  .medium-zoom-image--opened { z-index: 2147483647 !important; }
+  /* Optional: prevent scroll bleed when zoomed */
+  .medium-zoom--opened body { overflow: hidden; }
+  /* Relearn sometimes stacks headers; disable pointer events underneath overlay */
+  .medium-zoom--opened .header, .medium-zoom--opened .navigation, .medium-zoom--opened .topbar { pointer-events: none; }
+  /* Keep images on top of code blocks or other positioned elements */
+  img.medium-zoom-image--opened { position: relative; }
+  /* If you zoom on figures with positioned content, let overlay cover it */
+  figure { /* ensure no local z-index exceeds overlay; leave unset unless needed */ }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js"></script>
+<script>
+  (function() {
+    const selector = {{ with .Site.Params.zoom.selector }}{{ jsonify . }}{{ else }}'img.zoomable'{{ end }};
+    const options = {
+      margin: {{ with .Site.Params.zoom.margin }}{{ . }}{{ else }}24{{ end }},
+      scrollOffset: {{ with .Site.Params.zoom.scrollOffset }}{{ . }}{{ else }}40{{ end }},
+      background: {{ with .Site.Params.zoom.background }}{{ jsonify . }}{{ else }}'#000'{{ end }}
+      {{ with .Site.Params.zoom.template }}, template: {{ jsonify . }}{{ end }}
+    };
+    window.__mediumZoom = mediumZoom(selector, options);
+  })();
+</script>
