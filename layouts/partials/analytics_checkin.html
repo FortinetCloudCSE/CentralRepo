@@ -1,26 +1,97 @@
 {{- $marketingCode := .Site.Params.marketingCode | default " " }}
 
 <div id="display-form"></div>
+
+<style>
+  /* Modernized UI to match launchdemoform */
+  .checkin-card { display: grid; grid-template-columns: 1fr; gap: .6rem; padding: 1rem; border: 1px solid #e3e3e3; border-radius: 8px; width: 100%; max-width: none; box-sizing: border-box; }
+  #display-form, #display-form form { width: 100%; box-sizing: border-box; }
+  .checkin-title { font-weight: 600; }
+  .checkin-sub { color: #666; font-size: .95em; margin-top: -.25rem; }
+  .checkin-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: .75rem; }
+  .checkin-row label { color: #333; font-weight: 500; }
+  .checkin-input { width: 100%; padding: .5rem .6rem; border: 1px solid #cfd6e4; border-radius: 6px; }
+  .checkin-actions { display: flex; gap: .5rem; align-items: center; margin-top: .5rem; }
+  .btn-primary { padding: .5rem .9rem; border-radius: 6px; border: 0; background: #0065ff; color: #fff; cursor: pointer; }
+  .btn-secondary { padding: .35rem .7rem; border-radius: 6px; border: 1px solid #c8d1ff; background: #eef3ff; color: #113; cursor: pointer; }
+  .checkin-status { font-size: .95em; }
+  .checkin-status.ok { color: #0a7a2f; }
+  .checkin-status.err { color: #b00020; }
+</style>
+
 <script>
 
 // todo:  handle refreshing page, bypasses checkin
 
 const container = document.getElementById('display-form');
 
+function setCookie(name, value, days, domainOverride) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days*24*60*60*1000));
+  const expires = 'expires=' + d.toUTCString();
+  // Heuristic: try to set cookie for the registrable domain (e.g., example.com).
+  // Falls back to current host if browser rejects the wider domain.
+  const host = location.hostname;
+  const parts = host.split('.');
+  const baseDomain = parts.length > 2 ? parts.slice(-2).join('.') : host;
+  const domain = domainOverride || baseDomain;
+  let cookie = `${name}=${encodeURIComponent(value)};${expires};path=/;`;
+  // If attempting cross-site usage between subdomains, you may want SameSite=None;Secure
+  // but keep it Lax by default for fewer restrictions.
+  cookie += 'SameSite=Lax;';
+  if (location.protocol === 'https:') cookie += 'Secure;';
+  // Try setting with the wider domain first
+  document.cookie = cookie + `Domain=.${domain};`;
+  // Also set a host-only cookie as a fallback
+  document.cookie = cookie;
+}
+
 function getCookie(cname) {
-  let name = cname + "=";
-  let decodedCookie = decodeURIComponent(document.cookie);
-  let ca = decodedCookie.split(';');
-  for(let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) == ' ') {
-      c = c.substring(1);
-    }
-    if (c.indexOf(name) == 0) {
-      return c.substring(name.length, c.length);
-    }
+  const name = cname + '=';
+  const ca = decodeURIComponent(document.cookie).split(';');
+  for (let c of ca) {
+    while (c.charAt(0) === ' ') c = c.substring(1);
+    if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
   }
-  return "";
+  return '';
+}
+
+function removeCookie(name) {
+  // Expire both host-only and domain cookie variants
+  const past = 'expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;';
+  const host = location.hostname;
+  const parts = host.split('.');
+  const baseDomain = parts.length > 2 ? parts.slice(-2).join('.') : host;
+  document.cookie = `${name}=;${past}`;
+  document.cookie = `${name}=;${past}Domain=.${baseDomain};`;
+}
+
+function saveProfileToStorage(profile) {
+  try { localStorage.setItem('forti_profile', JSON.stringify(profile)); } catch(e) {}
+}
+
+function loadProfileFromStorage() {
+  try {
+    const raw = localStorage.getItem('forti_profile');
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function prefillAnyMatchingInputs(profile) {
+  if (!profile) return;
+  const map = {
+    email: ['email','Email','EMail'],
+    customer: ['customer','Customer'],
+    event: ['event','Event']
+  };
+  Object.entries(map).forEach(([k, names]) => {
+    names.forEach(n => {
+      const elById = document.getElementById(n);
+      if (elById && !elById.value) elById.value = profile[k] || '';
+      const elByName = document.querySelector(`[name="${n}"]`);
+      if (elByName && !elByName.value) elByName.value = profile[k] || '';
+    });
+  });
 }
 
 
@@ -31,51 +102,100 @@ if (user == "") {
 //http://localhost:8080/reg/cookie.html
 // container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
 //https://tecanalytics.forticloudcse.com/checkin
-container.innerHTML = '<form id="provision-lab" onsubmit="setCookie(5)" action="https://tecanalytics.forticloudcse.com/checkin">' +
-  '<b><font size="7">Welcome!</font></b><br>' +
-  '<b><font color="red">Please check-in for this workshop to proceed (REQUIRED)</font></b>' +
- '<label for="email">Please enter your email address</label>' +
- '<input type="email" required id="email" name="EMail" value="" />' +
- '<label for="customer">Please enter an associated customer name (if any)</label>' +
- '<input type="text" id="customer" name="Customer" value="" />' +
- '<label for="event">Please enter the Event Name/Code or Smart Ticket (if any)</label>' +
- '<input type="text" id="event" name="Event" value="{{ $marketingCode }}" />' +
- '<input type="submit" value="Check-in" />' +
- '<input type="hidden" name="uid" id="uid" value="">' +
- '<input type="hidden" name="current_page" id="current_page" value="">' +
- '<input type="hidden" name="labdefinition" id="labdefinition" value="">' +
- '<hr>' +
- '</form>';
+container.innerHTML = `
+  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="get">
+    <div class="checkin-title">Welcome!</div>
+    <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
+    <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" title="Enter a valid email address" /></div>
+    <div class="checkin-row"><label for="customer">Customer</label><input class="checkin-input" type="text" id="customer" name="Customer" /></div>
+    <input type="hidden" id="event" name="Event" value="{{ $marketingCode }}" />
+    <div class="checkin-actions">
+      <button type="submit" class="btn-primary">Check-in</button>
+      <span id="checkin-status" class="checkin-status" aria-live="polite"></span>
+    </div>
+    <input type="hidden" name="uid" id="uid" value="" />
+    <input type="hidden" name="current_page" id="current_page" value="" />
+    <input type="hidden" name="labdefinition" id="labdefinition" value="" />
+  </form>
+`;
+
+// Prefill from any existing profile prior to user typing
+prefillAnyMatchingInputs(loadProfileFromStorage());
+
+const form = document.getElementById('provision-lab');
+const statusEl = document.getElementById('checkin-status');
+const emailInput = document.getElementById('email');
+const submitBtn = form.querySelector('.btn-primary');
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function updateValidity() {
+  const val = (emailInput.value || '').trim();
+  const ok = emailRegex.test(val);
+  if (submitBtn) submitBtn.disabled = !ok;
+  if (!ok && val) {
+    if (statusEl) { statusEl.textContent = 'Please enter a valid email address.'; statusEl.className = 'checkin-status err'; }
+  } else {
+    if (statusEl) { statusEl.textContent = ''; statusEl.className = 'checkin-status'; }
+  }
+}
+emailInput.addEventListener('input', updateValidity);
+updateValidity();
+
+form.addEventListener('submit', function(e) {
+  if (!emailRegex.test((emailInput.value || '').trim())) { e.preventDefault(); updateValidity(); return; }
+  const email = (document.getElementById('email') || {}).value || '';
+  const customer = (document.getElementById('customer') || {}).value || '';
+  const eventName = (document.getElementById('event') || {}).value || '';
+  const profile = { email, customer, event: eventName };
+  saveProfileToStorage(profile);
+  setCookie('fortiemail', email, 5);
+  setCookie('forticustomer', customer, 5);
+  setCookie('fortievent', eventName, 5);
+  // ensure uuid cookie exists for correlation
+  let uuidCookie = getCookie('fortiuser');
+  if (!uuidCookie) {
+    const uuid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+    setCookie('fortiuser', uuid, 5);
+    const uidEl = document.getElementById('uid');
+    if (uidEl) uidEl.value = uuid;
+  }
+});
+
 } else {
-  container.innerHTML = '<p><b><font size="7">Welcome!</font></b></p><p><b>Thank you for checking into this session!  Your session will persist for 5 days across the Fortinet CSE Workshop estate.  You may now proceed with the workshop!!!</b></p><p>In the event you need to check-in again, simply click to reset your session: <button onclick="reProvision()">Revoke Check-in</button></p><hr>';
+  const profile = loadProfileFromStorage();
+  const knownEmail = getCookie('fortiemail') || (profile && profile.email) || '';
+  container.innerHTML = `
+    <div class="checkin-card">
+      <div class="checkin-title">Welcome!</div>
+      <div class="checkin-sub">Thank you for checking in! Your session will persist for 5 days across the Fortinet CSE Workshop estate. You may now proceed with the workshop.</div>
+      ${knownEmail ? (`<div><i>Signed in as: ${knownEmail}</i></div>`) : ''}
+      <div class="checkin-actions">
+        <button class="btn-secondary" type="button" onclick="reProvision()">Revoke Check-in</button>
+      </div>
+    </div>
+  `;
 }
  </script>
 
 <script>
-  document.getElementById('current_page').value = window.location.href;
+  // These inputs exist only when the check-in form is rendered
+  const currentPageEl = document.getElementById('current_page');
+  if (currentPageEl) currentPageEl.value = window.location.href;
   var labdefinition = "something";
-  document.getElementById('labdefinition').value = labdefinition;
-
-  let uuid = crypto.randomUUID();
-  document.getElementById('uid').value = uuid;
-  function setCookie(exdays) {
-    const cname = "fortiuser";
-    const d = new Date();
-    d.setTime(d.getTime() + (exdays*24*60*60*1000));
-    let expires = "expires=" + d.toUTCString();
-    document.cookie = cname + "=" + uuid + ";Domaim=.a.run.app;" + expires + ";path=/;SameSite=None;Secure";
-  }
-  function rmCookie(exdays) {
-    const cname = "fortiuser";
-    const d = new Date();
-    d.setTime(d.getTime() + (exdays*24*60*60*1000));
-    let expires = "expires=" + d.toUTCString();
-    document.cookie = cname + "=" + '' + ";" + expires + ";path=/";
-  }
+  const labDefEl = document.getElementById('labdefinition');
+  if (labDefEl) labDefEl.value = labdefinition;
+// Do not set any cookies here; cookies are set only on form submission
 
 function reProvision() {
-  rmCookie(0);
+  removeCookie('fortiuser');
+  removeCookie('fortiemail');
+  removeCookie('forticustomer');
+  removeCookie('fortievent');
+  try { localStorage.removeItem('forti_profile'); } catch(e) {}
   location.reload();
 }
+
+// If a page includes this partial but not the check-in form, still try to prefill any inputs
+prefillAnyMatchingInputs(loadProfileFromStorage());
 
 </script>
