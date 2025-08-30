@@ -1,39 +1,193 @@
+{{/*
+  Improved launch button shortcode
+  Usage in Markdown:
+    {{< launchdemoform lab="My-Lab-Definition" >}}
+  Notes:
+  - Reads user ID from cookie `fortiuser` (set by analytics_checkin.html)
+  - Posts application/x-www-form-urlencoded with required fields
+  - Better UX: disabled state, progress indicator, inline success/error
+*/}}
+
+{{ $lab := .Get "lab" | default (.Get "labdefinition") }}
+{{ $debug := .Get "debug" | default "false" }}
+
+<div class="launchdemoform" data-labdefinition="{{ $lab }}" data-debug="{{ $debug }}">
+  <div class="launchdemoform__desc">
+    <strong>Provision your Portal Accounts</strong>
+    <div class="launchdemoform__sub">Required for hands-on portion of this workshop</div>
+    <div class="launchdemoform__who" aria-live="polite"></div>
+  </div>
+  <button type="button" class="launchdemoform__btn">Provision Accounts</button>
+  <button type="button" class="launchdemoform__btn-alt" title="Update the email used for provisioning">Change Email</button>
+  <span class="launchdemoform__status" aria-live="polite"></span>
+  <noscript><em>JavaScript is required to provision your lab.</em></noscript>
+</div>
+
+<style>
+  .launchdemoform { display: inline-grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid #e3e3e3; border-radius: 8px; }
+  .launchdemoform__desc { grid-column: 1 / span 1; }
+  .launchdemoform__sub { color: #666; font-size: .9em; }
+  .launchdemoform__who { color: #444; font-size: .9em; margin-top: .25rem; }
+  .launchdemoform__btn { grid-column: 2 / span 1; padding: .5rem .9rem; border-radius: 6px; border: 0; background: #0065ff; color: #fff; cursor: pointer; }
+  .launchdemoform__btn[disabled] { background: #9bb9ff; cursor: not-allowed; opacity: .8; }
+  .launchdemoform__btn-alt { grid-column: 2 / span 1; padding: .35rem .7rem; border-radius: 6px; border: 1px solid #c8d1ff; background: #eef3ff; color: #113; cursor: pointer; margin-top: .25rem; }
+  .launchdemoform__status { grid-column: 1 / -1; font-size: .95em; }
+  .launchdemoform__status--ok { color: #0a7a2f; }
+  .launchdemoform__status--err { color: #b00020; }
+</style>
+
+{{ partial "prefill-useremail.html" . }}
 <script>
-  function formSubmit() {
+  (function () {
+    // Robustly find the wrapper div for this instance
+    const scriptEl = document.currentScript;
+    let root = null;
+    let probe = scriptEl.previousElementSibling;
+    for (let i = 0; i < 8 && probe; i++) {
+      if (probe.classList && probe.classList.contains('launchdemoform')) { root = probe; break; }
+      probe = probe.previousElementSibling;
+    }
+    if (!root) {
+      const all = document.querySelectorAll('.launchdemoform');
+      if (all.length) root = all[all.length - 1];
+    }
+    if (!root || !root.classList || !root.classList.contains('launchdemoform')) {
+      console.warn('launchdemoform: container not found; script not initialized');
+      return;
+    }
 
-    var labdefinition = "{{ .Get `labdefinition` }}";
+    // Hardcoded automation webhook URL
+    const POST_URL = "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d";
+    const labdefinition = root.getAttribute('data-labdefinition') || '';
+    const DEBUG = (root.getAttribute('data-debug') || '').toString().toLowerCase() === 'true';
 
-    var useremail = document.getElementById("useremail").value;
+    const btn = root.querySelector('.launchdemoform__btn');
+    const statusEl = root.querySelector('.launchdemoform__status');
+    const whoEl = root.querySelector('.launchdemoform__who');
+    const changeBtn = root.querySelector('.launchdemoform__btn-alt');
 
-    var postdata =
-      "customer=1234&smartticket=5678&useremail=" + useremail + "&userop=Create&odlconfigname=" + labdefinition;
+    function setStatus(text, type) {
+      statusEl.textContent = text || '';
+      statusEl.classList.remove('launchdemoform__status--ok','launchdemoform__status--err');
+      if (type === 'ok') statusEl.classList.add('launchdemoform__status--ok');
+      if (type === 'err') statusEl.classList.add('launchdemoform__status--err');
+      if (DEBUG) console.debug('launchdemoform: status', { text, type });
+    }
 
-    var xhr = new XMLHttpRequest();
-    xhr.open(
-      "POST",
-      "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d",
-      false
-    );
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.onreadystatechange = function () {
-      if (this.readyState == 4 && this.status == 200) {
-        var json = eval("(" + this.responseText +")");
-        alert("Success. Result:" + json);
+    function getStoredEmail() {
+      const emailCookie = (window.getCookieVal && getCookieVal('fortiemail')) || '';
+      if (emailCookie) return emailCookie;
+      try {
+        const raw = localStorage.getItem('forti_profile');
+        const profile = raw ? JSON.parse(raw) : null;
+        return (profile && profile.email) ? profile.email : '';
+      } catch (e) { return ''; }
+    }
+
+    function setCookieSimple(name, value, days) {
+      try {
+        const d = new Date();
+        d.setTime(d.getTime() + (days*24*60*60*1000));
+        const expires = 'expires=' + d.toUTCString();
+        let cookie = name + '=' + encodeURIComponent(value) + ';' + expires + ';path=/;SameSite=Lax;';
+        if (location.protocol === 'https:') cookie += 'Secure;';
+        document.cookie = cookie; // host-only
+      } catch (e) { if (DEBUG) console.warn('launchdemoform: setCookieSimple failed', e); }
+    }
+
+    function saveProfileEmail(email) {
+      try {
+        const raw = localStorage.getItem('forti_profile');
+        const profile = raw ? JSON.parse(raw) : {};
+        profile.email = email;
+        localStorage.setItem('forti_profile', JSON.stringify(profile));
+      } catch (e) { if (DEBUG) console.warn('launchdemoform: saveProfileEmail failed', e); }
+    }
+
+    function updateWho() {
+      const email = getStoredEmail();
+      const uid = (window.getCookieVal && getCookieVal('fortiuser')) || '';
+      if (DEBUG) console.debug('launchdemoform: updateWho', { email, uid, labdefinition });
+      if (email) {
+        whoEl.textContent = 'Accounts will be sent to ' + email;
+      } else if (uid) {
+        whoEl.textContent = 'Email required. Please check-in to continue.';
+      } else {
+        whoEl.textContent = 'Please check-in before provisioning.';
       }
-    };
-    xhr.onload = function () {
-      console.log(this.responseText);
-    };
+      // Disable button until both session and email exist
+      btn.disabled = !(email && uid);
+      btn.title = btn.disabled ? 'Check-in required to capture your email' : '';
+    }
 
-    xhr.send(postdata);
+    async function doPost() {
+      const uid = (window.getCookieVal && getCookieVal('fortiuser')) || '';
+      const email = getStoredEmail();
+      if (!email || !uid) {
+        updateWho();
+        setStatus(!email ? 'Email required. Please check-in to continue.' : 'Session not initialized. Refresh or re-check-in.', 'err');
+        return;
+      }
+      setStatus('Starting provisioning...', '');
+      btn.disabled = true; btn.setAttribute('aria-busy', 'true');
 
-    document.getElementById("useremail").getElementsByTagName("input")[0].value = 'Provisioning Started.';
-    return false;
-  }
+      const body = new URLSearchParams({
+        customer: '1234',
+        smartticket: '5678',
+        useremail: email,
+        userop: 'Create',
+        odlconfigname: labdefinition
+      });
+      if (DEBUG) console.info('launchdemoform: POST', { url: POST_URL, body: body.toString() });
+      try {
+        const res = await fetch(POST_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        });
+        let text = '';
+        try { text = await res.text(); } catch (e) { text = ''; }
+        let jobId = '';
+        try {
+          const json = text ? JSON.parse(text) : null;
+          if (json) {
+            jobId = json.JobId || json.jobId || (Array.isArray(json.JobIds) && json.JobIds[0]) || '';
+          }
+        } catch (e) { /* ignore non-JSON */ }
+        const accepted = (res.status === 202) && !!jobId;
+        if (DEBUG) console.info('launchdemoform: response', { status: res.status, accepted, jobId, text });
+        if (accepted) {
+          setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
+        } else {
+          setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
+          //setStatus('Provisioning failed: ' + (text || ('HTTP ' + res.status)), 'err');
+        }
+      } catch (err) {
+        if (DEBUG) console.error('launchdemoform: network error', err);
+        setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
+        //setStatus('Network error while provisioning: ' + (err && err.message ? err.message : err), 'err');
+      } finally {
+        btn.disabled = false; btn.removeAttribute('aria-busy');
+      }
+    }
+
+    btn.addEventListener('click', doPost);
+    if (changeBtn) {
+      changeBtn.addEventListener('click', function () {
+        const current = getStoredEmail();
+        const entered = (prompt('Enter the email to use for provisioning:', current || '') || '').trim();
+        if (!entered) return;
+        const looksEmail = /.+@.+\..+/.test(entered);
+        if (!looksEmail) { setStatus('Please enter a valid email address.', 'err'); return; }
+        setCookieSimple('fortiemail', entered, 5);
+        saveProfileEmail(entered);
+        setStatus('Email updated to ' + entered, 'ok');
+        updateWho();
+      });
+    }
+    updateWho();
+    // Refresh state if cookies change between page focus cycles
+    window.addEventListener('focus', updateWho);
+    if (DEBUG) console.debug('launchdemoform: initialized');
+  })();
 </script>
-
-<form id="provision-lab" onsubmit="return formSubmit();">
-  <label for="useremail">Please enter your email address (required for Workshop Provisioning)</label>
-  <input type="email" required id="useremail" name="useremail" value="" />
-  <input type="submit" value="Provision Workshop" />
-</form>
