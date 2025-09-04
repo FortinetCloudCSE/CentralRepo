@@ -1,10 +1,4 @@
 {{/* Show copyright and version only on the home page */}}
 {{ if eq .Kind "home" }}
-  {{ if (fileExists "VERSION") }}
-    {{ $version := (readFile "VERSION" | trim) }}
-    <div class="content-footer-version" style="margin-top:0.5rem;font-size:0.85em;opacity:0.8;">
-      CloudCSE Version: {{ $version }}
-    </div>
-  {{ end }}
   {{ partial "copyright.html" . }}
 {{ end }}
