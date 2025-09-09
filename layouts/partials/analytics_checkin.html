@@ -1,4 +1,5 @@
-{{- $marketingCode := .Site.Params.marketingCode | default " " }}
+{{- $marketingCode := .Site.Params.marketingCode | default "" }}
+{{- $workshopID := .Site.Params.repoName | default "" }}
 
 <div id="display-form"></div>
 
@@ -103,12 +104,13 @@ if (user == "") {
 // container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
 //https://tecanalytics.forticloudcse.com/checkin
 container.innerHTML = `
-  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="get">
+  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="post">
     <div class="checkin-title">Welcome!</div>
     <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
     <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
     <div class="checkin-row"><label for="customer">Customer</label><input class="checkin-input" type="text" id="customer" name="Customer" /></div>
-    <input type="hidden" id="event" name="Event" value="{{ $marketingCode }}" />
+  <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
+  <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
     <div class="checkin-actions">
       <button type="submit" class="btn-primary">Check-in</button>
       <span id="checkin-status" class="checkin-status" aria-live="polite"></span>
@@ -145,8 +147,9 @@ form.addEventListener('submit', function(e) {
   if (!emailRegex.test((emailInput.value || '').trim())) { e.preventDefault(); updateValidity(); return; }
   const email = (document.getElementById('email') || {}).value || '';
   const customer = (document.getElementById('customer') || {}).value || '';
-  const eventName = (document.getElementById('event') || {}).value || '';
-  const profile = { email, customer, event: eventName };
+  const eventName = (document.getElementById('marketing_code') || {}).value || '';
+  const workshopID = (document.getElementById('workshop_id') || {}).value || '';
+  const profile = { email, customer, event: eventName, workshopID };
   saveProfileToStorage(profile);
   setCookie('fortiemail', email, 5);
   setCookie('forticustomer', customer, 5);

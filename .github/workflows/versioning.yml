@@ -2,7 +2,7 @@ name: Versioning and Release
 
 on:
   push:
-    branches: ["main"]
+    branches: ["prreviewJune23"]
   workflow_dispatch:
 
 permissions:

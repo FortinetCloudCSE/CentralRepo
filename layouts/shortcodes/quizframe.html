@@ -1,0 +1,86 @@
+{{/* Existing behavior retained; enhanced to build src from site params if not explicitly provided */}}
+{{ $workshopID := .Site.Params.repoName | default "" }}
+{{ $quizUrl := .Site.Params.quizUrl | default "" }}
+{{ $quizPage := .Get "page" | default "" }}
+{{ $explicitSrc := .Get "src" }}
+{{/* Normalize quizUrl (strip trailing /) and quizPage (ensure leading /) */}}
+{{ if and (ne $quizUrl "") (hasSuffix $quizUrl "/") }}{{ $quizUrl = (substr $quizUrl 0 (sub (len $quizUrl) 1)) }}{{ end }}
+{{ if and (ne $quizPage "") (not (hasPrefix $quizPage "/")) }}{{ $quizPage = printf "/%s" $quizPage }}{{ end }}
+{{ $computedSrc := "" }}
+{{ if $explicitSrc }}
+  {{/* If author supplied src param, honor it (legacy behavior) */}}
+  {{ $computedSrc = $explicitSrc }}
+{{ else if and $quizUrl $quizPage }}
+  {{ $computedSrc = printf "%s%s" $quizUrl $quizPage }}
+{{ else }}
+  {{ $computedSrc = "" }}
+{{ end }}
+
+<div id="ctf-iframe-container">
+  <iframe id="ctf-iframe" src="" width="{{ .Get "width" | default "100%" }}" height="{{ .Get "height" | default "800" }}" allow="same-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups" frameborder="0" allowfullscreen></iframe>
+</div>
+
+<script>
+(function(){
+  function getCookie(name) {
+    const value = "; " + document.cookie;
+    const parts = value.split("; " + name + "=");
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return null;
+  }
+
+  function safeJoin(base, path) {
+    if(!base) return path || '';
+    if(!path) return base;
+    const b = base.endsWith('/') ? base.slice(0,-1) : base;
+    const p = path.startsWith('/') ? path : '/' + path;
+    return b + p;
+  }
+
+  function buildBaseSrc() {
+    const explicit = "{{ if $explicitSrc }}{{ $explicitSrc }}{{ end }}";
+    if (explicit) return explicit;
+    const quizUrl = "{{ $quizUrl }}";
+    const quizPage = "{{ $quizPage }}";
+    if (!quizUrl || !quizPage) return '';
+    return safeJoin(quizUrl, quizPage);
+  }
+
+  function setupCTFIframe() {
+    const iframe = document.getElementById('ctf-iframe');
+    let baseSrc = buildBaseSrc();
+    const workshopID = "{{ $workshopID }}"; // from site param repoName
+    console.log('[quizframe] baseSrc (pre-upgrade):', baseSrc);
+
+    if (!baseSrc) {
+      console.warn('[quizframe] No baseSrc could be computed; iframe will remain blank');
+      return;
+    }
+
+    if (baseSrc.startsWith('http://') && window.location.protocol === 'https:') {
+      baseSrc = baseSrc.replace('http://', 'https://');
+      console.log('[quizframe] Upgraded to HTTPS:', baseSrc);
+    }
+
+    const fortiEmail = getCookie('fortiemail');
+    const fortiUser = getCookie('fortiuser');
+    let params = [];
+    if (fortiEmail) params.push('fortiemail=' + encodeURIComponent(fortiEmail));
+    if (fortiUser) params.push('fortiuser=' + encodeURIComponent(fortiUser));
+    if (workshopID) params.push('workshopID=' + encodeURIComponent(workshopID));
+
+    if (params.length > 0) {
+      baseSrc += (baseSrc.includes('?') ? '&' : '?') + params.join('&');
+    }
+
+    iframe.src = baseSrc;
+    console.log('[quizframe] Final iframe src:', iframe.src);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupCTFIframe);
+  } else {
+    setupCTFIframe();
+  }
+})();
+</script>
