@@ -12,6 +12,9 @@ jobs:
   version:
     runs-on: ubuntu-latest
     steps:
+      - name: Skip if version bump commit
+        if: contains(github.event.head_commit.message, '[skip version]')
+        run: echo "Skipping version job due to [skip version] commit message" && exit 0
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -26,10 +29,11 @@ jobs:
           VERSION=$(python3 scripts/next_version.py | tr -d '\n')
           echo "Computed version: $VERSION"
           git add VERSION
-          git commit -m "chore(release): ${VERSION} [skip ci]" || echo "No changes to commit"
+          git commit -m "chore(release): ${VERSION} [skip ci][skip version]" || echo "No changes to commit"
       - name: Push commit
         run: |
-          git push origin HEAD:main
+          # Push the version bump back to the same branch (prreviewJune23)
+          git push origin HEAD:prreviewJune23
       - name: Tag and push
         run: |
           VERSION=$(cat VERSION | tr -d '\n')

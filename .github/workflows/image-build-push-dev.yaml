@@ -27,8 +27,10 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     steps:
+      - name: Skip if version bump commit
+        if: contains(github.event.head_commit.message, '[skip version]') || contains(github.event.head_commit.message, '[skip ci]')
+        run: echo "Skipping build due to version bump commit" && exit 0
       - name: Set up QEMU (multi-arch emulation)
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
