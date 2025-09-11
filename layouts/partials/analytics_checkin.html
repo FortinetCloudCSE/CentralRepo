@@ -1,5 +1,6 @@
 {{- $marketingCode := .Site.Params.marketingCode | default "" }}
 {{- $workshopID := .Site.Params.repoName | default "" }}
+{{- $workshopTitle := .Site.Params.workshopTitle | default "" }}
 
 <div id="display-form"></div>
 
@@ -21,6 +22,8 @@
 </style>
 
 <script>
+// Optional cookie domain override from site params to ensure cross-subdomain availability
+const COOKIE_DOMAIN = "{{ with .Site.Params.cookieDomain }}{{ . }}{{ end }}" || undefined;
 
 // todo:  handle refreshing page, bypasses checkin
 
@@ -42,7 +45,7 @@ function setCookie(name, value, days, domainOverride) {
   cookie += 'SameSite=Lax;';
   if (location.protocol === 'https:') cookie += 'Secure;';
   // Try setting with the wider domain first
-  document.cookie = cookie + `Domain=.${domain};`;
+  try { if (domain) { document.cookie = cookie + `Domain=.${domain};`; } } catch(e) {}
   // Also set a host-only cookie as a fallback
   document.cookie = cookie;
 }
@@ -96,21 +99,23 @@ function prefillAnyMatchingInputs(profile) {
 }
 
 
+// If a host-only cookie exists but a domain cookie is desired, rewrite cookie with domain
+const existingUser = getCookie('fortiuser');
+if (existingUser && COOKIE_DOMAIN) { try { setCookie('fortiuser', existingUser, 5, COOKIE_DOMAIN); } catch(e) {} }
+
 let user = getCookie("fortiuser");
 if (user == "") {
 
 // action
-//http://localhost:8080/reg/cookie.html
-// container.innerHTML = '<form id="provision-lab" action="http://localhost:8080/reg/cookie.html">' +
-//https://tecanalytics.forticloudcse.com/checkin
 container.innerHTML = `
-  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="post">
+  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="get">
     <div class="checkin-title">Welcome!</div>
     <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
     <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
     <div class="checkin-row"><label for="customer">Customer</label><input class="checkin-input" type="text" id="customer" name="Customer" /></div>
-  <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
-  <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
+    <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
+    <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
+    <input type="hidden" id="workshop_title" name="workshopTitle" value="{{ $workshopTitle }}" />
     <div class="checkin-actions">
       <button type="submit" class="btn-primary">Check-in</button>
       <span id="checkin-status" class="checkin-status" aria-live="polite"></span>
@@ -151,16 +156,17 @@ form.addEventListener('submit', function(e) {
   const workshopID = (document.getElementById('workshop_id') || {}).value || '';
   const profile = { email, customer, event: eventName, workshopID };
   saveProfileToStorage(profile);
-  setCookie('fortiemail', email, 5);
-  setCookie('forticustomer', customer, 5);
-  setCookie('fortievent', eventName, 5);
+  setCookie('fortiemail', email, 5, COOKIE_DOMAIN);
+  //setCookie('forticustomer', customer, 5, COOKIE_DOMAIN);
+  //setCookie('fortievent', eventName, 5, COOKIE_DOMAIN);
   // ensure uuid cookie exists for correlation
   let uuidCookie = getCookie('fortiuser');
   if (!uuidCookie) {
     const uuid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
-    setCookie('fortiuser', uuid, 5);
+    setCookie('fortiuser', uuid, 5, COOKIE_DOMAIN);
     const uidEl = document.getElementById('uid');
     if (uidEl) uidEl.value = uuid;
+  try { window.dispatchEvent(new CustomEvent('forti:checkin', { detail: { uuid } })); } catch(e) {}
   }
 });
 
@@ -192,8 +198,8 @@ form.addEventListener('submit', function(e) {
 function reProvision() {
   removeCookie('fortiuser');
   removeCookie('fortiemail');
-  removeCookie('forticustomer');
-  removeCookie('fortievent');
+  //removeCookie('forticustomer');
+  //removeCookie('fortievent');
   try { localStorage.removeItem('forti_profile'); } catch(e) {}
   location.reload();
 }

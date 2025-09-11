@@ -20,14 +20,15 @@
           return "";
         }
       let uuid = getCookie("fortiuser");
-      }
+      
       </script>
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>
       <script>
+        var respectDnt = ("{{ if site.Config.Privacy.GoogleAnalytics.RespectDoNotTrack }}true{{ else }}false{{ end }}" === "true");
         var doNotTrack = false;
-        if ({{ site.Config.Privacy.GoogleAnalytics.RespectDoNotTrack }}) {
+        if (respectDnt) {
           var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
-          var doNotTrack = (dnt == "1" || dnt == "yes");
+          doNotTrack = (dnt == "1" || dnt == "yes");
         }
         if (!doNotTrack) {
           window.dataLayer = window.dataLayer || [];

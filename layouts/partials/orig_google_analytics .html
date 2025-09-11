@@ -26,28 +26,16 @@
       </script>
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>
       <script>
-        var respectDnt = ("{{ if site.Config.Privacy.GoogleAnalytics.RespectDoNotTrack }}true{{ else }}false{{ end }}" === "true");
         var doNotTrack = false;
-        if (respectDnt) {
+        if ({{ site.Config.Privacy.GoogleAnalytics.RespectDoNotTrack }}) {
           var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
-          doNotTrack = (dnt == "1" || dnt == "yes");
+          var doNotTrack = (dnt == "1" || dnt == "yes");
         }
         if (!doNotTrack) {
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          if (uuid) {
-            gtag('config', '{{ . }}', { 'user_id': uuid });
-          } else {
-            gtag('config', '{{ . }}');
-          }
-          // If check-in happens after this page loads, update user_id when available
-          window.addEventListener('forti:checkin', function(ev){
-            try {
-              var id = ev && ev.detail && ev.detail.uuid;
-              if (id) { gtag('set', { 'user_id': id }); }
-            } catch(e) {}
-          });
+          gtag('config', '{{ . }}', { 'user_id': uuid });
         }
       </script>
     {{ end }}
