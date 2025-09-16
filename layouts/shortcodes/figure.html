@@ -1,20 +1,7 @@
-<figure{{ with .Get "class" }} class="{{ . }}"{{ end }}>
-  {{ $alt := (.Get "alt") | default ((.Get "title") | default (.Get "caption")) }}
-  {{ $imgclass := (.Get "imgclass") | default (.Get "class") }}
-  {{ $src := .Get "src" }}
-  {{ $img := .Page.Resources.GetMatch $src }}
-  {{ $zoomsrcParam := .Get "zoomsrc" }}
-  {{ $zoomres := cond (ne $zoomsrcParam "") (.Page.Resources.GetMatch $zoomsrcParam) nil }}
-  {{ if $img }}
-    <img src="{{ $img.RelPermalink }}" alt="{{ $alt }}" loading="lazy"{{ with $imgclass }} class="{{ . }}"{{ end }}{{ with $zoomsrcParam }} data-zoom-src="{{ if $zoomres }}{{ $zoomres.RelPermalink }}{{ else }}{{ $zoomsrcParam | relURL }}{{ end }}"{{ end }}>
-  {{ else }}
-    <img src="{{ $src | relURL }}" alt="{{ $alt }}" loading="lazy"{{ with $imgclass }} class="{{ . }}"{{ end }}{{ with $zoomsrcParam }} data-zoom-src="{{ if $zoomres }}{{ $zoomres.RelPermalink }}{{ else }}{{ $zoomsrcParam | relURL }}{{ end }}"{{ end }}>
-  {{ end }}
-  {{ with .Get "caption" }}
-    <figcaption>{{ . }}</figcaption>
-  {{ else }}
-    {{ with .Get "title" }}
-      <figcaption>{{ . }}</figcaption>
-    {{ end }}
-  {{ end }}
-</figure>
+{{- $alt := (.Get "alt") | default ((.Get "title") | default (.Get "caption")) -}}
+{{- $imgclass := (.Get "imgclass") | default (.Get "class") -}}
+{{- $src := .Get "src" -}}
+{{- $img := .Page.Resources.GetMatch $src -}}
+{{- $zoomsrcParam := .Get "zoomsrc" -}}
+{{- $zoomres := cond (ne $zoomsrcParam "") (.Page.Resources.GetMatch $zoomsrcParam) nil -}}
+<figure{{ with .Get "class" }} class="{{ . }}"{{ end }}>{{ if $img -}}<img src="{{ $img.RelPermalink }}" alt="{{ $alt }}" loading="lazy"{{ with $imgclass }} class="{{ . }}"{{ end }}{{ with $zoomsrcParam }} data-zoom-src="{{ if $zoomres }}{{ $zoomres.RelPermalink }}{{ else }}{{ $zoomsrcParam | relURL }}{{ end }}"{{ end }}>{{- else -}}<img src="{{ $src | relURL }}" alt="{{ $alt }}" loading="lazy"{{ with $imgclass }} class="{{ . }}"{{ end }}{{ with $zoomsrcParam }} data-zoom-src="{{ if $zoomres }}{{ $zoomres.RelPermalink }}{{ else }}{{ $zoomsrcParam | relURL }}{{ end }}"{{ end }}>{{- end }}{{ with .Get "caption" -}}<figcaption>{{ . }}</figcaption>{{- else -}}{{ with .Get "title" -}}<figcaption>{{ . }}</figcaption>{{- end }}{{- end }}</figure>
