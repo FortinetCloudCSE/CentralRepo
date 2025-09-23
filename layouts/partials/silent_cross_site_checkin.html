@@ -24,18 +24,21 @@
   var siteID = '{{ with .Site.Params.repoName }}{{ . | urlize }}{{ end }}';
   if(!siteID){ var parts = location.pathname.split('/').filter(Boolean); siteID = parts.length?parts[0]:''; }
   if(!siteID) return;
+  var siteKey = (siteID+'').toLowerCase();
   var siteTitle = '{{ with .Site.Params.workshopTitle }}{{ . | htmlEscape }}{{ end }}' || siteID;
   var marketingCode = '{{ with .Site.Params.marketingCode }}{{ . | htmlEscape }}{{ end }}';
 
   const sitesCookieRaw = getCookie('fortisites');
   let sites = sitesCookieRaw ? sitesCookieRaw.split('|').filter(Boolean) : [];
-  if(sites.indexOf(siteID) !== -1){ // refresh TTL on existing cookies only (policy: extend window)
-    setCookie('fortiuser', uid, MS); setCookie('fortisites', sites.join('|'), MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); return; }
+  // Normalize and dedupe existing values to lowercase
+  let sitesLower = Array.from(new Set(sites.map(s => (s+"").toLowerCase())));
+  if(sitesLower.indexOf(siteKey) !== -1){ // refresh TTL on existing cookies only (policy: extend window)
+    setCookie('fortiuser', uid, MS); setCookie('fortisites', sitesLower.join('|'), MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); return; }
 
   // Perform silent check-in (fetch preferred; fallback to sendBeacon; final fallback hidden form) with JSON form-encoded
   const payload = { uid: uid, EMail: email, Customer: customer, Event: marketingCode || eventCode, workshopID: siteID, workshopTitle: siteTitle };
 
-  function onSuccess(){ sites.push(siteID); setCookie('fortisites', sites.join('|'), MS); setCookie('fortiuser', uid, MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); }
+  function onSuccess(){ if(sitesLower.indexOf(siteKey) === -1) sitesLower.push(siteKey); setCookie('fortisites', sitesLower.join('|'), MS); setCookie('fortiuser', uid, MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); }
   // Small retry wrapper: attempt fetch up to maxAttempts (default 2) with simple exponential backoff (200ms, 600ms)
   function tryFetch(){
     const maxAttempts = 2;

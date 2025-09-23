@@ -173,10 +173,13 @@ form.addEventListener('submit', function(e) {
   // Initialize or extend fortisites cookie to include this site
   try {
     const fs = getCookie('fortisites');
-    const siteID = workshopID || (window.location.pathname.split('/').filter(Boolean)[0] || '');
+    const siteIDRaw = workshopID || (window.location.pathname.split('/').filter(Boolean)[0] || '');
+    const siteKey = (siteIDRaw+"").toLowerCase();
     let parts = fs ? fs.split('|').filter(Boolean) : [];
-    if (siteID && parts.indexOf(siteID) === -1) parts.push(siteID);
-    setCookie('fortisites', parts.join('|'), 5, COOKIE_DOMAIN);
+    // normalize and dedupe
+    let lower = Array.from(new Set(parts.map(p => (p+"").toLowerCase())));
+    if (siteKey && lower.indexOf(siteKey) === -1) lower.push(siteKey);
+    setCookie('fortisites', lower.join('|'), 5, COOKIE_DOMAIN);
   } catch(err) { console.warn('fortisites cookie update failed', err); }
 });
 
@@ -217,6 +220,7 @@ function reProvision() {
   removeCookie('fortiemail');
   removeCookie('forticustomer');
   removeCookie('fortievent');
+  removeCookie('fortisites');
   try { localStorage.removeItem('forti_profile'); } catch(e) {}
   location.reload();
 }
