@@ -1,0 +1,85 @@
+<script>
+(function(){
+  if (window.__forti_silent_checkin_loaded) return; window.__forti_silent_checkin_loaded = true;
+  const ORIGIN_OK = location.origin === 'https://fortinetcloudcse.github.io';
+  const DAYS = 5;
+  const MS = DAYS*24*60*60*1000;
+  const now = Date.now();
+
+  function getCookie(name){ const n=name+'='; return decodeURIComponent(document.cookie).split(';').map(c=>c.trim()).filter(c=>c.indexOf(n)===0).map(c=>c.substring(n.length))[0]||''; }
+  function setCookie(name,val,ms){ const d=new Date(); d.setTime(Date.now()+ms); let c = name+'='+encodeURIComponent(val)+';expires='+d.toUTCString()+';path=/;SameSite=Lax;'; if(location.protocol==='https:') c+='Secure;'; document.cookie=c; }
+
+  const uid = getCookie('fortiuser');
+  if(!uid) return; // initial redirect logic elsewhere handles first explicit check-in
+
+  // Email may be in cookie or localStorage profile
+  function loadProfile(){ try { const raw=localStorage.getItem('forti_profile'); return raw?JSON.parse(raw):null; } catch(e){ return null; } }
+  let email = getCookie('fortiemail');
+  if(!email){ const p = loadProfile(); if(p && p.email) email = p.email; }
+  if(!email){ return; } // can't silent check-in without a valid email (API will reject)
+  const customer = getCookie('forticustomer') || '';
+  const eventCode = getCookie('fortievent') || '';
+
+  // Derive site ID / title from Hugo params exposed via data attributes we inject below (fallback to path)
+  var siteID = '{{ with .Site.Params.repoName }}{{ . | urlize }}{{ end }}';
+  if(!siteID){ var parts = location.pathname.split('/').filter(Boolean); siteID = parts.length?parts[0]:''; }
+  if(!siteID) return;
+  var siteTitle = '{{ with .Site.Params.workshopTitle }}{{ . | htmlEscape }}{{ end }}' || siteID;
+  var marketingCode = '{{ with .Site.Params.marketingCode }}{{ . | htmlEscape }}{{ end }}';
+
+  const sitesCookieRaw = getCookie('fortisites');
+  let sites = sitesCookieRaw ? sitesCookieRaw.split('|').filter(Boolean) : [];
+  if(sites.indexOf(siteID) !== -1){ // refresh TTL on existing cookies only (policy: extend window)
+    setCookie('fortiuser', uid, MS); setCookie('fortisites', sites.join('|'), MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); return; }
+
+  // Perform silent check-in (fetch preferred; fallback to sendBeacon; final fallback hidden form) with JSON form-encoded
+  const payload = { uid: uid, EMail: email, Customer: customer, Event: marketingCode || eventCode, workshopID: siteID, workshopTitle: siteTitle };
+
+  function onSuccess(){ sites.push(siteID); setCookie('fortisites', sites.join('|'), MS); setCookie('fortiuser', uid, MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); }
+  // Small retry wrapper: attempt fetch up to maxAttempts (default 2) with simple exponential backoff (200ms, 600ms)
+  function tryFetch(){
+    const maxAttempts = 2;
+    const baseDelay = 200; // ms
+    let attempt = 0;
+    function exec(){
+      attempt++;
+      try {
+        fetch('https://tecanalytics.forticloudcse.com/checkin/silent', {
+          method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            mode: 'cors'
+        }).then(r=>{ if(!r.ok) throw new Error('status '+r.status); return r.json(); })
+          .then(()=>onSuccess())
+          .catch(err=>{
+            console.warn('[silent-checkin] fetch attempt '+attempt+' failed', err);
+            if(attempt < maxAttempts){
+              const delay = baseDelay * Math.pow(3, attempt-1); // 200, 600
+              setTimeout(exec, delay);
+            } else {
+              tryBeacon();
+            }
+          });
+      } catch(e){
+        console.warn('[silent-checkin] fetch exception on attempt '+attempt, e);
+        if(attempt < maxAttempts){
+          const delay = baseDelay * Math.pow(3, attempt-1);
+          setTimeout(exec, delay);
+        } else {
+          tryBeacon();
+        }
+      }
+    }
+    exec();
+  }
+  function tryBeacon(){
+    if(navigator.sendBeacon){
+      try { const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' }); const ok = navigator.sendBeacon('https://tecanalytics.forticloudcse.com/checkin/silent', blob); if(ok) { onSuccess(); return; } } catch(e) {}
+    }
+    // final fallback hidden form
+    try { const f=document.createElement('form'); f.style.display='none'; f.method='POST'; f.action='https://tecanalytics.forticloudcse.com/checkin'; ['uid','EMail','Customer','Event','workshopID','workshopTitle'].forEach(k=>{ const i=document.createElement('input'); i.name=k; i.value=payload[k]||''; f.appendChild(i); }); document.body.appendChild(f); f.submit(); onSuccess(); } catch(e){ console.warn('[silent-checkin] form fallback failed', e); }
+  }
+
+  tryFetch();
+})();
+</script>

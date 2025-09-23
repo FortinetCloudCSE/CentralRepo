@@ -156,9 +156,11 @@ form.addEventListener('submit', function(e) {
   const workshopID = (document.getElementById('workshop_id') || {}).value || '';
   const profile = { email, customer, event: eventName, workshopID };
   saveProfileToStorage(profile);
+  // Always (re)set fortiemail cookie to refresh 5-day TTL on explicit check-in
   setCookie('fortiemail', email, 5, COOKIE_DOMAIN);
-  //setCookie('forticustomer', customer, 5, COOKIE_DOMAIN);
-  //setCookie('fortievent', eventName, 5, COOKIE_DOMAIN);
+  // Set / refresh auxiliary cookies so silent check-in can reuse them if needed
+  if (customer) setCookie('forticustomer', customer, 5, COOKIE_DOMAIN);
+  if (eventName) setCookie('fortievent', eventName, 5, COOKIE_DOMAIN);
   // ensure uuid cookie exists for correlation
   let uuidCookie = getCookie('fortiuser');
   if (!uuidCookie) {
@@ -166,13 +168,28 @@ form.addEventListener('submit', function(e) {
     setCookie('fortiuser', uuid, 5, COOKIE_DOMAIN);
     const uidEl = document.getElementById('uid');
     if (uidEl) uidEl.value = uuid;
-  try { window.dispatchEvent(new CustomEvent('forti:checkin', { detail: { uuid } })); } catch(e) {}
+    try { window.dispatchEvent(new CustomEvent('forti:checkin', { detail: { uuid } })); } catch(e) {}
   }
+  // Initialize or extend fortisites cookie to include this site
+  try {
+    const fs = getCookie('fortisites');
+    const siteID = workshopID || (window.location.pathname.split('/').filter(Boolean)[0] || '');
+    let parts = fs ? fs.split('|').filter(Boolean) : [];
+    if (siteID && parts.indexOf(siteID) === -1) parts.push(siteID);
+    setCookie('fortisites', parts.join('|'), 5, COOKIE_DOMAIN);
+  } catch(err) { console.warn('fortisites cookie update failed', err); }
 });
 
 } else {
   const profile = loadProfileFromStorage();
   const knownEmail = getCookie('fortiemail') || (profile && profile.email) || '';
+  // Refresh fortiemail TTL quietly for returning user to extend multi-site window
+  if (knownEmail) { try { setCookie('fortiemail', knownEmail, 5, COOKIE_DOMAIN); } catch(e) {} }
+  // Also refresh auxiliary cookies if present (customer/event)
+  const existingCustomer = getCookie('forticustomer') || (profile && profile.customer) || '';
+  const existingEvent = getCookie('fortievent') || (profile && profile.event) || '';
+  if (existingCustomer) { try { setCookie('forticustomer', existingCustomer, 5, COOKIE_DOMAIN); } catch(e) {} }
+  if (existingEvent) { try { setCookie('fortievent', existingEvent, 5, COOKIE_DOMAIN); } catch(e) {} }
   container.innerHTML = `
     <div class="checkin-card">
       <div class="checkin-title">Welcome!</div>
@@ -198,8 +215,8 @@ form.addEventListener('submit', function(e) {
 function reProvision() {
   removeCookie('fortiuser');
   removeCookie('fortiemail');
-  //removeCookie('forticustomer');
-  //removeCookie('fortievent');
+  removeCookie('forticustomer');
+  removeCookie('fortievent');
   try { localStorage.removeItem('forti_profile'); } catch(e) {}
   location.reload();
 }
