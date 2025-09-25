@@ -62,8 +62,18 @@
       console.log('[quizframe] Upgraded to HTTPS:', baseSrc);
     }
 
-    const fortiEmail = getCookie('fortiemail');
-    const fortiUser = getCookie('fortiuser');
+    // Extract raw cookie values. Cookies are (typically) stored unencoded; if previously encoded we decode once.
+    // We then encode exactly once so special characters in the email local part are preserved safely:
+    // Allowed local-part specials: ! # $ % & ' * + / = ? ^ _ ` { | } ~ . - \
+    // '+' is always percent-encoded as %2B to avoid legacy plus->space translation.
+    function normalize(val){
+      if(!val) return '';
+      try { return decodeURIComponent(val); } catch(e) { return val; }
+    }
+    const fortiEmailRaw = getCookie('fortiemail');
+    const fortiUserRaw = getCookie('fortiuser');
+    const fortiEmail = normalize(fortiEmailRaw);
+    const fortiUser = normalize(fortiUserRaw);
     let params = [];
     if (fortiEmail) params.push('fortiemail=' + encodeURIComponent(fortiEmail));
     if (fortiUser) params.push('fortiuser=' + encodeURIComponent(fortiUser));
