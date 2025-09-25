@@ -103,6 +103,10 @@ enableEmoji = true
   repoName= "{{repoName}}"
   # workshopTitle for TEC Analytics
   workshopTitle= "{{workshopTitle}}"
+  # support endpoint
+  {% if supportEndpoint != "" %}
+  supportEndpoint = "{{supportEndpoint}}"
+  {% endif %}
 
   # Shows a checkmark for visited pages on the menu
   showVisitedLinks = true
