@@ -30,7 +30,7 @@ ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]
 FROM base as prod
 
 # Add repo
-ADD https://github.com/FortinetCloudCSE/CentralRepo.git#main /home/CentralRepo
+ADD https://github.com/FortinetCloudCSE/CentralRepo.git#support-button-testing /home/CentralRepo
 WORKDIR /home/CentralRepo
 
 # Force install CA certs from HTTP and configure apk to use HTTP; due to sudden issues with HTTPS; temporary fix until it's working again
