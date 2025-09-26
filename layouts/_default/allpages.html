@@ -27,10 +27,17 @@
             font-family: Inter, Helvetica, Tahoma, Verdana, sans-serif;
         }
 
-        #print-button {
+        .print-float-actions {
             position: fixed;
             right: 1.5rem;
             top: 1.5rem;
+            display: grid;
+            gap: 1.5rem;
+            justify-items: end;
+            z-index: 2147483200;
+        }
+
+        #print-button {
             font-size: x-large;
         }
 
@@ -56,8 +63,11 @@
 </head>
 
 <body>
-    <a id="print-button" class="no-print" title="Print this page" href="#" onclick="window.print();return false;"><i
-            class='fas fa-print'></i></a>
+    <div class="print-float-actions no-print">
+        <a id="print-button" title="Print this page" aria-label="Print this page" href="#" onclick="window.print();return false;">
+            <i class='fas fa-print' aria-hidden="true"></i>
+        </a>
+    </div>
 
     <h1>{{.Site.Title }}</h1>
     {{ with .Site.Home }}
