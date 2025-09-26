@@ -101,7 +101,218 @@
     flex-direction: column;
 }
 
+.forti-support__fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  top: auto;
+  z-index: 2147483000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 3.25rem;
+  background: #312525;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+  border: 0;
+  cursor: pointer;
+  font-size: 1.35rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
 
+.forti-support__fab:hover,
+.forti-support__fab:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 18px rgba(0, 0, 0, 0.22);
+}
+
+.forti-support__fab:focus-visible {
+  outline: 3px solid rgba(0, 101, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.forti-support__fab--stacked {
+  top: 4.75rem;
+  bottom: auto;
+}
+
+.forti-support__fab .forti-support__fab-label {
+  display: none;
+}
+
+.forti-support__fab-icon {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+@media (max-width: 600px) {
+  .forti-support__fab {
+    right: 1rem;
+    bottom: 1.25rem;
+  }
+
+  .forti-support__fab--stacked {
+    bottom: 4.75rem;
+    top: auto;
+  }
+}
+
+.forti-support__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483600;
+}
+
+.forti-support__modal-backdrop[aria-hidden="false"] {
+  display: flex;
+}
+
+.forti-support__modal {
+  background: #fff;
+  max-width: 32rem;
+  width: calc(100% - 2.5rem);
+  border-radius: 12px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  position: relative;
+}
+
+.forti-support__modal h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.forti-support__modal form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.forti-support__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.forti-support__field label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.forti-support__input,
+.forti-support__textarea {
+  width: 100%;
+  border: 1px solid #d5dcec;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.forti-support__input[readonly] {
+  background: #f5f7fb;
+  color: #49526a;
+}
+
+.forti-support__textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.forti-support__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.forti-support__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  border: none;
+  background: transparent;
+  color: #6b7285;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+}
+
+.forti-support__close:hover,
+.forti-support__close:focus-visible {
+  color: #1e1f2c;
+  outline: none;
+}
+
+.forti-support__btn-primary,
+.forti-support__btn-secondary {
+  border-radius: 6px;
+  padding: 0.5rem 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.forti-support__btn-primary {
+  background: #DA291C;
+  color: #fff;
+}
+
+.forti-support__btn-primary:hover,
+.forti-support__btn-primary:focus-visible {
+  background: #312525;
+  transform: translateY(-1px);
+}
+
+.forti-support__btn-secondary {
+  background: #eef3ff;
+  color: #1a265b;
+  border: 1px solid #ccd8ff;
+}
+
+.forti-support__btn-secondary:hover,
+.forti-support__btn-secondary:focus-visible {
+  background: #e1ebff;
+  transform: translateY(-1px);
+}
+
+.forti-support__status {
+  font-size: 0.92rem;
+  min-height: 1.2rem;
+}
+
+.forti-support__status--ok {
+  color: #0a7a2f;
+}
+
+.forti-support__status--err {
+  color: #b00020;
+}
+
+.forti-support__copy-area {
+  display: none;
+  font-family: monospace;
+  font-size: 0.82rem;
+  background: #f4f6fb;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #dde3f5;
+  word-break: break-all;
+}
+
+.forti-support__copy-area[aria-hidden="false"] {
+  display: block;
+}
 </style>
 
 
@@ -115,3 +326,351 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
 src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdownHighlight.js">
 </script>
 <script>quizdown.register(quizdownHighlight).register(quizdownKatex).init()</script>
+
+<script>
+(function () {
+  if (window.__fortiSupportLoaded) return;
+  window.__fortiSupportLoaded = true;
+
+  const RAW_SUPPORT_ENDPOINT = {{ with .Site.Params.supportEndpoint }}{{ printf "%q" . }}{{ else }}"https://hugo-support.fortinetcloudcse.com"{{ end }};
+  const SUPPORT_ENDPOINT = (function () {
+    if (typeof RAW_SUPPORT_ENDPOINT !== 'string') return '';
+    const trimmed = RAW_SUPPORT_ENDPOINT.trim();
+    return trimmed.replace(/^['"]+/, '').replace(/['"]+$/, '');
+  })();
+  const ENABLED = !!(SUPPORT_ENDPOINT && SUPPORT_ENDPOINT.toLowerCase() !== 'disabled');
+  if (!ENABLED) return;
+
+  //const SUPPORT_ICON_URL = "{{ "images/logo.svg" | relURL }}";
+  const SUPPORT_ICON_URL = "https://www.fortinet.com/etc/designs/fortinet/favicon.ico"
+  const STATE = {
+    button: null,
+    modal: null,
+    backdrop: null,
+    form: null,
+    status: null,
+    copyArea: null,
+    textarea: null,
+    emailInput: null,
+    pageInput: null,
+    sessionInput: null,
+    closeBtn: null,
+    submitBtn: null,
+    pendingPayload: null,
+    cachedEmail: ''
+  };
+
+  function getCookie(name) {
+    const target = name + '=';
+    const parts = decodeURIComponent(document.cookie || '').split(';');
+    for (let chunk of parts) {
+      while (chunk.charAt(0) === ' ') chunk = chunk.substring(1);
+      if (chunk.indexOf(target) === 0) return chunk.substring(target.length);
+    }
+    return '';
+  }
+
+  function readProfileEmail() {
+    const fromCookie = getCookie('fortiemail');
+    if (fromCookie) return fromCookie;
+    try {
+      const raw = localStorage.getItem('forti_profile');
+      if (!raw) return '';
+      const profile = JSON.parse(raw);
+      return (profile && profile.email) ? profile.email : '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function refreshEmailCache() {
+    const email = readProfileEmail();
+    STATE.cachedEmail = email || '';
+    return STATE.cachedEmail;
+  }
+
+  function applyEmailToInput(email) {
+    if (STATE.emailInput) STATE.emailInput.value = email || '';
+  }
+
+  function syncEmailFromProfile() {
+    const email = refreshEmailCache();
+    if (STATE.backdrop && STATE.backdrop.getAttribute('aria-hidden') === 'false') {
+      applyEmailToInput(email);
+    }
+  }
+
+  function ensureSessionId() {
+    const cookieVal = getCookie('fortiuser');
+    if (cookieVal) return cookieVal;
+    try {
+      const stored = sessionStorage.getItem('forti_support_session');
+      if (stored) return stored;
+      const generated = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2);
+      sessionStorage.setItem('forti_support_session', generated);
+      return generated;
+    } catch (err) {
+      return String(Date.now());
+    }
+  }
+
+  function getUserAgent() {
+    return navigator.userAgent || '';
+  }
+
+  function updatePrintStacking() {
+    const printBtn = document.getElementById('print-button');
+    if (!STATE.button) return;
+    if (printBtn) {
+      STATE.button.classList.add('forti-support__fab--stacked');
+    } else {
+      STATE.button.classList.remove('forti-support__fab--stacked');
+    }
+  }
+
+  function setStatus(text, type) {
+    if (!STATE.status) return;
+    STATE.status.textContent = text || '';
+    STATE.status.classList.remove('forti-support__status--ok', 'forti-support__status--err');
+    if (type === 'ok') STATE.status.classList.add('forti-support__status--ok');
+    if (type === 'err') STATE.status.classList.add('forti-support__status--err');
+  }
+
+  function closeModal() {
+    if (STATE.backdrop) {
+      STATE.backdrop.setAttribute('aria-hidden', 'true');
+    }
+    setStatus('', '');
+    if (STATE.copyArea) STATE.copyArea.setAttribute('aria-hidden', 'true');
+    if (STATE.form) STATE.form.reset();
+    if (STATE.button) {
+      try {
+        STATE.button.focus({ preventScroll: true });
+      } catch (err) {}
+    }
+  }
+
+  function openModal() {
+    if (!STATE.backdrop || !STATE.modal) return;
+    applyEmailToInput(refreshEmailCache());
+    if (STATE.pageInput) STATE.pageInput.value = window.location.href;
+    if (STATE.sessionInput) STATE.sessionInput.value = ensureSessionId();
+    if (STATE.textarea) STATE.textarea.value = '';
+    if (STATE.copyArea) STATE.copyArea.textContent = '';
+    setStatus('', '');
+    STATE.backdrop.setAttribute('aria-hidden', 'false');
+    if (STATE.emailInput) STATE.emailInput.focus({ preventScroll: true });
+  }
+
+  async function submitSupport(event) {
+    event.preventDefault();
+    if (!STATE.form || !STATE.submitBtn) return;
+    const email = (STATE.emailInput && STATE.emailInput.value || '').trim();
+    const description = (STATE.textarea && STATE.textarea.value || '').trim();
+    if (!description) {
+      setStatus('Please describe the issue so we can help.', 'err');
+      if (STATE.textarea) STATE.textarea.focus();
+      return;
+    }
+    if (!email) {
+      setStatus('Please include an email so the team can reach you.', 'err');
+      if (STATE.emailInput) STATE.emailInput.focus();
+      return;
+    }
+
+    const payload = {
+      page: window.location.href,
+      email,
+      session: ensureSessionId(),
+      userAgent: getUserAgent(),
+      description,
+      timestamp: new Date().toISOString()
+    };
+    STATE.pendingPayload = payload;
+    STATE.cachedEmail = email;
+    setStatus('Sending support request…', '');
+    STATE.submitBtn.disabled = true;
+    STATE.submitBtn.setAttribute('aria-busy', 'true');
+
+    try {
+      const response = await fetch(SUPPORT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error('Support endpoint returned ' + response.status);
+      setStatus('Support request sent! We will reach out shortly.', 'ok');
+      if (STATE.copyArea) STATE.copyArea.setAttribute('aria-hidden', 'true');
+      setTimeout(closeModal, 1800);
+    } catch (err) {
+      console.error('Support submission failed', err);
+      setStatus('We could not reach support automatically. Copy the details below and email the team.', 'err');
+      if (STATE.copyArea) {
+        STATE.copyArea.textContent = JSON.stringify(payload, null, 2);
+        STATE.copyArea.setAttribute('aria-hidden', 'false');
+      }
+    } finally {
+      STATE.submitBtn.disabled = false;
+      STATE.submitBtn.removeAttribute('aria-busy');
+    }
+  }
+
+  function buildButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'support-button';
+    btn.className = 'forti-support__fab';
+    btn.setAttribute('title', 'Submit an Issue');
+    btn.setAttribute('aria-label', 'Submit an Issue');
+    btn.innerHTML = "<img class='forti-support__fab-icon' src='" + SUPPORT_ICON_URL + "' alt='' aria-hidden='true'>" +
+    	"<span class='forti-support__fab-label'>Support</span>";
+    btn.addEventListener('click', openModal);
+    document.body.appendChild(btn);
+    STATE.button = btn;
+    updatePrintStacking();
+  }
+
+  function buildModal() {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'forti-support__modal-backdrop';
+    backdrop.setAttribute('aria-hidden', 'true');
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-label', 'Support Request');
+
+    const modal = document.createElement('div');
+    modal.className = 'forti-support__modal';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'forti-support__close';
+    closeBtn.setAttribute('aria-label', 'Close support dialog');
+    closeBtn.textContent = 'X';
+    closeBtn.addEventListener('click', closeModal);
+
+    const heading = document.createElement('h2');
+    heading.textContent = 'Report An Issue';
+    modal.append(closeBtn, heading);
+
+    const form = document.createElement('form');
+
+    const fieldEmail = document.createElement('div');
+    fieldEmail.className = 'forti-support__field';
+    const labelEmail = document.createElement('label');
+    labelEmail.setAttribute('for', 'forti-support-email');
+    labelEmail.textContent = 'Email';
+    const inputEmail = document.createElement('input');
+    inputEmail.type = 'email';
+    inputEmail.id = 'forti-support-email';
+    inputEmail.name = 'email';
+    inputEmail.required = true;
+    inputEmail.autocomplete = 'email';
+    inputEmail.className = 'forti-support__input';
+    fieldEmail.append(labelEmail, inputEmail);
+
+    const fieldPage = document.createElement('div');
+    fieldPage.className = 'forti-support__field';
+    const labelPage = document.createElement('label');
+    labelPage.setAttribute('for', 'forti-support-page');
+    labelPage.textContent = 'Page';
+    const inputPage = document.createElement('input');
+    inputPage.type = 'text';
+    inputPage.id = 'forti-support-page';
+    inputPage.name = 'page';
+    inputPage.className = 'forti-support__input';
+    inputPage.readOnly = true;
+    fieldPage.append(labelPage, inputPage);
+
+    const fieldSession = document.createElement('div');
+    fieldSession.className = 'forti-support__field';
+    const labelSession = document.createElement('label');
+    labelSession.setAttribute('for', 'forti-support-session');
+    labelSession.textContent = 'Session ID';
+    const inputSession = document.createElement('input');
+    inputSession.type = 'text';
+    inputSession.id = 'forti-support-session';
+    inputSession.name = 'session';
+    inputSession.className = 'forti-support__input';
+    inputSession.readOnly = true;
+    fieldSession.append(labelSession, inputSession);
+
+    const fieldDesc = document.createElement('div');
+    fieldDesc.className = 'forti-support__field';
+    const labelDesc = document.createElement('label');
+    labelDesc.setAttribute('for', 'forti-support-description');
+    labelDesc.textContent = 'What is happening?';
+    const textarea = document.createElement('textarea');
+    textarea.id = 'forti-support-description';
+    textarea.name = 'description';
+    textarea.required = true;
+    textarea.className = 'forti-support__textarea';
+    textarea.setAttribute('placeholder', 'Describe the issue you are seeing…');
+    fieldDesc.append(labelDesc, textarea);
+
+    const status = document.createElement('div');
+    status.className = 'forti-support__status';
+
+    const copyArea = document.createElement('pre');
+    copyArea.className = 'forti-support__copy-area';
+    copyArea.setAttribute('aria-hidden', 'true');
+
+    const actions = document.createElement('div');
+    actions.className = 'forti-support__actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'forti-support__btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', closeModal);
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'forti-support__btn-primary';
+    submitBtn.textContent = 'Report';
+    actions.append(cancelBtn, submitBtn);
+
+    form.append(fieldEmail, fieldPage, fieldSession, fieldDesc, status, copyArea, actions);
+    form.addEventListener('submit', submitSupport);
+
+    modal.appendChild(form);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    // expose references
+    STATE.modal = modal;
+    STATE.backdrop = backdrop;
+    STATE.form = form;
+    STATE.status = status;
+    STATE.copyArea = copyArea;
+    STATE.textarea = textarea;
+    STATE.emailInput = inputEmail;
+    STATE.pageInput = inputPage;
+    STATE.sessionInput = inputSession;
+    STATE.submitBtn = submitBtn;
+    STATE.closeBtn = closeBtn;
+  }
+
+  function bindEscape() {
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && STATE.backdrop && STATE.backdrop.getAttribute('aria-hidden') === 'false') {
+        closeModal();
+      }
+    });
+  }
+
+  function init() {
+    if (!document.body) return;
+    buildButton();
+    buildModal();
+    bindEscape();
+    updatePrintStacking();
+    refreshEmailCache();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+
+  window.addEventListener('forti:checkin', syncEmailFromProfile);
+  window.addEventListener('focus', syncEmailFromProfile);
+})();
+</script>
