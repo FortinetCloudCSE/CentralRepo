@@ -1,6 +1,7 @@
 {{- $marketingCode := .Site.Params.marketingCode | default "" }}
 {{- $workshopID := .Site.Params.repoName | default "" }}
 {{- $workshopTitle := .Site.Params.workshopTitle | default "" }}
+{{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
 
 <div id="display-form"></div>
 
@@ -108,7 +109,7 @@ if (user == "") {
 
 // action
 container.innerHTML = `
-  <form id="provision-lab" class="checkin-card" action="https://tecanalytics.forticloudcse.com/checkin" method="POST">
+  <form id="provision-lab" class="checkin-card" action="{{ $analyticsBase }}/checkin" method="POST">
     <div class="checkin-title">Welcome!</div>
     <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
     <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
@@ -135,6 +136,8 @@ const emailInput = document.getElementById('email');
 const submitBtn = form.querySelector('.btn-primary');
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// No JS submission to silent endpoint here; explicit check-in always posts to /checkin.
+
 function updateValidity() {
   const val = (emailInput.value || '').trim();
   const ok = emailRegex.test(val);
@@ -156,6 +159,7 @@ form.addEventListener('submit', function(e) {
   const workshopID = (document.getElementById('workshop_id') || {}).value || '';
   const profile = { email, customer, event: eventName, workshopID };
   saveProfileToStorage(profile);
+
   // Always (re)set fortiemail cookie to refresh 5-day TTL on explicit check-in
   setCookie('fortiemail', email, 5, COOKIE_DOMAIN);
   // Set / refresh auxiliary cookies so silent check-in can reuse them if needed
@@ -181,6 +185,9 @@ form.addEventListener('submit', function(e) {
     if (siteKey && lower.indexOf(siteKey) === -1) lower.push(siteKey);
     setCookie('fortisites', lower.join('|'), 5, COOKIE_DOMAIN);
   } catch(err) { console.warn('fortisites cookie update failed', err); }
+
+  // Let the browser submit the form to /checkin (action attribute),
+  // preserving the legacy server-side flow and redirects.
 });
 
 } else {

@@ -11,7 +11,8 @@
   "bannerLine1":"Workshop Type ID Eg: Public Cloud 101",
   "bannerLine2":"Workshop Title Here",
   "bannerLine3":"Subtitle,Description, or 3rd line Here",
-  "quizUrl":"https://jeff-test3-o32xpkqaca-uc.a.run.app",
+  "quizUrl":"https://publiccloud105-fortiflex-o32xpkqaca-uc.a.run.app",
+  "analyticsBaseUrl":"https://tecanalytics.forticloudcse.com",
   "shortcuts": [
   {
     "text": "Fortinet Cloud CSE GitHub Org",
