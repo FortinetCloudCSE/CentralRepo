@@ -1,6 +1,7 @@
 {{- $marketingCode := .Site.Params.marketingCode | default "" }}
 {{- $workshopID := .Site.Params.repoName | default "" }}
 {{- $workshopTitle := .Site.Params.workshopTitle | default "" }}
+{{- $quizUrl := .Site.Params.quizUrl | default "" }}
 {{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
 
 <div id="display-form"></div>
@@ -117,6 +118,7 @@ container.innerHTML = `
     <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
     <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
     <input type="hidden" id="workshop_title" name="workshopTitle" value="{{ $workshopTitle }}" />
+    <input type="hidden" id="quiz_url" name="quizUrl" value="{{ $quizUrl }}" />
     <div class="checkin-actions">
       <button type="submit" class="btn-primary">Check-in</button>
       <span id="checkin-status" class="checkin-status" aria-live="polite"></span>

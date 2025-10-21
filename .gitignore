@@ -3,3 +3,5 @@ content
 *.DS_Store
 venv/
 fortihugorunner*
+.vscode/
+__pycache__/
