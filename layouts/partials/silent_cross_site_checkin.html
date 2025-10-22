@@ -1,4 +1,5 @@
 {{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
+{{- $quizUrl := .Site.Params.quizUrl | default "" -}}
 <script>
 (function(){
   if (window.__forti_silent_checkin_loaded) return; window.__forti_silent_checkin_loaded = true;
@@ -43,7 +44,9 @@
     setCookie('fortiuser', uid, MS); setCookie('fortisites', sitesLower.join('|'), MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); return; }
 
   // Perform silent check-in (fetch preferred; fallback to sendBeacon; final fallback hidden form) with JSON form-encoded
-  const payload = { uid: uid, EMail: email, Customer: customer, Event: marketingCode || eventCode, workshopID: siteID, workshopTitle: siteTitle };
+  const quizUrl = "{{ $quizUrl }}";
+  const payload = { uid: uid, EMail: email, Customer: customer, Event: marketingCode || eventCode, workshopID: siteID, workshopTitle: siteTitle, quizUrl: quizUrl };
+
 
   function onSuccess(){ if(sitesLower.indexOf(siteKey) === -1) sitesLower.push(siteKey); setCookie('fortisites', sitesLower.join('|'), MS); setCookie('fortiuser', uid, MS); if(email) setCookie('fortiemail', email, MS); if(customer) setCookie('forticustomer', customer, MS); if(eventCode) setCookie('fortievent', eventCode, MS); }
   // Small retry wrapper: attempt fetch up to maxAttempts (default 2) with simple exponential backoff (200ms, 600ms)
@@ -87,7 +90,7 @@
       try { const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' }); const ok = navigator.sendBeacon(CHECKIN_SILENT_URL, blob); if(ok) { onSuccess(); return; } } catch(e) {}
     }
     // final fallback hidden form
-    try { const f=document.createElement('form'); f.style.display='none'; f.method='POST'; f.action=CHECKIN_URL; ['uid','EMail','Customer','Event','workshopID','workshopTitle'].forEach(k=>{ const i=document.createElement('input'); i.name=k; i.value=payload[k]||''; f.appendChild(i); }); document.body.appendChild(f); f.submit(); onSuccess(); } catch(e){ console.warn('[silent-checkin] form fallback failed', e); }
+    try { const f=document.createElement('form'); f.style.display='none'; f.method='POST'; f.action=CHECKIN_URL; ['uid','EMail','Customer','Event','workshopID','workshopTitle','quizUrl'].forEach(k=>{ const i=document.createElement('input'); i.name=k; i.value=payload[k]||''; f.appendChild(i); }); document.body.appendChild(f); f.submit(); onSuccess(); } catch(e){ console.warn('[silent-checkin] form fallback failed', e); }
   }
 
   tryFetch();
