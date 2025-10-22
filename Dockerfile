@@ -8,6 +8,9 @@ FROM hugomods/hugo:std as base
 ############################
 FROM base as dev
 
+# Build argument for version (optional for dev, defaults to "dev")
+ARG CENTRALREPO_VERSION=dev
+
 # Add repo
 ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/CentralRepo
 WORKDIR /home/CentralRepo
@@ -22,12 +25,19 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     ln -sf python3 /usr/bin/python && \
     ln -sf /sbin/tini-static /sbin/tini
 
+# Inject version into copyright.html partial
+RUN sed -i "s|{{- \\\$version := getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
+    /home/CentralRepo/layouts/partials/copyright.html
+
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]
 
 ############################
 # PROD STAGE
 ############################
 FROM base as prod
+
+# Build argument for version (passed from GitHub workflow)
+ARG CENTRALREPO_VERSION=unknown
 
 # Add repo
 ADD https://github.com/FortinetCloudCSE/CentralRepo.git#main /home/CentralRepo
@@ -42,5 +52,9 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     apk add --no-cache python3 py3-pip tini-static && \
     ln -sf python3 /usr/bin/python && \
     ln -sf /sbin/tini-static /sbin/tini
+
+# Inject version into copyright.html partial
+RUN sed -i "s|{{- \\\$version := getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
+    /home/CentralRepo/layouts/partials/copyright.html
 
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]

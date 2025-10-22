@@ -1,8 +1,14 @@
 <div style="font-size: small; color: gray; margin-top: 5rem; padding-top: 1rem; border-top: 1px solid gray;">
-{{ if (fileExists "VERSION") }}
-    {{ $version := (readFile "VERSION" | strings.TrimSpace) }}
-    <div>CloudCSE Version: {{ $version }}</div>
-  {{ end }}
+{{- /* Version is baked into this file during Docker image build by replacing the getenv line */ -}}
+{{- $version := getenv "HUGO_VERSION_TAG" -}}
+{{- if not $version -}}
+  {{- if (fileExists "VERSION") -}}
+    {{- $version = (readFile "VERSION" | strings.TrimSpace) -}}
+  {{- end -}}
+{{- end -}}
+{{- if $version }}
+  <div>CloudCSE Version: {{ $version }}</div>
+{{- end }}
   <div>Revision: {{.Site.Params.version}}</div>
     <div>Last updated: <span id="last-updated-time-utc">{{ dateFormat "Mon, Jan 2, 2006 15:04:05 MST" now }}</span>
     </div>

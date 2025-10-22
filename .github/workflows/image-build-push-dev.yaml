@@ -37,6 +37,14 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for git tags
+      - name: Compute version from git tags
+        id: version
+        run: |
+          VERSION=$(python3 scripts/next_version.py)
+          echo "version=${VERSION}-dev" >> $GITHUB_OUTPUT
+          echo "Computed CentralRepo version: ${VERSION}-dev"
       - name: Download fortihugorunner binary for testing
         run: |
           gh release download --repo FortinetCloudCSE/fortihugorunner --pattern 'fortihugorunner-linux-amd64' --output ./fortihugorunner
@@ -62,6 +70,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             -f Dockerfile \
             -t public.ecr.aws/k4n6m5h8/hugotester:test-${{ github.sha }} \
+            --build-arg CENTRALREPO_VERSION=${{ steps.version.outputs.version }} \
             . \
             --target=dev \
             --push
@@ -88,6 +97,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             -f Dockerfile \
             -t public.ecr.aws/k4n6m5h8/hugotester:latest \
+            --build-arg CENTRALREPO_VERSION=${{ steps.version.outputs.version }} \
             . \
             --target=dev \
             --push

@@ -79,11 +79,9 @@ def compute_next_version(now: datetime.datetime | None = None) -> str:
 
 def main() -> int:
     version = compute_next_version()
-    # Write VERSION file
-    with open("VERSION", "w", encoding="utf-8") as f:
-        f.write(version + "\n")
-
-    # Print only the version for easy capture in workflows
+    
+    # Print version for capture in workflows and build scripts
+    # No longer writes VERSION file - version passed via HUGO_VERSION_TAG env var
     print(version)
     return 0
 

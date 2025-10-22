@@ -5,3 +5,4 @@ venv/
 fortihugorunner*
 .vscode/
 __pycache__/
+VERSION
