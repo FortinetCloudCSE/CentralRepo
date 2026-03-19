@@ -29,6 +29,7 @@ const COOKIE_DOMAIN = "{{ with .Site.Params.cookieDomain }}{{ . }}{{ end }}" || 
 
 // todo:  handle refreshing page, bypasses checkin
 
+const COOKIE_DAYS = 90;   // TTL for all forti* cookies (was 5; extended for better GA4 coverage)
 const container = document.getElementById('display-form');
 
 function setCookie(name, value, days, domainOverride) {
@@ -103,7 +104,7 @@ function prefillAnyMatchingInputs(profile) {
 
 // If a host-only cookie exists but a domain cookie is desired, rewrite cookie with domain
 const existingUser = getCookie('fortiuser');
-if (existingUser && COOKIE_DOMAIN) { try { setCookie('fortiuser', existingUser, 5, COOKIE_DOMAIN); } catch(e) {} }
+if (existingUser && COOKIE_DOMAIN) { try { setCookie('fortiuser', existingUser, COOKIE_DAYS, COOKIE_DOMAIN); } catch(e) {} }
 
 let user = getCookie("fortiuser");
 if (user == "") {
@@ -163,15 +164,15 @@ form.addEventListener('submit', function(e) {
   saveProfileToStorage(profile);
 
   // Always (re)set fortiemail cookie to refresh 5-day TTL on explicit check-in
-  setCookie('fortiemail', email, 5, COOKIE_DOMAIN);
+  setCookie('fortiemail', email, COOKIE_DAYS, COOKIE_DOMAIN);
   // Set / refresh auxiliary cookies so silent check-in can reuse them if needed
-  if (customer) setCookie('forticustomer', customer, 5, COOKIE_DOMAIN);
-  if (eventName) setCookie('fortievent', eventName, 5, COOKIE_DOMAIN);
+  if (customer) setCookie('forticustomer', customer, COOKIE_DAYS, COOKIE_DOMAIN);
+  if (eventName) setCookie('fortievent', eventName, COOKIE_DAYS, COOKIE_DOMAIN);
   // ensure uuid cookie exists for correlation
   let uuidCookie = getCookie('fortiuser');
   if (!uuidCookie) {
     const uuid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
-    setCookie('fortiuser', uuid, 5, COOKIE_DOMAIN);
+    setCookie('fortiuser', uuid, COOKIE_DAYS, COOKIE_DOMAIN);
     const uidEl = document.getElementById('uid');
     if (uidEl) uidEl.value = uuid;
     try { window.dispatchEvent(new CustomEvent('forti:checkin', { detail: { uuid } })); } catch(e) {}
@@ -185,7 +186,7 @@ form.addEventListener('submit', function(e) {
     // normalize and dedupe
     let lower = Array.from(new Set(parts.map(p => (p+"").toLowerCase())));
     if (siteKey && lower.indexOf(siteKey) === -1) lower.push(siteKey);
-    setCookie('fortisites', lower.join('|'), 5, COOKIE_DOMAIN);
+    setCookie('fortisites', lower.join('|'), COOKIE_DAYS, COOKIE_DOMAIN);
   } catch(err) { console.warn('fortisites cookie update failed', err); }
 
   // Let the browser submit the form to /checkin (action attribute),
@@ -196,16 +197,16 @@ form.addEventListener('submit', function(e) {
   const profile = loadProfileFromStorage();
   const knownEmail = getCookie('fortiemail') || (profile && profile.email) || '';
   // Refresh fortiemail TTL quietly for returning user to extend multi-site window
-  if (knownEmail) { try { setCookie('fortiemail', knownEmail, 5, COOKIE_DOMAIN); } catch(e) {} }
+  if (knownEmail) { try { setCookie('fortiemail', knownEmail, COOKIE_DAYS, COOKIE_DOMAIN); } catch(e) {} }
   // Also refresh auxiliary cookies if present (customer/event)
   const existingCustomer = getCookie('forticustomer') || (profile && profile.customer) || '';
   const existingEvent = getCookie('fortievent') || (profile && profile.event) || '';
-  if (existingCustomer) { try { setCookie('forticustomer', existingCustomer, 5, COOKIE_DOMAIN); } catch(e) {} }
-  if (existingEvent) { try { setCookie('fortievent', existingEvent, 5, COOKIE_DOMAIN); } catch(e) {} }
+  if (existingCustomer) { try { setCookie('forticustomer', existingCustomer, COOKIE_DAYS, COOKIE_DOMAIN); } catch(e) {} }
+  if (existingEvent) { try { setCookie('fortievent', existingEvent, COOKIE_DAYS, COOKIE_DOMAIN); } catch(e) {} }
   container.innerHTML = `
     <div class="checkin-card">
       <div class="checkin-title">Welcome!</div>
-      <div class="checkin-sub">Thank you for checking in! Your session will persist for 5 days across the Fortinet CSE Workshop estate. You may now proceed with the workshop.</div>
+      <div class="checkin-sub">Thank you for checking in! Your session will persist for 90 days across the Fortinet CSE Workshop estate. You may now proceed with the workshop.</div>
       ${knownEmail ? (`<div><i>Signed in as: ${knownEmail}</i></div>`) : ''}
       <div class="checkin-actions">
         <button class="btn-secondary" type="button" onclick="reProvision()">Revoke Check-in</button>
