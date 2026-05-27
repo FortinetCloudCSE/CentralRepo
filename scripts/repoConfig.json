@@ -2,7 +2,7 @@
   "repoName":"CentralRepo",
   "author":"Jeff Kopko",
   "workshopTitle":"Hugo for Fortinet TECWorkshops",
-  "themeVariant":"Xperts2025",
+  "themeVariant":"CloudCSEMovie",
   "logoBannerText":"Public Cloud 10x",
   "logoBannerSubText":"Workshop Title Here",
   "errorLevel":"warning",
@@ -13,6 +13,8 @@
   "bannerLine3":"Subtitle,Description, or 3rd line Here",
   "quizUrl":"https://publiccloud105-fortiflex-o32xpkqaca-uc.a.run.app",
   "analyticsBaseUrl":"https://tecanalytics.forticloudcse.com",
+  "videoHeaderSrc": "/videos/header-bg.mp4",
+  "videoHeaderInterval": "60",
   "shortcuts": [
   {
     "text": "Fortinet Cloud CSE GitHub Org",

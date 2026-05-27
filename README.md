@@ -139,12 +139,54 @@ Usage:
 {{< Xperts25Banner line1="Line A" line2="Line B" line3="Line C" >}}
 ```
 
+## Theme variants
+
+Set `themeVariant` in `scripts/repoConfig.json` to control the sidebar header appearance. Available values:
+
+| Variant | Header style |
+|---------|-------------|
+| `Workshop` | Standard Fortinet red |
+| `Demo` | Demo-branded |
+| `UseCase` | Use-case-branded |
+| `Spotlight` | Spotlight-branded |
+| `FortinetSilver` | Silver color scheme |
+| `FortinetTeal` | Teal color scheme |
+| `Xperts2024` | Xperts 2024 static background image |
+| `Xperts2025` | Xperts 2025 static background image |
+| `CloudCSEMovie` | MP4 video background in the sidebar header area |
+
+### CloudCSEMovie — video header background
+
+The `CloudCSEMovie` variant replaces the static header image with a looping MP4 video. The video plays automatically (muted) on page load. When it ends, it pauses and replays on a configurable interval — for example, a 6-second clip with a 60-second interval plays once, waits 54 seconds, then plays again. All other header content (logo, banner text, search bar) renders on top of the video.
+
+**Setup:**
+
+1. Place the MP4 in `static/videos/` inside CentralRepo (this is the Hugo root for all repo builds, so one file is available to every repo):
+   ```
+   static/videos/your-video.mp4
+   ```
+
+2. Configure `scripts/repoConfig.json`:
+   ```json
+   {
+     "themeVariant": "CloudCSEMovie",
+     "videoHeaderSrc": "/videos/your-video.mp4",
+     "videoHeaderInterval": 60
+   }
+   ```
+   - `videoHeaderSrc` — URL path relative to site root. Hugo strips the `static/` prefix — do **not** include it in the path.
+   - `videoHeaderInterval` — total seconds between the start of each play cycle. Optional; defaults to `60`. Must be greater than the video's duration.
+
+3. Leave `videoHeaderSrc` as `""` to use the `CloudCSEMovie` CSS without a video (renders a solid color header like other themes).
+
 ## Site params referenced
 - `repoName`: Used to derive the normalized site id (lowercase) for `fortisites` and payload.
 - `workshopTitle`: Human-readable title sent with check-ins.
 - `marketingCode`: Optional event code sent with check-ins.
 - `cookieDomain`: Optional cookie domain override for broader cookie scope.
 - `quizUrl`: Base URL for `quizframe`.
+- `videoHeaderSrc`: Path to the sidebar header background MP4 (`CloudCSEMovie` theme only).
+- `videoHeaderInterval`: Seconds between video play cycles (`CloudCSEMovie` theme only, default `60`).
 
 ## Cookie overview
 - `fortiuser`: UUID session (5-day rolling TTL).

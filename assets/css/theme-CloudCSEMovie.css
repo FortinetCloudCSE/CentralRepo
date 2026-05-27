@@ -1,0 +1,23 @@
+:root {
+  --theme-color: var(--fortinet-red);
+}
+
+#R-header-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+#R-header-wrapper .header-video-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#R-header-wrapper > *:not(.header-video-bg) {
+  position: relative;
+  z-index: 1;
+}

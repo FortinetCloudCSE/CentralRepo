@@ -674,3 +674,37 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
   window.addEventListener('focus', syncEmailFromProfile);
 })();
 </script>
+
+{{ with .Site.Params.videoHeaderSrc }}
+<script>
+(function() {
+  var src = {{ . | jsonify }};
+  var intervalSeconds = {{ $.Site.Params.videoHeaderInterval | default 60 }};
+
+  function initVideoHeader() {
+    var wrapper = document.getElementById('R-header-wrapper');
+    if (!wrapper) return;
+
+    var video = document.createElement('video');
+    video.className = 'header-video-bg';
+    video.setAttribute('src', src);
+    video.autoplay = true;
+    video.muted = true;
+    video.setAttribute('playsinline', '');
+
+    video.addEventListener('ended', function() {
+      var pause = Math.max(0, (intervalSeconds - (video.duration || 0)) * 1000);
+      setTimeout(function() { video.play(); }, pause);
+    });
+
+    wrapper.insertBefore(video, wrapper.firstChild);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoHeader, { once: true });
+  } else {
+    initVideoHeader();
+  }
+})();
+</script>
+{{ end }}
