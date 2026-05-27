@@ -110,6 +110,12 @@ enableEmoji = true
   {% if analyticsBaseUrl != "" %}
   analyticsBaseUrl = "{{analyticsBaseUrl}}"
   {% endif %}
+  {% if videoHeaderSrc != "" %}
+  videoHeaderSrc = "{{videoHeaderSrc}}"
+  {% if videoHeaderInterval != "" %}
+  videoHeaderInterval = {{videoHeaderInterval}}
+  {% endif %}
+  {% endif %}
 
   # Shows a checkmark for visited pages on the menu
   showVisitedLinks = true
