@@ -676,10 +676,12 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
 </script>
 
 {{ with .Site.Params.videoHeaderSrc }}
+<div id="video-header-config" data-src="{{ . }}" data-interval="{{ $.Site.Params.videoHeaderInterval | default 60 }}" hidden></div>
 <script>
 (function() {
-  var src = {{ . | jsonify }};
-  var intervalSeconds = {{ $.Site.Params.videoHeaderInterval | default 60 }};
+  var cfg = document.getElementById('video-header-config');
+  var src = cfg.getAttribute('data-src');
+  var intervalSeconds = parseFloat(cfg.getAttribute('data-interval')) || 60;
 
   function initVideoHeader() {
     var wrapper = document.getElementById('R-header-wrapper');
