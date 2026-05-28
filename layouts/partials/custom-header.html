@@ -687,6 +687,13 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
     var wrapper = document.getElementById('R-header-wrapper');
     if (!wrapper) return;
 
+    // Measure natural height before inserting the video, then add 3rem so the
+    // wrapper has an explicit pixel height. This is required because <video> is
+    // a replaced element — height:100% only resolves when the containing block
+    // has an explicit height; otherwise the browser falls back to intrinsic sizing.
+    var rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    wrapper.style.height = (wrapper.getBoundingClientRect().height + 3 * rem) + 'px';
+
     var video = document.createElement('video');
     video.className = 'header-video-bg';
     video.setAttribute('src', src);
