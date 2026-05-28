@@ -1,6 +1,8 @@
 config.toml
 hugo.toml
 CLAUDE.md
+layouts/shortcodes/ContainerFlow.html
+layouts/shortcodes/FTNThugoFlow.html
 content
 *.DS_Store
 venv/
