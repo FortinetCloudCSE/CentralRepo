@@ -2,12 +2,18 @@
   --theme-color: var(--fortinet-red);
 }
 
+/* Remove wrapper padding so #R-header fills edge-to-edge with no red gaps */
 #R-header-wrapper {
-  position: relative;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Video lives inside #R-header (already position:relative in relearn theme) */
+#R-header {
   overflow: hidden;
 }
 
-#R-header-wrapper .header-video-bg {
+#R-header .header-video-bg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -17,7 +23,8 @@
   pointer-events: none;
 }
 
-#R-header-wrapper > *:not(.header-video-bg) {
+/* Keep logo/banner text above the video */
+#R-header > *:not(.header-video-bg) {
   position: relative;
   z-index: 1;
 }

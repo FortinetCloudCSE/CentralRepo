@@ -95,39 +95,12 @@ Direct src override:
 {{< quizframe src="https://quiz.example.com/take-quiz" >}}
 ```
 
-### quizdown
-Wraps content for a quizdown block.
-
-Usage:
-```
-{{< quizdown >}}
-... quiz content ...
-{{< /quizdown >}}
-```
-
 ### colortext
 Inline colored text.
 
 Usage:
 ```
 {{< colortext "#f00" >}}Important{{< /colortext >}}
-```
-
-### carousel
-Renders a simple image carousel from a page parameter array.
-
-Usage:
-1. In your page front matter, define an array:
-```
-carousel:
-  - image: "/images/step1.png"
-    caption: "Step 1"
-  - image: "/images/step2.png"
-    caption: "Step 2"
-```
-2. In content:
-```
-{{< carousel name="carousel" >}}
 ```
 
 ### Xperts banners

@@ -2,7 +2,7 @@
 {{- $workshopID := .Site.Params.repoName | default "" }}
 {{- $workshopTitle := .Site.Params.workshopTitle | default "" }}
 {{- $quizUrl := .Site.Params.quizUrl | default "" }}
-{{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
+{{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "" -}}
 
 <div id="display-form"></div>
 
@@ -114,7 +114,7 @@ container.innerHTML = `
   <form id="provision-lab" class="checkin-card" action="{{ $analyticsBase }}/checkin" method="POST">
     <div class="checkin-title">Welcome!</div>
     <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
-    <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
+    <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9\._\%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
     <div class="checkin-row"><label for="customer">Customer</label><input class="checkin-input" type="text" id="customer" name="Customer" /></div>
     <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
     <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
