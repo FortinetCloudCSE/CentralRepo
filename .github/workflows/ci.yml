@@ -35,6 +35,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Python and Jinja2
+        run: apk add --no-cache python3 py3-jinja2
+
       - name: Generate hugo.toml
         env:
           REPO_CONFIG_PATH: scripts/repoConfig.json
@@ -63,6 +66,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Install Python and Jinja2
+        run: apk add --no-cache python3 py3-jinja2
 
       - name: Generate hugo.toml (no analyticsBaseUrl)
         env:
