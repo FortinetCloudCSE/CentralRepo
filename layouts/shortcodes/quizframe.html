@@ -17,7 +17,7 @@
 {{ end }}
 
 <div id="ctf-iframe-container">
-  <iframe id="ctf-iframe" src="" width="{{ .Get "width" | default "100%" }}" height="{{ .Get "height" | default "800" }}" allow="same-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups" frameborder="0" allowfullscreen></iframe>
+  <iframe id="ctf-iframe" src="" width="{{ .Get "width" | default "100%" }}" height="{{ .Get "height" | default "800" }}" frameborder="0" allowfullscreen></iframe>
 </div>
 
 <script>
@@ -50,10 +50,7 @@
     const iframe = document.getElementById('ctf-iframe');
     let baseSrc = buildBaseSrc();
     const workshopID = "{{ $workshopID }}"; // from site param repoName
-    console.log('[quizframe] baseSrc (pre-upgrade):', baseSrc);
-
     if (!baseSrc) {
-      console.warn('[quizframe] No baseSrc could be computed; iframe will remain blank');
       return;
     }
 
