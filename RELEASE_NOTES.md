@@ -39,10 +39,16 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 | `static/videos/CloudsAnimated.mp4` | Shared video asset |
 | `README.md` | Theme variants table + CloudCSEMovie setup documentation |
 
+**Final layout**
+- Video is injected into `#R-header` (the logo div), not `#R-header-wrapper`. This keeps the search bar completely out of our code — it sits below `#R-header` in normal DOM flow, unaffected by the video injection.
+- `#R-header-wrapper` padding is zeroed so `#R-header` fills edge-to-edge with no red background gaps on the borders.
+- JS sets an explicit pixel height on `#R-header` (`naturalHeight + 3rem`) before inserting the video. This is required because `<video>` is a replaced element — `height: 100%` only resolves against an explicit height on the containing block; without it the browser falls back to intrinsic aspect-ratio sizing.
+
 **Technical notes**
 - Hugo's `html/template` JS-context escaping causes double-encoding of string params inside `<script>` blocks. Fixed by passing the video path via an HTML `data-` attribute and reading it with `getAttribute()` in JS.
 - Hugo's `relURL` only prepends the site base path for paths without a leading slash. Fixed with `strings.TrimPrefix "/" . | relURL` to produce the correct `/UserRepo/videos/...` path.
 - Theme CSS must exist in `static/css/` to be served at `css/theme-*.css` as the relearn theme stylesheet partial expects.
+- The relearn v8 theme compiles all variant CSS into `css/format-html.css` using CSS nesting and `data-r-theme-variant` attribute selectors — there is no separate per-variant CSS link element. Our `static/css/theme-CloudCSEMovie.css` is served statically as a fallback reference but the active styles come from the compiled bundle.
 
 ### Repository hygiene
 

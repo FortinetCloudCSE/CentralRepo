@@ -687,12 +687,19 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
     var wrapper = document.getElementById('R-header-wrapper');
     if (!wrapper) return;
 
-    // Measure natural height before inserting the video, then add 3rem so the
-    // wrapper has an explicit pixel height. This is required because <video> is
-    // a replaced element — height:100% only resolves when the containing block
-    // has an explicit height; otherwise the browser falls back to intrinsic sizing.
+    // Target #R-header (logo section) not #R-header-wrapper.
+    // The search bar is a sibling of #R-header so it naturally sits below
+    // the logo section in normal flow — no positioning tricks needed and
+    // the relearn theme's search JS is left completely undisturbed.
+    var header = wrapper.querySelector('#R-header');
+    if (!header) return;
+
     var rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    wrapper.style.height = (wrapper.getBoundingClientRect().height + 3 * rem) + 'px';
+
+    // Set explicit height on #R-header so height:100% on the <video>
+    // replaced element resolves against the container height rather than
+    // the video's intrinsic aspect ratio.
+    header.style.height = (header.getBoundingClientRect().height + 3 * rem) + 'px';
 
     var video = document.createElement('video');
     video.className = 'header-video-bg';
@@ -706,7 +713,7 @@ src="https://cdn.jsdelivr.net/npm/quizdown@latest/public/build/extensions/quizdo
       setTimeout(function() { video.play(); }, pause);
     });
 
-    wrapper.insertBefore(video, wrapper.firstChild);
+    header.insertBefore(video, header.firstChild);
   }
 
   if (document.readyState === 'loading') {
