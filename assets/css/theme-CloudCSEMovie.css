@@ -4,7 +4,7 @@
 
 #R-header-wrapper {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #R-header-wrapper .header-video-bg {
@@ -15,9 +15,28 @@
   object-fit: cover;
   z-index: 0;
   pointer-events: none;
+  clip-path: inset(0); /* clips video to wrapper bounds without overflow:hidden */
 }
 
-#R-header-wrapper > *:not(.header-video-bg) {
+#R-header-wrapper > *:not(.header-video-bg):not(.searchbox) {
   position: relative;
   z-index: 1;
+}
+
+/* Pull search out of the video area and pin it just below the wrapper */
+#R-header-wrapper .searchbox {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 0.5rem;
+  background: var(--MENU-SECTIONS-BG-color, #312525);
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* Push nav content down to make room for the repositioned search bar */
+#R-homelinks {
+  margin-top: 3rem;
 }
