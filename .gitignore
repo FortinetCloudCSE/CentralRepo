@@ -1,4 +1,6 @@
 config.toml
+hugo.toml
+CLAUDE.md
 content
 *.DS_Store
 venv/
