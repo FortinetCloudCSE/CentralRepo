@@ -4,7 +4,7 @@
 {{ $quizPage := .Get "page" | default "" }}
 {{ $explicitSrc := .Get "src" }}
 {{/* Normalize quizUrl (strip trailing /) and quizPage (ensure leading /) */}}
-{{ if and (ne $quizUrl "") (hasSuffix $quizUrl "/") }}{{ $quizUrl = (substr $quizUrl 0 (sub (len $quizUrl) 1)) }}{{ end }}
+{{ if and (ne $quizUrl "") (hasSuffix $quizUrl "/") }}{{ $quizUrl = (strings.SliceString $quizUrl 0 (sub (len $quizUrl) 1)) }}{{ end }}
 {{ if and (ne $quizPage "") (not (hasPrefix $quizPage "/")) }}{{ $quizPage = printf "/%s" $quizPage }}{{ end }}
 {{ $computedSrc := "" }}
 {{ if $explicitSrc }}

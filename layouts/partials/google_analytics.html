@@ -22,6 +22,7 @@
       let uuid = getCookie("fortiuser");
       if (uuid == "") {
         window.location.href = "{{ site.BaseURL }}";
+        return;
       }
       </script>
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>

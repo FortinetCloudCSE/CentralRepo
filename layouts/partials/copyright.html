@@ -1,6 +1,6 @@
 <div style="font-size: small; color: gray; margin-top: 5rem; padding-top: 1rem; border-top: 1px solid gray;">
 {{- /* Version is baked into this file during Docker image build by replacing the getenv line */ -}}
-{{- $version := getenv "HUGO_VERSION_TAG" -}}
+{{- $version := os.Getenv "HUGO_VERSION_TAG" -}}
 {{- if not $version -}}
   {{- if (fileExists "VERSION") -}}
     {{- $version = (readFile "VERSION" | strings.TrimSpace) -}}

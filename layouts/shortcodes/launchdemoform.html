@@ -10,6 +10,9 @@
 
 {{ $lab := .Get "lab" | default (.Get "labdefinition") }}
 {{ $debug := .Get "debug" | default "false" }}
+{{ $customer := .Get "customer" | default "" }}
+{{ $smartticket := .Get "smartticket" | default "" }}
+{{ $webhookUrl := .Site.Params.webhookUrl | default "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d" }}
 
 <div class="launchdemoform" data-labdefinition="{{ $lab }}" data-debug="{{ $debug }}">
   <div class="launchdemoform__desc">
@@ -56,8 +59,7 @@
       return;
     }
 
-    // Hardcoded automation webhook URL
-    const POST_URL = "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d";
+    const POST_URL = "{{ $webhookUrl }}";
     const labdefinition = root.getAttribute('data-labdefinition') || '';
     const DEBUG = (root.getAttribute('data-debug') || '').toString().toLowerCase() === 'true';
 
@@ -132,8 +134,8 @@
       btn.disabled = true; btn.setAttribute('aria-busy', 'true');
 
       const body = new URLSearchParams({
-        customer: '1234',
-        smartticket: '5678',
+        customer: '{{ $customer }}',
+        smartticket: '{{ $smartticket }}',
         useremail: email,
         userop: 'Create',
         odlconfigname: labdefinition
@@ -159,13 +161,11 @@
         if (accepted) {
           setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
         } else {
-          setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
-          //setStatus('Provisioning failed: ' + (text || ('HTTP ' + res.status)), 'err');
+          setStatus('Provisioning failed: ' + (text || ('HTTP ' + res.status)), 'err');
         }
       } catch (err) {
         if (DEBUG) console.error('launchdemoform: network error', err);
-        setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
-        //setStatus('Network error while provisioning: ' + (err && err.message ? err.message : err), 'err');
+        setStatus('Network error while provisioning: ' + (err && err.message ? err.message : err), 'err');
       } finally {
         btn.disabled = false; btn.removeAttribute('aria-busy');
       }

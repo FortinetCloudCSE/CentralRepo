@@ -4,15 +4,28 @@
 FROM hugomods/hugo:std as base
 
 ############################
-# DEV STAGE
+# DEV STAGE — source variants
+# Use LOCAL=true to build from the local checkout instead of GitHub:
+#   docker build --build-arg LOCAL=true --target dev -t centralrepo:local .
 ############################
-FROM base as dev
+
+# Local source: populated from build context when LOCAL=true
+FROM base as dev-src-local-true
+COPY . /home/CentralRepo
+
+# Remote source: fetched from GitHub for CI (default)
+FROM base as dev-src-local-false
+ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/CentralRepo
+
+############################
+# DEV STAGE — unified entry point
+############################
+ARG LOCAL=false
+FROM dev-src-local-${LOCAL} as dev
 
 # Build argument for version (optional for dev, defaults to "dev")
 ARG CENTRALREPO_VERSION=dev
 
-# Add repo
-ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/CentralRepo
 WORKDIR /home/CentralRepo
 
 # Force install CA certs from HTTP and configure apk to use HTTP; due to sudden issues with HTTPS; temporary fix until it's working again
@@ -26,7 +39,7 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     ln -sf /sbin/tini-static /sbin/tini
 
 # Inject version into copyright.html partial
-RUN sed -i "s|{{- \\\$version := getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
+RUN sed -i "s|{{- \\\$version := os.Getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
     /home/CentralRepo/layouts/partials/copyright.html
 
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]
@@ -54,7 +67,7 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     ln -sf /sbin/tini-static /sbin/tini
 
 # Inject version into copyright.html partial
-RUN sed -i "s|{{- \\\$version := getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
+RUN sed -i "s|{{- \\\$version := os.Getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
     /home/CentralRepo/layouts/partials/copyright.html
 
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]

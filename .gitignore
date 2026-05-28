@@ -5,6 +5,7 @@ layouts/shortcodes/ContainerFlow.html
 layouts/shortcodes/FTNThugoFlow.html
 content
 *.DS_Store
+**/.DS_Store
 venv/
 fortihugorunner*
 .vscode/

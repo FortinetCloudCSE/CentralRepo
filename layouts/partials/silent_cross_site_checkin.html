@@ -3,7 +3,6 @@
 <script>
 (function(){
   if (window.__forti_silent_checkin_loaded) return; window.__forti_silent_checkin_loaded = true;
-  const ORIGIN_OK = location.origin === 'https://fortinetcloudcse.github.io';
   const DAYS = 90;
   const MS = DAYS*24*60*60*1000;
   const now = Date.now();
@@ -33,8 +32,8 @@
   if(!siteID){ var parts = location.pathname.split('/').filter(Boolean); siteID = parts.length?parts[0]:''; }
   if(!siteID) return;
   var siteKey = (siteID+'').toLowerCase();
-  var siteTitle = '{{ with .Site.Params.workshopTitle }}{{ . | htmlEscape }}{{ end }}' || siteID;
-  var marketingCode = '{{ with .Site.Params.marketingCode }}{{ . | htmlEscape }}{{ end }}';
+  var siteTitle = {{ .Site.Params.workshopTitle | default "" | jsonify }} || siteID;
+  var marketingCode = {{ .Site.Params.marketingCode | default "" | jsonify }};
 
   const sitesCookieRaw = getCookie('fortisites');
   let sites = sitesCookieRaw ? sitesCookieRaw.split('|').filter(Boolean) : [];
