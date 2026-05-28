@@ -6,7 +6,7 @@
   position: relative;
   overflow: visible;
   background: transparent !important; /* prevent red bg peeking through video gaps */
-  padding-bottom: 0 !important;
+  padding-bottom: 3rem !important; /* extends video area down by ~one search-bar height */
 }
 
 #R-header-wrapper .header-video-bg {
@@ -25,10 +25,10 @@
   z-index: 1;
 }
 
-/* Pin search below the wrapper, underneath the red divider line */
+/* Search sits just below the extended video wrapper, on the dark nav background */
 #R-header-wrapper .searchbox {
   position: absolute;
-  top: calc(100% + 4px); /* 4px clears the border/divider line */
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   z-index: 10;
@@ -38,7 +38,7 @@
   margin: 0;
 }
 
-/* Push nav content down to make room for the repositioned search bar */
+/* Push nav content down to clear the floating search bar */
 #R-homelinks {
   margin-top: 3.5rem;
 }
