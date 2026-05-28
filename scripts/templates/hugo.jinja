@@ -3,7 +3,7 @@
 # set it like "https://example.com/mysite/"
 baseURL = "https://fortinetcloudcse.github.io/{{repoName}}"
 
-languageCode = "en-US"
+locale = "en-US"
 defaultContentLanguage = "en"
 # canonicalization will only be used for the sitemap.xml and index.xml files;
 # if set to false, a site served from a subdirectory will generate wrong links
@@ -120,7 +120,7 @@ enableEmoji = true
   # Shows a checkmark for visited pages on the menu
   showVisitedLinks = true
   # Disable search function. It will hide search bar
-  disableSearch = false
+  search.disable = false
   # Javascript and CSS cache are automatically busted when new version of site is generated. 
   # Set this to true to disable this behavior (some proxies don't handle well this optimization)
   disableAssetsBusting = false
@@ -142,7 +142,7 @@ enableEmoji = true
  # If set to true, hide table of contents menu in the header of all pages
   disableToc = false
   # If set to false, load the MathJax module on every page regardless if a MathJax shortcode is present
-  math = false
+  math.disable = true
   # Specifies the remote location of the MathJax js
 
   customMathJaxURL = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
