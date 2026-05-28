@@ -1,0 +1,16 @@
+{
+  "repoName": "TestWorkshop",
+  "author": "Test Author",
+  "workshopTitle": "Test Workshop",
+  "themeVariant": "Workshop",
+  "logoBannerText": "Test",
+  "logoBannerSubText": "Test Subtitle",
+  "errorLevel": "warning",
+  "googleServicesID": "G-TESTID00001",
+  "marketingCode": "",
+  "bannerLine1": "Test Line 1",
+  "bannerLine2": "Test Line 2",
+  "bannerLine3": "Test Line 3",
+  "quizUrl": "https://example.com/quiz",
+  "shortcuts": []
+}

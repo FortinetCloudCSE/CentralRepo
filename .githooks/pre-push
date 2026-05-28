@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+echo "[pre-push] Running CentralRepo tests..."
+bash scripts/test/run_tests.sh
+echo "[pre-push] All checks passed."

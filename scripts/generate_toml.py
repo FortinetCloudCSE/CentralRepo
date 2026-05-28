@@ -2,11 +2,13 @@
 
 from jinja2 import Environment, FileSystemLoader
 import json
+import os
 def main():
     environment = Environment(loader=FileSystemLoader("/home/CentralRepo/scripts/templates/"))
     template = environment.get_template("hugo.jinja")
 
-    jsonFile = open("/home/UserRepo/scripts/repoConfig.json")
+    config_path = os.environ.get("REPO_CONFIG_PATH", "/home/UserRepo/scripts/repoConfig.json")
+    jsonFile = open(config_path)
     data = json.load(jsonFile)
 
     content = template.render(data)

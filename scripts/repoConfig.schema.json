@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "repoConfig",
+  "type": "object",
+  "required": ["repoName", "workshopTitle", "themeVariant"],
+  "additionalProperties": false,
+  "properties": {
+    "repoName":         { "type": "string", "minLength": 1 },
+    "author":           { "type": "string" },
+    "workshopTitle":    { "type": "string", "minLength": 1 },
+    "themeVariant": {
+      "type": "string",
+      "enum": ["Workshop", "Demo", "UseCase", "Spotlight", "Xperts2024", "Xperts2025",
+               "CloudCSEMovie", "FortinetSilver", "FortinetTeal", "FortinetBlue"]
+    },
+    "logoBannerText":       { "type": "string" },
+    "logoBannerSubText":    { "type": "string" },
+    "errorLevel":           { "type": "string", "enum": ["warning", "error"] },
+    "googleServicesID":     { "type": "string" },
+    "marketingCode":        { "type": "string" },
+    "analyticsBaseUrl":     { "type": "string" },
+    "quizUrl":              { "type": "string" },
+    "videoHeaderSrc":       { "type": "string" },
+    "videoHeaderInterval":  { "type": ["string", "number"] },
+    "bannerLine1":          { "type": "string" },
+    "bannerLine2":          { "type": "string" },
+    "bannerLine3":          { "type": "string" },
+    "shortcuts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "URL"],
+        "properties": {
+          "text":   { "type": "string" },
+          "URL":    { "type": "string" },
+          "icon":   { "type": "string" },
+          "weight": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

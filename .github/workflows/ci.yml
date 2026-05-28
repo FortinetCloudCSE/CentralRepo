@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [prreviewJune23]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate regex patterns
+        run: node scripts/test/validate_regex.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Validate config schema
+        run: pip install jsonschema && python3 scripts/test/validate_config.py
+
+  hugo-build:
+    runs-on: ubuntu-latest
+    container:
+      image: hugomods/hugo:std
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate hugo.toml
+        env:
+          REPO_CONFIG_PATH: scripts/repoConfig.json
+        run: python3 scripts/generate_toml.py
+
+      - name: Hugo build
+        run: hugo 2>&1 | tee /tmp/hugo-build.txt
+
+      - name: Fail on ERROR
+        run: grep -q "^ERROR" /tmp/hugo-build.txt && exit 1 || true
+
+      - name: Emit WARNs to step summary
+        run: grep "^WARN" /tmp/hugo-build.txt >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Upload hugo output
+        uses: actions/upload-artifact@v4
+        with:
+          name: hugo-output
+          path: public/
+
+  hugo-build-no-analytics-url:
+    runs-on: ubuntu-latest
+    container:
+      image: hugomods/hugo:std
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate hugo.toml (no analyticsBaseUrl)
+        env:
+          REPO_CONFIG_PATH: scripts/test/fixtures/no_analytics_url.json
+        run: python3 scripts/generate_toml.py
+
+      - name: Hugo build
+        run: hugo 2>&1 | tee /tmp/hugo-build.txt
+
+      - name: Fail on ERROR
+        run: grep -q "^ERROR" /tmp/hugo-build.txt && exit 1 || true
+
+      - name: Emit WARNs to step summary
+        run: grep "^WARN" /tmp/hugo-build.txt >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Upload hugo output (no-url)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hugo-output-no-url
+          path: public/
+
+  assert-html:
+    runs-on: ubuntu-latest
+    needs: [hugo-build, hugo-build-no-analytics-url]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download hugo-output
+        uses: actions/download-artifact@v4
+        with:
+          name: hugo-output
+          path: public/
+
+      - name: Download hugo-output-no-url
+        uses: actions/download-artifact@v4
+        with:
+          name: hugo-output-no-url
+          path: public-no-url/
+
+      - name: Assert HTML (full config)
+        run: bash scripts/test/test_rendered_html.sh public/
+
+      - name: Assert HTML (no analyticsBaseUrl)
+        run: bash scripts/test/test_rendered_html.sh public-no-url/
+
+      - name: Done
+        run: echo "All HTML assertions passed"

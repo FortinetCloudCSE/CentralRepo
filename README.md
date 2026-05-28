@@ -174,6 +174,29 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 - Normalization: `fortisites` is always written in lowercase and deduplicated.
 - Fallbacks: silent check-in uses fetch → sendBeacon → hidden form to maximize delivery.
 
+## Testing
+
+Tests live in `scripts/test/`. CI runs automatically on push to `prreviewJune23` and on PRs to `main`.
+
+**Run locally:**
+```bash
+bash scripts/test/run_tests.sh
+```
+
+**Activate pre-push hook** (run once after cloning):
+```bash
+git config core.hooksPath .githooks
+```
+
+| Layer | Tool | What it catches |
+|-------|------|----------------|
+| Hugo build | `hugomods/hugo:std` in CI | Template errors, deprecations, broken partials |
+| HTML assertions | `test_rendered_html.sh` | Form action URLs, CSS paths, forbidden iframe attrs |
+| Regex validation | `validate_regex.js` | Chrome v-flag incompatible `pattern=""` values |
+| Config schema | `validate_config.py` | Missing required fields, invalid themeVariant |
+
+See `.github/workflows/ci.yml` for the full CI pipeline.
+
 ## Contributing
 - Update partials conservatively—they are shared by many sites.
 - Keep README examples accurate; include parameter defaults and any site param dependencies.

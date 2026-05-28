@@ -1,0 +1,11 @@
+{
+  "name": "centralrepo-test-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev tooling for CentralRepo testing — not a deployable package",
+  "scripts": {
+    "validate:regex": "node scripts/test/validate_regex.js",
+    "validate:config": "python3 scripts/test/validate_config.py",
+    "test": "npm run validate:regex && npm run validate:config"
+  }
+}
