@@ -53,3 +53,48 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 ### Repository hygiene
 
 - Added `hugo.toml`, `CLAUDE.md`, and local draw.io diagram exports to `.gitignore`. `hugo.toml` is auto-generated at container startup; these files should never be committed.
+
+---
+
+## Bug Fixes, Deprecation Fixes, and Cleanup — 2026-05-28
+
+Full multi-agent review of CentralRepo followed by targeted fixes. Plan and log: `docs/plans/2026-05-28_Jeff-Kopko_centralrepo-bugfix.md`
+
+### Build-Breaking Fixes
+- **`htmlEscape` removed in Hugo 0.121+** (`silent_cross_site_checkin.html`): replaced with `jsonify` pipe for JS-safe string output, which is also more correct for the JS context
+- **`[Langauges]` typo** in `hugo.toml`/`hugo.jinja`: corrected to `[Languages]`; also fixed `landingPageName` nesting to `[Languages.en]`
+- **`defaultContentLanguageInSubdir = "false"`**: fixed to unquoted TOML boolean `false`
+
+### Dead Code Removed
+- Deleted `layouts/partials/orig_analytics_checkin.html` and `layouts/partials/orig_google_analytics .html` (trailing space in filename) — both unreferenced
+- Deleted `layouts/shortcodes/quizdown.html` and quizdown CDN scripts from `custom-header.html` — replaced by CTF quiz app (`quizframe` shortcode)
+- Deleted `layouts/shortcodes/carousel.html` — unused; tiny-slider library was never loaded
+- Deleted `static/css/theme-CloudCSEMovie.css` — exact duplicate of `assets/css/` version
+- Removed dead `ORIGIN_OK` variable from `silent_cross_site_checkin.html`
+
+### Bug Fixes
+- **Xperts CSS background images** (`theme-Xperts2024.css`, `theme-Xperts2025.css`): fixed `url("../images/...")` → `url("/images/...")` — images were invisible due to broken relative path
+- **`launchdemoform.html` false success on error**: else branch and catch block now return real HTTP/network error messages instead of the false "Provisioning request accepted" message
+- **`launchdemoform.html` hardcoded stubs**: `customer` and `smartticket` promoted to shortcode params (`.Get "customer"`, `.Get "smartticket"`); webhook URL moved to `site.Params.webhookUrl` with backward-compatible fallback
+- **`videoHeaderSrc`** in `hugo.toml`/`hugo.jinja`: fixed nonexistent `Alkira cover dynamic.mp4` reference → `CloudsAnimated.mp4`
+- **Xperts banner shortcodes**: fixed `line2` and `line3` params both defaulting to `.Get 0`; now `.Get 1` and `.Get 2`
+- **Xperts2024 banner missing**: added `Xperts2024` case to `content-header.html` (was oversight — shortcode existed but was never rendered)
+- **`<img1>` invalid element** in `ContainerFlow.html`: replaced with `<div class="img1">`
+- **Nested HTML documents** in shortcodes: stripped `<!DOCTYPE html>`, `<head>`, and `<body>` wrappers from `ContainerFlow.html` and `FTNThugoFlow.html`
+- **`analytics_checkin.html` email regex**: escaped `%`, `+`, `.` inside character classes for Chrome v-flag (Unicode sets) compatibility — was throwing `SyntaxError: Invalid regular expression` in Chrome 119+
+- **`quizframe.html` iframe**: removed invalid `allow="same-origin"` (not a Permissions Policy feature) and `sandbox` attribute (`allow-scripts + allow-same-origin` combination defeats sandboxing and triggers browser security warning)
+- **GA in author mode**: `google_analytics_authorMode.html` was loading the full GTM script, causing GA fetch failures on every page in dev. Suppressed GA entirely in author mode.
+
+### Deprecation Fixes
+- `getenv` → `os.Getenv` in `copyright.html` (deprecated Hugo 0.91)
+- `substr` → `strings.SliceString` in `quizframe.html` (deprecated Hugo 0.100)
+- `languageCode` → `locale` in `hugo.jinja` template (deprecated Hugo 0.158)
+- `disableSearch = false` → `search.disable = false` in `hugo.jinja` (Relearn 8.0.0 migration)
+- `math = false` → `math.disable = true` in `hugo.jinja` (Relearn 8.0.0 migration)
+
+### Improvements
+- **`analyticsBaseUrl` fallback**: changed from hardcoded prod URL to `""` in both `analytics_checkin.html` and `silent_cross_site_checkin.html` — dev harness now only needs to update `repoConfig.json`, not patch template files
+- **Relearn submodule**: pinned to stable `8.0.0` tag (was on an untagged dev commit)
+- **Dockerfile `LOCAL` build arg**: added `ARG LOCAL=false` at global scope enabling `COPY . /home/CentralRepo` path for local builds vs `ADD https://github.com/...` for CI
+- **`.DS_Store`**: added to `.gitignore`; removed 5 committed `.DS_Store` files
+- **`docs/plans/`**: created plan and log files for this session (`2026-05-28_Jeff-Kopko_centralrepo-bugfix.md`)
