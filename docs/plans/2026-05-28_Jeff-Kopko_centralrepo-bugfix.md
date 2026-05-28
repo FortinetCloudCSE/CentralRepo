@@ -82,10 +82,10 @@ a full multi-agent review. All changes tested in dev (via fortihugorunner) befor
 ### Phase 7 — Verify
 
 - [x] Hugo build passes (`hugo --templateMetrics` — no ERRORs, completes in ~130ms)
-- [ ] Run `fortihugorunner launch-server` against UserRepo — confirm site builds and serves without errors
-- [ ] Check browser console: no JS errors on home page (analytics check-in), quiz page (quizframe), non-home page (GA redirect)
-- [ ] Confirm Xperts2025 background image renders on a page using that theme variant
-- [ ] Confirm quizdown scripts are gone from page source
+- [x] Run container (hugotester-local with LOCAL=true build) against UserRepo — confirmed clean build (372ms, no ERRORs)
+- [x] Verified via curl: quizdown CDN scripts absent, siteTitle/marketingCode correct, ANALYTICS_BASE empty, videoHeaderSrc CloudsAnimated, Xperts CSS paths use /images/
+- [ ] Browser console: no JS errors on home page (analytics check-in), quiz page (quizframe), non-home page (GA redirect) — deferred to manual browser test
+- [x] Xperts2025 background image path confirmed: url("/images/xperts-2025-background.png")
 
 ## Decisions & Commentary
 - `google_analytics_authorMode.html` — KEEP. `hugoServer_authorMode.sh` mv's it into place. If we delete it, dev server mode breaks.
@@ -97,6 +97,11 @@ a full multi-agent review. All changes tested in dev (via fortihugorunner) befor
 - **htmlEscape / html.EscapeString (B1):** `html.EscapeString` (the planned replacement) does not resolve correctly as a Hugo function in this version (0.162.0 snap/arm64) — the template engine evaluates `html` as a data identifier rather than a namespace, giving "can't evaluate field EscapeString in type string". Used `jsonify` instead: `{{ .Site.Params.workshopTitle | default "" | jsonify }}`. This is strictly better — it outputs a properly JSON-encoded JS string literal with correct quoting, so no separate HTML escaping is needed.
 - **[Languages] section (B10):** Fixing the `[Langauges]` typo exposed a malformed TOML structure — `landingPageName` was directly under `[Languages]` but needs `[Languages.en]` nesting. Fixed to `[Languages.en]`.
 - **fortihugorunner.html (B5):** File is gitignored (`fortihugorunner*` in .gitignore) and was system-generated (owned by root). During wrapper stripping, the mxgraph data line was lost due to an off-by-one in the Python script. File was left as a minimal stub (just the viewer script tag). Since it's gitignored, this does not affect the commit or CI builds.
+- **siteTitle / marketingCode (B1 follow-up):** `jsonify` produced double-encoded output (`"\"...\""`) because Hugo params are already strings — no encoding needed. Reverted to plain single-quoted JS string interpolation (`'{{ .Site.Params.workshopTitle | default "" }}'`), matching the pre-fix pattern without the removed `htmlEscape`.
+- **google_analytics.html return (T12):** Top-level `return;` in a `<script>` block is invalid JS — Hugo's transformer rejects it. Removed. The `window.location.href` redirect is synchronous; GTM script on the subsequent `<script>` tag fires but the page has already navigated away, so no tracking occurs on redirect.
+- **silent_cross_site_checkin.html analyticsBaseUrl (I1 follow-up):** I1 only changed `analytics_checkin.html`; `silent_cross_site_checkin.html` line 1 retained the prod URL fallback. Fixed to `""` to match.
+- **Dockerfile ARG placement:** `ARG LOCAL=false` must appear before the first `FROM` (global scope) to be usable in `FROM dev-src-local-${LOCAL}`. Fixed in post-verification commit.
+- **UserRepo quizdown stub:** Added `UserRepo/layouts/shortcodes/quizdown.html` as a no-op paired shortcode shim (`{{ .Inner }}` hidden) so UserRepo content using old `{{< quizdown >}}` calls builds without errors. This is a temporary shim — UserRepo content should be updated to remove quizdown calls.
 
 ## Files Changed
 - `.gitignore` — added `**/.DS_Store`; removed committed `.DS_Store` files via git rm --cached
