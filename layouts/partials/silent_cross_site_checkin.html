@@ -1,4 +1,4 @@
-{{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
+{{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "" -}}
 {{- $quizUrl := .Site.Params.quizUrl | default "" -}}
 <script>
 (function(){
@@ -32,8 +32,8 @@
   if(!siteID){ var parts = location.pathname.split('/').filter(Boolean); siteID = parts.length?parts[0]:''; }
   if(!siteID) return;
   var siteKey = (siteID+'').toLowerCase();
-  var siteTitle = {{ .Site.Params.workshopTitle | default "" | jsonify }} || siteID;
-  var marketingCode = {{ .Site.Params.marketingCode | default "" | jsonify }};
+  var siteTitle = '{{ .Site.Params.workshopTitle | default "" }}' || siteID;
+  var marketingCode = '{{ .Site.Params.marketingCode | default "" }}';
 
   const sitesCookieRaw = getCookie('fortisites');
   let sites = sitesCookieRaw ? sitesCookieRaw.split('|').filter(Boolean) : [];

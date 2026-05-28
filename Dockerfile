@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:1.5-labs
 
+# Global ARG must be declared before first FROM to be usable in FROM instructions
+ARG LOCAL=false
+
 # Base Hugo image (uses Alpine 3.21)
 FROM hugomods/hugo:std as base
 
 ############################
 # DEV STAGE — source variants
 # Use LOCAL=true to build from the local checkout instead of GitHub:
-#   docker build --build-arg LOCAL=true --target dev -t centralrepo:local .
+#   docker build --build-arg LOCAL=true --target dev -t hugotester-local .
 ############################
 
 # Local source: populated from build context when LOCAL=true
@@ -20,7 +23,6 @@ ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/Cen
 ############################
 # DEV STAGE — unified entry point
 ############################
-ARG LOCAL=false
 FROM dev-src-local-${LOCAL} as dev
 
 # Build argument for version (optional for dev, defaults to "dev")
