@@ -87,11 +87,11 @@ enableEmoji = true
 
   # Optional, By Default, the logo banner will match the Text from themeVariant Above
   # If you would like to change the primary logo banner text, uncommenet logoBannerText Parameter and set to desired text.
-  {% if logoBannerText != "" %}
+  {% if logoBannerText is defined and logoBannerText != "" %}
   logoBannerText = "{{logoBannerText}}"
   {% endif %}
   # Optional: If you'd like additional logo sub text/descriptions, use logoBannerSubText Parameter.  leave empty string to omit: ""
-  {% if logoBannerSubText != "" %}
+  {% if logoBannerSubText is defined and logoBannerSubText != "" %}
   logoBannerSubText = "{{logoBannerSubText}}"
   {% endif %}
 
@@ -104,15 +104,15 @@ enableEmoji = true
   # workshopTitle for TEC Analytics
   workshopTitle= "{{workshopTitle}}"
   # support endpoint
-  {% if supportEndpoint != "" %}
+  {% if supportEndpoint is defined and supportEndpoint != "" %}
   supportEndpoint = "{{supportEndpoint}}"
   {% endif %}
-  {% if analyticsBaseUrl != "" %}
+  {% if analyticsBaseUrl is defined and analyticsBaseUrl != "" %}
   analyticsBaseUrl = "{{analyticsBaseUrl}}"
   {% endif %}
-  {% if videoHeaderSrc != "" %}
+  {% if videoHeaderSrc is defined and videoHeaderSrc != "" %}
   videoHeaderSrc = "{{videoHeaderSrc}}"
-  {% if videoHeaderInterval != "" %}
+  {% if videoHeaderInterval is defined and videoHeaderInterval != "" %}
   videoHeaderInterval = {{videoHeaderInterval}}
   {% endif %}
   {% endif %}
