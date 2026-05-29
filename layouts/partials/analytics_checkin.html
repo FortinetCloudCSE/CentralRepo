@@ -4,7 +4,13 @@
 {{- $quizUrl := .Site.Params.quizUrl | default "" }}
 {{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
 
-<div id="display-form"></div>
+<div id="display-form"
+  data-analytics-base="{{ $analyticsBase }}"
+  data-marketing-code="{{ $marketingCode }}"
+  data-workshop-id="{{ $workshopID }}"
+  data-workshop-title="{{ $workshopTitle }}"
+  data-quiz-url="{{ $quizUrl }}"
+></div>
 
 <style>
   /* Modernized UI to match launchdemoform */
@@ -31,6 +37,11 @@ const COOKIE_DOMAIN = "{{ with .Site.Params.cookieDomain }}{{ . }}{{ end }}" || 
 
 const COOKIE_DAYS = 90;   // TTL for all forti* cookies (was 5; extended for better GA4 coverage)
 const container = document.getElementById('display-form');
+const ANALYTICS_BASE = container.getAttribute('data-analytics-base');
+const MARKETING_CODE = container.getAttribute('data-marketing-code');
+const WORKSHOP_ID    = container.getAttribute('data-workshop-id');
+const WORKSHOP_TITLE = container.getAttribute('data-workshop-title');
+const QUIZ_URL       = container.getAttribute('data-quiz-url');
 
 function setCookie(name, value, days, domainOverride) {
   const d = new Date();
@@ -111,15 +122,15 @@ if (user == "") {
 
 // action
 container.innerHTML = `
-  <form id="provision-lab" class="checkin-card" action="{{ $analyticsBase }}/checkin" method="POST">
+  <form id="provision-lab" class="checkin-card" action="${ANALYTICS_BASE}/checkin" method="POST">
     <div class="checkin-title">Welcome!</div>
     <div class="checkin-sub">Please check-in for this workshop to proceed (REQUIRED)</div>
     <div class="checkin-row"><label for="email">Email</label><input class="checkin-input" type="email" required id="email" name="EMail" autocomplete="email" pattern="^[A-Za-z0-9\._\%\+\-]+@[A-Za-z0-9\.\-]+\.[A-Za-z]{2,}$" title="Enter a valid email (e.g., name+csetester@example.com)" /></div>
     <div class="checkin-row"><label for="customer">Customer</label><input class="checkin-input" type="text" id="customer" name="Customer" /></div>
-    <input type="hidden" id="marketing_code" name="Event" value="{{ $marketingCode }}" />
-    <input type="hidden" id="workshop_id" name="workshopID" value="{{ $workshopID }}" />
-    <input type="hidden" id="workshop_title" name="workshopTitle" value="{{ $workshopTitle }}" />
-    <input type="hidden" id="quiz_url" name="quizUrl" value="{{ $quizUrl }}" />
+    <input type="hidden" id="marketing_code" name="Event" value="${MARKETING_CODE}" />
+    <input type="hidden" id="workshop_id" name="workshopID" value="${WORKSHOP_ID}" />
+    <input type="hidden" id="workshop_title" name="workshopTitle" value="${WORKSHOP_TITLE}" />
+    <input type="hidden" id="quiz_url" name="quizUrl" value="${QUIZ_URL}" />
     <div class="checkin-actions">
       <button type="submit" class="btn-primary">Check-in</button>
       <span id="checkin-status" class="checkin-status" aria-live="polite"></span>

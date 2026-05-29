@@ -54,16 +54,23 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 
 - Added `hugo.toml`, `CLAUDE.md`, and local draw.io diagram exports to `.gitignore`. `hugo.toml` is auto-generated at container startup; these files should never be committed.
 
-### CI — fix binfmt cache warning in CI and Pages deploy workflows
+### CI — fix A2 test failure and binfmt cache warnings across all workflows
 
 Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64, another job may be creating this cache.`
 
 **Root cause**: `# syntax=docker/dockerfile:1.5-labs` in `Dockerfile` caused Docker BuildKit to initialize multi-platform QEMU/binfmt support on every run, which tries to write an immutable GitHub Actions cache key that already exists from a prior run.
 
+**Root cause — binfmt cache warnings**: Multiple sources across different workflows, all with the same underlying pattern: Docker initialization tries to write an immutable GitHub Actions cache key that already exists from a prior run.
+
+**Root cause — CI test A2 failure**: `{{ $analyticsBase }}` in `analytics_checkin.html` was inside a JavaScript backtick template literal inside a `<script>` block. Go's `html/template` JS-context escaping wraps string values in JSON quotes in that context, producing `action=""https://..."/checkin"` instead of `action="https://..."/checkin"`. This is the same escaping issue documented in CLAUDE.md for the video header; the fix is the same `data-` attribute pattern.
+
 **Changes**:
 - `Dockerfile` — updated syntax directive from `docker/dockerfile:1.5-labs` to `docker/dockerfile:1` (stable). The `ADD https://github.com/…git#branch` feature used in the Dockerfile graduated from labs in Dockerfile 1.6; the stable `1` tag covers it on modern Docker runners.
 - `.github/workflows/static.yml` — removed `docker system prune` and `docker builder prune -f` steps. GitHub-hosted runners are ephemeral (fresh Docker state per job), making both steps pointless. The builder prune was actively contributing to the binfmt cache churn by forcing BuildKit re-initialization on each run.
 - `.github/workflows/ci.yml` — added `needs: [hugo-build]` to `hugo-build-no-analytics-url`. Both jobs use `container: image: hugomods/hugo:std`; when they ran in parallel, GitHub's Docker setup for each container raced to create the same binfmt cache key. Serializing eliminates the race; `assert-html` already waits for both so the effective critical-path impact is minimal.
+- `.github/workflows/image-build-push-dev.yaml` and `image-build-push-prod.yaml` — added `cache-image: false` to `docker/setup-qemu-action`. Without this, the action restores the binfmt image from cache, then pulls Docker Hub to check for updates, then tries to re-write the immutable cache key → warning on every run. Also removed `docker system prune` (pointless on ephemeral runners).
+- `layouts/partials/analytics_checkin.html` — moved all Hugo template params (`$analyticsBase`, `$marketingCode`, `$workshopID`, `$workshopTitle`, `$quizUrl`) to `data-` attributes on `<div id="display-form">`, then read them with `getAttribute()` in JavaScript. Template actions in HTML attribute context render correctly; inside JS backtick template literals they get double-escaped by Go's `html/template`. JS interpolation (`${VAR}`) now injects the values at runtime inside the backtick literal. This also fixes the `$quizUrl` field which had the same escaping issue.
+- `scripts/test/test_rendered_html.sh` — updated test A2 to check `data-analytics-base="https://tecanalytics.forticloudcse.com"` (the HTML attribute that is now the source of truth for the URL) instead of the dynamically-rendered form `action` attribute.
 
 ---
 

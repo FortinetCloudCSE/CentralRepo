@@ -15,17 +15,14 @@ if grep -rq 'action="/checkin"' "$PUBLIC_DIR"; then
 fi
 pass "A1: no relative /checkin form action"
 
-# A2: Form action must be an absolute HTTPS URL to the analytics API
-# (only applies when analyticsBaseUrl is set — check index.html)
-if grep -q 'analyticsBaseUrl' "$PUBLIC_DIR/../hugo.toml" 2>/dev/null || \
-   grep -q 'tecanalytics' "$PUBLIC_DIR/index.html" 2>/dev/null; then
-  if ! grep -q 'action="https://tecanalytics.forticloudcse.com/checkin"' "$PUBLIC_DIR/index.html"; then
-    fail "A2: checkin form action is not the expected absolute URL"
-  fi
-  pass "A2: checkin form action is absolute API URL"
-else
-  pass "A2: skipped (analyticsBaseUrl not set — fallback produces prod URL)"
+# A2: Checkin form analytics base URL must be the expected absolute HTTPS URL.
+# Hugo template actions inside JS backtick literals get JS-context-escaped by
+# html/template; the URL is passed via data-analytics-base (HTML attribute context
+# is safe) and read with getAttribute() in JS — same pattern as the video header.
+if ! grep -q 'data-analytics-base="https://tecanalytics.forticloudcse.com"' "$PUBLIC_DIR/index.html"; then
+  fail "A2: data-analytics-base is not the expected absolute URL"
 fi
+pass "A2: data-analytics-base is correct absolute API URL"
 
 # A3: No relative CSS url() — catches Xperts background image path regression
 if grep -rq 'url("\.\./' "$PUBLIC_DIR"; then
