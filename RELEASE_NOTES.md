@@ -54,7 +54,7 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 
 - Added `hugo.toml`, `CLAUDE.md`, and local draw.io diagram exports to `.gitignore`. `hugo.toml` is auto-generated at container startup; these files should never be committed.
 
-### CI — fix A2 test failure and binfmt cache warnings across all workflows
+### CI — fix A2 test failure, binfmt warnings, Hugo deprecations, and Node.js 20 action warnings
 
 Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64, another job may be creating this cache.`
 
@@ -71,6 +71,9 @@ Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to res
 - `.github/workflows/image-build-push-dev.yaml` and `image-build-push-prod.yaml` — added `cache-image: false` to `docker/setup-qemu-action`. Without this, the action restores the binfmt image from cache, then pulls Docker Hub to check for updates, then tries to re-write the immutable cache key → warning on every run. Also removed `docker system prune` (pointless on ephemeral runners).
 - `layouts/partials/analytics_checkin.html` — moved all Hugo template params (`$analyticsBase`, `$marketingCode`, `$workshopID`, `$workshopTitle`, `$quizUrl`) to `data-` attributes on `<div id="display-form">`, then read them with `getAttribute()` in JavaScript. Template actions in HTML attribute context render correctly; inside JS backtick template literals they get double-escaped by Go's `html/template`. JS interpolation (`${VAR}`) now injects the values at runtime inside the backtick literal. This also fixes the `$quizUrl` field which had the same escaping issue.
 - `scripts/test/test_rendered_html.sh` — updated test A2 to check `data-analytics-base="https://tecanalytics.forticloudcse.com"` (the HTML attribute that is now the source of truth for the URL) instead of the dynamically-rendered form `action` attribute.
+- `ci.yml` — updated `actions/upload-artifact@v4` → `@v5` and `actions/download-artifact@v4` → `@v7`. v4 of both actions was compiled against Node.js 20 (deprecated); v5/v7 are compiled against Node.js 24.
+- `layouts/partials/old_menu.html` — deleted. Dead code, not referenced from any layout. Its `.Site.Languages` call was generating a Hugo deprecation warning.
+- `layouts/_default/baseof.html`, `layouts/404.html`, `layouts/_default/rss.xml`, `layouts/_default/sitemap.xml`, `layouts/partials/opengraph.html`, `layouts/partials/dependencies/search-lunr.html`, `layouts/partials/sidebar/element/languageswitcher.html`, `layouts/partials/topbar/button/prev.html`, `layouts/partials/topbar/button/next.html`, `layouts/partials/_relearn/linkObject.gotmpl`, `layouts/partials/_relearn/pageLangPath.gotmpl` — created as overrides of the corresponding `hugo-theme-relearn` templates to fix Hugo v0.156–0.158 deprecation warnings: `.Language.LanguageCode` → `.Language.Locale`, `.Language.LanguageDirection` → `.Language.Direction`, `site.Languages` → `(index hugo.Sites 0).Languages`, `$site.Sites`/`site.Sites` → `hugo.Sites`. The relearn theme (8.x and 9.x) has not yet fixed these upstream.
 
 ---
 
