@@ -60,6 +60,7 @@ jobs:
 
   hugo-build-no-analytics-url:
     runs-on: ubuntu-latest
+    needs: [hugo-build]
     container:
       image: hugomods/hugo:std
     steps:

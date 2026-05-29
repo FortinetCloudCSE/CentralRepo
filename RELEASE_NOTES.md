@@ -54,7 +54,7 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 
 - Added `hugo.toml`, `CLAUDE.md`, and local draw.io diagram exports to `.gitignore`. `hugo.toml` is auto-generated at container startup; these files should never be committed.
 
-### CI — fix binfmt cache warning in Pages deploy workflow
+### CI — fix binfmt cache warning in CI and Pages deploy workflows
 
 Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64, another job may be creating this cache.`
 
@@ -63,6 +63,7 @@ Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to res
 **Changes**:
 - `Dockerfile` — updated syntax directive from `docker/dockerfile:1.5-labs` to `docker/dockerfile:1` (stable). The `ADD https://github.com/…git#branch` feature used in the Dockerfile graduated from labs in Dockerfile 1.6; the stable `1` tag covers it on modern Docker runners.
 - `.github/workflows/static.yml` — removed `docker system prune` and `docker builder prune -f` steps. GitHub-hosted runners are ephemeral (fresh Docker state per job), making both steps pointless. The builder prune was actively contributing to the binfmt cache churn by forcing BuildKit re-initialization on each run.
+- `.github/workflows/ci.yml` — added `needs: [hugo-build]` to `hugo-build-no-analytics-url`. Both jobs use `container: image: hugomods/hugo:std`; when they ran in parallel, GitHub's Docker setup for each container raced to create the same binfmt cache key. Serializing eliminates the race; `assert-html` already waits for both so the effective critical-path impact is minimal.
 
 ---
 
