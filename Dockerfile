@@ -1,4 +1,7 @@
-# syntax=docker/dockerfile:1.5-labs
+# syntax=docker/dockerfile:1
+
+# Global ARG must be declared before first FROM to be usable in FROM instructions
+ARG LOCAL=false
 
 # Global ARG must be declared before first FROM to be usable in FROM instructions
 ARG LOCAL=false

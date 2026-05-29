@@ -39,9 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Clean Docker cache
-        run: docker system prune
+        uses: actions/checkout@v6
       - name: Build image
         run: DOCKER_BUILDKIT=1 docker build -t fortinet-hugo . --target=prod
       - name: Build static app
@@ -52,12 +50,10 @@ jobs:
          docker cp $CONT_ID:/home/CentralRepo/public ${{github.workspace}}/docs
          docker stop $CONT_ID
          docker rm $CONT_ID
-      - name: Clear Docker cache
-        run: docker builder prune -f
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           # Upload entire repository
           path: './docs'

@@ -11,3 +11,6 @@ fortihugorunner*
 .vscode/
 __pycache__/
 VERSION
+node_modules/
+tmp/
+public/
