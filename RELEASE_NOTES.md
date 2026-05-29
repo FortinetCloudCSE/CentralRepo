@@ -54,26 +54,53 @@ Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the si
 
 - Added `hugo.toml`, `CLAUDE.md`, and local draw.io diagram exports to `.gitignore`. `hugo.toml` is auto-generated at container startup; these files should never be committed.
 
-### CI — fix A2 test failure, binfmt warnings, Hugo deprecations, and Node.js 20 action warnings
+### CI — binfmt warnings, test failures, Hugo deprecations, Node.js 20 actions
 
-Resolved a non-blocking but recurring CI warning: `Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64, another job may be creating this cache.`
+Full remediation of all CI warnings and test failures across all five workflows.
 
-**Root cause**: `# syntax=docker/dockerfile:1.5-labs` in `Dockerfile` caused Docker BuildKit to initialize multi-platform QEMU/binfmt support on every run, which tries to write an immutable GitHub Actions cache key that already exists from a prior run.
+#### binfmt cache warnings (`Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64`)
 
-**Root cause — binfmt cache warnings**: Multiple sources across different workflows, all with the same underlying pattern: Docker initialization tries to write an immutable GitHub Actions cache key that already exists from a prior run.
+Root cause pattern: Docker initialization tries to write an immutable GitHub Actions cache key that already exists, or two jobs race to create the same key simultaneously. Three sources:
 
-**Root cause — CI test A2 failure**: `{{ $analyticsBase }}` in `analytics_checkin.html` was inside a JavaScript backtick template literal inside a `<script>` block. Go's `html/template` JS-context escaping wraps string values in JSON quotes in that context, producing `action=""https://..."/checkin"` instead of `action="https://..."/checkin"`. This is the same escaping issue documented in CLAUDE.md for the video header; the fix is the same `data-` attribute pattern.
+- `Dockerfile` — updated syntax directive `docker/dockerfile:1.5-labs` → `docker/dockerfile:1` (stable). The labs directive caused BuildKit to initialize QEMU/binfmt multi-platform support on every build, triggering the cache write. The `ADD https://…git#branch` feature used in the file graduated from labs in Dockerfile 1.6 and is covered by the stable tag.
+- `.github/workflows/ci.yml` — added `needs: [hugo-build]` to `hugo-build-no-analytics-url`. Both jobs use `container: image: hugomods/hugo:std`; running in parallel, GitHub's Docker setup raced to create the same binfmt cache key. Serializing eliminates the race without changing CI outcome — `assert-html` already waits for both.
+- `.github/workflows/static.yml` — removed `docker system prune` and `docker builder prune -f`. GitHub-hosted runners are ephemeral (fresh Docker state per job); both steps were pointless, and the builder prune forced BuildKit re-initialization every run.
+- `.github/workflows/image-build-push-dev.yaml` and `image-build-push-prod.yaml` — added `cache-image: false` to `docker/setup-qemu-action`. The default `cache-image: true` restores binfmt from cache, pulls Docker Hub to check for updates, then tries to re-write the immutable cache key → warning on every run. Also removed `docker system prune` (pointless on ephemeral runners) from both files.
 
-**Changes**:
-- `Dockerfile` — updated syntax directive from `docker/dockerfile:1.5-labs` to `docker/dockerfile:1` (stable). The `ADD https://github.com/…git#branch` feature used in the Dockerfile graduated from labs in Dockerfile 1.6; the stable `1` tag covers it on modern Docker runners.
-- `.github/workflows/static.yml` — removed `docker system prune` and `docker builder prune -f` steps. GitHub-hosted runners are ephemeral (fresh Docker state per job), making both steps pointless. The builder prune was actively contributing to the binfmt cache churn by forcing BuildKit re-initialization on each run.
-- `.github/workflows/ci.yml` — added `needs: [hugo-build]` to `hugo-build-no-analytics-url`. Both jobs use `container: image: hugomods/hugo:std`; when they ran in parallel, GitHub's Docker setup for each container raced to create the same binfmt cache key. Serializing eliminates the race; `assert-html` already waits for both so the effective critical-path impact is minimal.
-- `.github/workflows/image-build-push-dev.yaml` and `image-build-push-prod.yaml` — added `cache-image: false` to `docker/setup-qemu-action`. Without this, the action restores the binfmt image from cache, then pulls Docker Hub to check for updates, then tries to re-write the immutable cache key → warning on every run. Also removed `docker system prune` (pointless on ephemeral runners).
-- `layouts/partials/analytics_checkin.html` — moved all Hugo template params (`$analyticsBase`, `$marketingCode`, `$workshopID`, `$workshopTitle`, `$quizUrl`) to `data-` attributes on `<div id="display-form">`, then read them with `getAttribute()` in JavaScript. Template actions in HTML attribute context render correctly; inside JS backtick template literals they get double-escaped by Go's `html/template`. JS interpolation (`${VAR}`) now injects the values at runtime inside the backtick literal. This also fixes the `$quizUrl` field which had the same escaping issue.
-- `scripts/test/test_rendered_html.sh` — updated test A2 to check `data-analytics-base="https://tecanalytics.forticloudcse.com"` (the HTML attribute that is now the source of truth for the URL) instead of the dynamically-rendered form `action` attribute.
-- `ci.yml` — updated `actions/upload-artifact@v4` → `@v5` and `actions/download-artifact@v4` → `@v7`. v4 of both actions was compiled against Node.js 20 (deprecated); v5/v7 are compiled against Node.js 24.
-- `layouts/partials/old_menu.html` — deleted. Dead code, not referenced from any layout. Its `.Site.Languages` call was generating a Hugo deprecation warning.
-- `layouts/_default/baseof.html`, `layouts/404.html`, `layouts/_default/rss.xml`, `layouts/_default/sitemap.xml`, `layouts/partials/opengraph.html`, `layouts/partials/dependencies/search-lunr.html`, `layouts/partials/sidebar/element/languageswitcher.html`, `layouts/partials/topbar/button/prev.html`, `layouts/partials/topbar/button/next.html`, `layouts/partials/_relearn/linkObject.gotmpl`, `layouts/partials/_relearn/pageLangPath.gotmpl` — created as overrides of the corresponding `hugo-theme-relearn` templates to fix Hugo v0.156–0.158 deprecation warnings: `.Language.LanguageCode` → `.Language.Locale`, `.Language.LanguageDirection` → `.Language.Direction`, `site.Languages` → `(index hugo.Sites 0).Languages`, `$site.Sites`/`site.Sites` → `hugo.Sites`. The relearn theme (8.x and 9.x) has not yet fixed these upstream.
+#### CI test failures
+
+**Test A2** (`checkin form action is not the expected absolute URL`) — persistent failure, never passed since the test was added.
+
+Root cause: `{{ $analyticsBase }}` in `analytics_checkin.html` was inside a JavaScript backtick template literal inside a `<script>` block. Go's `html/template` JS-context escaping wraps string values in JSON quotes in that context, producing `action=""https://..."/checkin"` instead of `action="https://..."/checkin"`. Same root cause as the video header `data-` attribute fix (documented in CLAUDE.md).
+
+Fix:
+- `layouts/partials/analytics_checkin.html` — moved all Hugo template params (`$analyticsBase`, `$marketingCode`, `$workshopID`, `$workshopTitle`, `$quizUrl`) to `data-*` attributes on `<div id="display-form">`, read with `getAttribute()` in JS. HTML attribute context renders correctly; JS `${VAR}` interpolation injects values inside the backtick literal at runtime. Also fixes `$quizUrl` which had the same silent escaping issue.
+- `scripts/test/test_rendered_html.sh` — updated test A2 to check `data-analytics-base="https://tecanalytics.forticloudcse.com"` (the HTML attribute, which is the rendered source of truth) instead of the dynamically-set form `action` attribute.
+
+**Test A11** (`htmlEscape found in layout source`) — introduced when creating `layouts/_default/baseof.html` as a theme override; the file was copied from the theme which still uses `htmlEscape`.
+
+Fix: replaced `htmlEscape` → `transform.HTMLEscape` in `layouts/_default/baseof.html` (the correct Hugo 0.121+ replacement).
+
+#### Hugo deprecation WARNs (v0.156–0.158)
+
+`hugo-theme-relearn` 8.x and 9.x have not fixed these upstream. Created 11 override files in `layouts/` (standard Hugo theme override mechanism) with targeted substitutions:
+
+| Deprecated | Replacement |
+|---|---|
+| `.Language.LanguageCode` | `.Language.Locale` |
+| `.Language.LanguageDirection` | `.Language.Direction` |
+| `$site.Sites` / `site.Sites` | `hugo.Sites` |
+
+Overridden files: `layouts/_default/baseof.html`, `layouts/404.html`, `layouts/_default/rss.xml`, `layouts/_default/sitemap.xml`, `layouts/partials/opengraph.html`, `layouts/partials/dependencies/search-lunr.html`, `layouts/partials/topbar/button/prev.html`, `layouts/partials/topbar/button/next.html`, `layouts/partials/_relearn/linkObject.gotmpl`, `layouts/partials/_relearn/pageLangPath.gotmpl`.
+
+`layouts/partials/sidebar/element/languageswitcher.html` required a different approach: `(index hugo.Sites 0).Languages` still accesses the deprecated `.Languages` field on a Site object and triggers the same warning. The variable was only used for a redundant `> 1` count check — `hugo.IsMultilingual` already guarantees multiple languages exist — so the variable was dropped and the condition simplified.
+
+`layouts/partials/old_menu.html` — deleted. Dead code with no references, and its `.Site.Languages` call was generating the deprecation warning.
+
+#### Node.js 20 action warnings
+
+- `actions/upload-artifact@v4` → `@v7` — v4 compiled against Node.js 20. Note: v5.0.0 release notes claimed Node.js 24 support but the runner still reported Node.js 20; v7 is confirmed Node.js 24.
+- `actions/download-artifact@v4` → `@v7` — same, confirmed Node.js 24 at v7.
 
 ---
 
