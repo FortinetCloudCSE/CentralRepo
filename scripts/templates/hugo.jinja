@@ -110,10 +110,13 @@ enableEmoji = true
   {% if analyticsBaseUrl is defined and analyticsBaseUrl != "" %}
   analyticsBaseUrl = "{{analyticsBaseUrl}}"
   {% endif %}
-  {% if videoHeaderSrc is defined and videoHeaderSrc != "" %}
-  videoHeaderSrc = "{{videoHeaderSrc}}"
+  {% set effectiveVideoSrc = videoHeaderSrc if (videoHeaderSrc is defined and videoHeaderSrc != "") else ("/videos/CloudsAnimated.mp4" if themeVariant == "CloudCSEMovie" else "") %}
+  {% if effectiveVideoSrc != "" %}
+  videoHeaderSrc = "{{effectiveVideoSrc}}"
   {% if videoHeaderInterval is defined and videoHeaderInterval != "" %}
   videoHeaderInterval = {{videoHeaderInterval}}
+  {% else %}
+  videoHeaderInterval = 60
   {% endif %}
   {% endif %}
 
