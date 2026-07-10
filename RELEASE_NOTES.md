@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### feat(layout): move Version/Revision/Last Updated to navbar footer
+
+Version, Revision, and Last Updated info was previously shown only on the home page content footer alongside the legal copyright block. It is now displayed in the left navbar footer (below the Privacy | Site Terms | About Us links) on every page, giving readers consistent access to version info regardless of which page they are on.
+
+The legal copyright text remains in the home page content footer unchanged.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/partials/menu-footer.html` | Added version/revision/last-updated block; changed `#footer` height from fixed `6.25rem` to `auto` |
+| `layouts/partials/copyright.html` | Removed version/revision/last-updated block; copyright text only |
+
+---
+
 ### CloudCSEMovie Theme — MP4 Video Sidebar Header
 
 Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the sidebar header area in place of a static background image.

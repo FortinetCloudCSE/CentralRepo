@@ -1,7 +1,7 @@
           <style>
             #footer {
               font-size: .8125rem;
-              height: 6.25rem;
+              height: auto;
               margin-left: auto;
               margin-right: auto;
               padding: 2rem 1rem;
@@ -21,3 +21,18 @@
         href="https://www.fortinet.com/corporate/about-us/about-us" target="_blank" rel="noreferrer noopener">About Us</a>
 
 </left>
+
+{{- /* Version/revision block — baked in at Docker build time */ -}}
+{{- $version := os.Getenv "HUGO_VERSION_TAG" -}}
+{{- if not $version -}}
+  {{- if (fileExists "VERSION") -}}
+    {{- $version = (readFile "VERSION" | strings.TrimSpace) -}}
+  {{- end -}}
+{{- end -}}
+<div style="font-size: .75rem; color: gray; margin-top: .75rem; padding-top: .5rem; border-top: 1px solid gray; text-align: left;">
+{{- if $version }}
+  <div>CloudCSE Version: {{ $version }}</div>
+{{- end }}
+  <div>Revision: {{.Site.Params.version}}</div>
+  <div>Last updated: <span id="last-updated-time-utc">{{ dateFormat "Mon, Jan 2, 2006 15:04:05 MST" now }}</span></div>
+</div>
