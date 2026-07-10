@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### feat(layout): move Version/Revision/Last Updated to navbar footer
+
+Version, Revision, and Last Updated info was previously shown only on the home page content footer alongside the legal copyright block. It is now displayed in the left navbar footer (below the Privacy | Site Terms | About Us links) on every page, giving readers consistent access to version info regardless of which page they are on.
+
+The legal copyright text remains in the home page content footer unchanged.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/partials/menu-footer.html` | Added version/revision/last-updated block; changed `#footer` height from fixed `6.25rem` to `auto` |
+| `layouts/partials/copyright.html` | Removed version/revision/last-updated block; copyright text only |
+
+---
+
 ### fix(theme): CloudCSEMovie video default when `videoHeaderSrc` omitted from repoConfig
 
 Repos using `themeVariant: "CloudCSEMovie"` without an explicit `videoHeaderSrc` in `repoConfig.json` (e.g. AWS-FGT-301) got a blank header — the Jinja template only emitted `videoHeaderSrc` into `hugo.toml` when explicitly set, so Hugo never saw the param and no `<video>` element was injected.
