@@ -80,5 +80,27 @@ if grep -rq 'htmlEscape' "$REPO_ROOT/layouts/"; then
 fi
 pass "A11: no htmlEscape in layout source files"
 
+# A12: Logo img src must not contain leading whitespace or newlines
+# The Go template multiline src='\n...\n' pattern causes broken img in some environments.
+# Catches regressions where the logo template puts whitespace inside the src attribute value.
+if grep -Pzo 'src='"'"'\s*\n' "$PUBLIC_DIR/index.html" > /dev/null 2>&1; then
+  fail "A12: logo img src attribute contains leading whitespace/newlines — clean up logo.html template"
+fi
+pass "A12: logo img src is clean (no leading whitespace)"
+
+# A13: Dockerfile must target menu-footer.html for version injection, not copyright.html
+# Catches the regression where the sed target was left pointing at a file that no longer
+# contains the os.Getenv pattern after moving version display to menu-footer.html.
+if grep -q 'copyright.html' "$REPO_ROOT/Dockerfile" && grep -q 'HUGO_VERSION_TAG' "$REPO_ROOT/Dockerfile"; then
+  fail "A13: Dockerfile sed targets copyright.html for version injection — should target menu-footer.html"
+fi
+pass "A13: Dockerfile version injection targets correct file"
+
+# A14: menu-footer.html must contain the os.Getenv version pattern (Dockerfile sed target is valid)
+if ! grep -q 'os.Getenv "HUGO_VERSION_TAG"' "$REPO_ROOT/layouts/partials/menu-footer.html"; then
+  fail "A14: menu-footer.html missing HUGO_VERSION_TAG pattern — Dockerfile sed will silently fail to inject version"
+fi
+pass "A14: menu-footer.html contains HUGO_VERSION_TAG pattern for Dockerfile version injection"
+
 echo ""
 echo "All assertions passed for: $PUBLIC_DIR"

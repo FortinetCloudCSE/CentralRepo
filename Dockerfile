@@ -43,9 +43,9 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     ln -sf python3 /usr/bin/python && \
     ln -sf /sbin/tini-static /sbin/tini
 
-# Inject version into copyright.html partial
+# Inject version into menu-footer.html partial
 RUN sed -i "s|{{- \\\$version := os.Getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
-    /home/CentralRepo/layouts/partials/copyright.html
+    /home/CentralRepo/layouts/partials/menu-footer.html
 
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]
 
@@ -71,8 +71,8 @@ RUN apk --no-cache --allow-untrusted --repository http://dl-cdn.alpinelinux.org/
     ln -sf python3 /usr/bin/python && \
     ln -sf /sbin/tini-static /sbin/tini
 
-# Inject version into copyright.html partial
+# Inject version into menu-footer.html partial
 RUN sed -i "s|{{- \\\$version := os.Getenv \"HUGO_VERSION_TAG\" -}}|{{- \\\$version := \"${CENTRALREPO_VERSION}\" -}}|" \
-    /home/CentralRepo/layouts/partials/copyright.html
+    /home/CentralRepo/layouts/partials/menu-footer.html
 
 ENTRYPOINT ["/sbin/tini", "--", "/home/CentralRepo/scripts/local_copy.sh"]
