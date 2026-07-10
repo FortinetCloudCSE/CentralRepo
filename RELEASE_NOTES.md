@@ -18,6 +18,19 @@ The legal copyright text remains in the home page content footer unchanged.
 
 ---
 
+### fix(theme): CloudCSEMovie video default when `videoHeaderSrc` omitted from repoConfig
+
+Repos using `themeVariant: "CloudCSEMovie"` without an explicit `videoHeaderSrc` in `repoConfig.json` (e.g. AWS-FGT-301) got a blank header — the Jinja template only emitted `videoHeaderSrc` into `hugo.toml` when explicitly set, so Hugo never saw the param and no `<video>` element was injected.
+
+The Jinja template now defaults `videoHeaderSrc` to `/videos/CloudsAnimated.mp4` (already bundled in `static/videos/`) when `themeVariant == "CloudCSEMovie"` and no explicit override is provided. `videoHeaderInterval` also defaults to `60` when omitted. Repos on other themes are unaffected. Repos with an explicit `videoHeaderSrc` continue to use their value.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `scripts/templates/hugo.jinja` | Default `videoHeaderSrc`/`videoHeaderInterval` for CloudCSEMovie variant |
+
+---
+
 ### CloudCSEMovie Theme — MP4 Video Sidebar Header
 
 Added a new Hugo theme variant `CloudCSEMovie` that plays an MP4 video in the sidebar header area in place of a static background image.
