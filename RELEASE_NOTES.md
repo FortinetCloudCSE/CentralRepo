@@ -4,6 +4,39 @@
 
 ## [Unreleased]
 
+### fix(logo): restore height, eliminate whitespace in src attribute
+
+The logo `<img>` was missing its `height="70px"` attribute (removed in a prior commit) causing the logo to render at intrinsic size. The multi-line Go template also injected leading whitespace into the `src` attribute value. Both fixed by collapsing the template conditionals onto one line and restoring the height.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/partials/logo.html` | Inline `src` conditionals (no whitespace injection), restore `height="70px"` |
+
+---
+
+### fix(dockerfile): version injection now targets menu-footer.html
+
+The Dockerfile `sed` that bakes `CENTRALREPO_VERSION` into the Hugo templates still targeted `copyright.html` after the version block was moved to `menu-footer.html`. This caused the CloudCSE Version to never appear in the navbar footer in deployed images.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `Dockerfile` | `sed` target changed from `copyright.html` to `menu-footer.html` (both dev and prod stages) |
+
+---
+
+### test: add A12–A14 assertions to catch logo and version injection regressions
+
+Three new HTML/source assertions added to `test_rendered_html.sh`:
+- **A12**: logo `img src` must not contain leading whitespace (catches multiline template injection)
+- **A13**: Dockerfile must not reference `copyright.html` for version injection
+- **A14**: `menu-footer.html` must contain the `HUGO_VERSION_TAG` pattern (Dockerfile sed target is valid)
+
+**Root cause of why these weren't caught:** The existing test suite only validated rendered HTML for analytics/form/CSS correctness. It had no assertions about the logo `src` attribute format or about the Dockerfile → template alignment. Added tests at both the rendered-HTML layer (A12) and source-file layer (A13, A14) to catch future drift.
+
+---
+
 ### feat(layout): move Version/Revision/Last Updated to navbar footer
 
 Version, Revision, and Last Updated info was previously shown only on the home page content footer alongside the legal copyright block. It is now displayed in the left navbar footer (below the Privacy | Site Terms | About Us links) on every page, giving readers consistent access to version info regardless of which page they are on.
