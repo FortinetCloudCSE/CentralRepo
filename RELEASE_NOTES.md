@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### fix(launchdemoform): resolve CORS error on Azure Automation webhook
+
+`fetch()` was rejecting with TypeError and showing a red "Network error" to users on sites like PublicCloud105-FortiFlex. Root cause: Azure Automation webhooks return no `Access-Control-Allow-Origin` header; the POST itself goes through fine but the browser blocks JS from reading the opaque response. Fixed by adding `mode: 'no-cors'` so `fetch` resolves (opaque response) instead of rejecting. Status message updated to "Provisioning request sent."
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/shortcodes/launchdemoform.html` | Add `mode: 'no-cors'` to fetch call; remove unreachable response-parsing code |
+
+---
+
 ### fix(logo): restore height, eliminate whitespace in src attribute
 
 The logo `<img>` was missing its `height="70px"` attribute (removed in a prior commit) causing the logo to render at intrinsic size. The multi-line Go template also injected leading whitespace into the `src` attribute value. Both fixed by collapsing the template conditionals onto one line and restoring the height.
