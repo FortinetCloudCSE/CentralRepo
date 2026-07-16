@@ -142,27 +142,16 @@
       });
       if (DEBUG) console.info('launchdemoform: POST', { url: POST_URL, body: body.toString() });
       try {
-        const res = await fetch(POST_URL, {
+        // Azure Automation webhooks don't return CORS headers, so use no-cors mode.
+        // The request is still sent; we just can't read the response (opaque).
+        await fetch(POST_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: body.toString()
+          body: body.toString(),
+          mode: 'no-cors'
         });
-        let text = '';
-        try { text = await res.text(); } catch (e) { text = ''; }
-        let jobId = '';
-        try {
-          const json = text ? JSON.parse(text) : null;
-          if (json) {
-            jobId = json.JobId || json.jobId || (Array.isArray(json.JobIds) && json.JobIds[0]) || '';
-          }
-        } catch (e) { /* ignore non-JSON */ }
-        const accepted = (res.status === 202) && !!jobId;
-        if (DEBUG) console.info('launchdemoform: response', { status: res.status, accepted, jobId, text });
-        if (accepted) {
-          setStatus('Provisioning request accepted. Please wait for your lab to be prepared.', 'ok');
-        } else {
-          setStatus('Provisioning failed: ' + (text || ('HTTP ' + res.status)), 'err');
-        }
+        if (DEBUG) console.info('launchdemoform: request sent (no-cors, response opaque)');
+        setStatus('Provisioning request sent. Please wait for your lab to be prepared.', 'ok');
       } catch (err) {
         if (DEBUG) console.error('launchdemoform: network error', err);
         setStatus('Network error while provisioning: ' + (err && err.message ? err.message : err), 'err');
