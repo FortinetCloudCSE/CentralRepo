@@ -1,0 +1,23 @@
+{{- $_hugo_config := `{ "version": 1 }` }}
+{{- $page := .Page }}
+{{- $file := "[virtual file]" }}
+{{- with and $page $page.File $page.File.Filename }}{{ $file = . }}{{ end }}
+{{- $shape := `"deploymentPaths": [{"key": "docker", "title": "Docker Compose"}, {"key": "k8s", "title": "Kubernetes / Helm"}]` }}
+{{- $specs := site.Params.deploymentPaths | default slice }}
+{{- $keys := slice }}
+{{- range $specs }}
+  {{- $keys = $keys | append .key }}
+{{- end }}
+{{- $path := .Get "path" }}
+{{- if not $specs }}
+  {{- errorf "%s: pathtab requires site.Params.deploymentPaths, which is unset or empty. Declare the path vocabulary in scripts/repoConfig.json, e.g. %s — each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the tab label). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
+{{- else if not (in $keys $path) }}
+  {{- errorf "%s: pathtab needs path=\"<key>\" where key is one of %v; got %q." $file $keys $path }}
+{{- end }}
+{{- if not .Parent }}
+  {{- errorf "%s: pathtab must be nested inside a pathtabs block." $file }}
+{{- end }}
+{{- with .Parent }}
+  {{- $collected := .Scratch.Get "pathtabs" | default slice }}
+  {{- .Scratch.Set "pathtabs" ($collected | append (dict "path" $path "content" $.Inner)) }}
+{{- end }}

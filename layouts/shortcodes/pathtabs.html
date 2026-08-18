@@ -1,0 +1,127 @@
+{{- $page := .Page }}
+{{- $file := "[virtual file]" }}
+{{- with and $page $page.File $page.File.Filename }}{{ $file = . }}{{ end }}
+{{- $unused := .Inner }}
+{{- $collected := .Scratch.Get "pathtabs" | default slice }}
+{{- $groupid := .Get "groupid" | default "deploy-path" }}
+{{- $label := .Get "title" | default "Your path" }}
+{{- $shape := `"deploymentPaths": [{"key": "docker", "title": "Docker Compose"}, {"key": "k8s", "title": "Kubernetes / Helm"}]` }}
+{{- $specs := site.Params.deploymentPaths | default slice }}
+{{- if not $specs }}
+  {{- errorf "%s: pathtabs requires site.Params.deploymentPaths, which is unset or empty. Declare the path vocabulary in scripts/repoConfig.json, e.g. %s — each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the tab label). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
+{{- end }}
+{{- $keys := slice }}
+{{- range $specs }}
+  {{- $keys = $keys | append .key }}
+{{- end }}
+{{- $firstTitle := "" }}
+{{- with $specs }}{{ $firstTitle = (index . 0).title }}{{ end }}
+{{- $tabs := slice }}
+{{- range $spec := $specs }}
+  {{- $match := where $collected "path" $spec.key }}
+  {{- if not $match }}
+    {{- errorf "%s: pathtabs block is missing the %q path. Every pathtabs block must define one pathtab for each key in deploymentPaths (%v), or a reader on the missing path silently sees another path's steps." $file $spec.key $keys }}
+  {{- else if gt (len $match) 1 }}
+    {{- errorf "%s: pathtabs block defines the %q path %d times; expected exactly once." $file $spec.key (len $match) }}
+  {{- else }}
+    {{- $tabs = $tabs | append (dict
+      "title"   $spec.title
+      "content" (index $match 0).content
+      "color"   ""
+      "icon"    ""
+      "style"   ""
+    ) }}
+  {{- end }}
+{{- end }}
+{{- $needAssets := not ($page.Store.Get "pathlockAssets") }}
+{{- if $needAssets -}}
+<style>
+.pathlock__banner {
+  margin: 0 0 .4rem 0;
+  padding: .5rem .75rem;
+  border: 1px solid rgba(var(--theme-color, 218,41,28), .35);
+  border-left: 4px solid rgba(var(--theme-color, 218,41,28), .9);
+  border-radius: 3px;
+  background: rgba(var(--theme-color, 218,41,28), .07);
+  color: rgba(var(--theme-color, 218,41,28), 1);
+  line-height: 1.4;
+}
+.pathlock__head {
+  font-weight: 600;
+}
+.pathlock__value {
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.pathlock__hint {
+  font-size: .8rem;
+  font-weight: 400;
+  opacity: .8;
+}
+@media print {
+  .pathlock__banner {
+    display: none;
+  }
+}
+</style>
+{{- end -}}
+<div class="pathlock">
+  <div class="pathlock__banner">
+    <div class="pathlock__head"><i class="fa-fw fas fa-lock"></i> {{ $label }}: <span class="pathlock__value" aria-live="polite">{{ $firstTitle }}</span></div>
+    <div class="pathlock__hint">Locked in — every lab page follows this choice.</div>
+  </div>
+  {{ partial "shortcodes/tabs.html" (dict
+    "page"    $page
+    "content" $tabs
+    "groupid" $groupid
+    "title"   ""
+    "color"   ""
+    "icon"    ""
+    "style"   ""
+  ) }}
+</div>
+{{- if $needAssets -}}
+<script>
+(function () {
+  function activeTitle(panel) {
+    var active = panel.querySelector('.tab-nav-button.active .tab-nav-text');
+    return active ? active.textContent.trim() : '';
+  }
+  function initBlock(block) {
+    if (block.dataset.pathlockInit) {
+      return;
+    }
+    var panel = block.querySelector('.tab-panel');
+    var value = block.querySelector('.pathlock__value');
+    if (!panel || !value) {
+      return;
+    }
+    block.dataset.pathlockInit = '1';
+    function sync() {
+      var title = activeTitle(panel);
+      if (title && title !== value.textContent) {
+        value.textContent = title;
+      }
+    }
+    // The observer only sees future class changes, and the theme's
+    // restoreTabSelections() may already have switched the tab before this
+    // runs, so the immediate read below is required, not belt-and-braces.
+    new MutationObserver(sync).observe(panel, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    sync();
+  }
+  function initAll() {
+    Array.prototype.forEach.call(document.querySelectorAll('.pathlock'), initBlock);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAll);
+  } else {
+    initAll();
+  }
+})();
+</script>
+{{- $page.Store.Set "pathlockAssets" true }}
+{{- end }}
