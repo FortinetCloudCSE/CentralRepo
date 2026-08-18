@@ -198,6 +198,16 @@ enableEmoji = true
   #images = ['images/hero.png']
   mermaidZoom = true
 
+  # Optional: regexes matched against link/image/include URLs; a match suppresses the
+  # relearn URL warning. Use for local URLs that are not pages (e.g. a PDF in static/).
+  {% if errorignore is defined and errorignore %}
+  errorignore = [{% for pattern in errorignore %}{{ pattern | tojson }}{{ ", " if not loop.last }}{% endfor %}]
+  {% endif %}
+  # Optional: deployment path vocabulary for the pathtabs/pathtab shortcodes
+  {% if deploymentPaths is defined and deploymentPaths %}
+  deploymentPaths = [{% for path in deploymentPaths %}{ key = {{ path.key | tojson }}, title = {{ path.title | tojson }} }{{ ", " if not loop.last }}{% endfor %}]
+  {% endif %}
+
   [params.include]
     errorlevel = '{{errorLevel}}'
 

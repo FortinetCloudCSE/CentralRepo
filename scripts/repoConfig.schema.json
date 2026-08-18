@@ -25,6 +25,22 @@
     "bannerLine1":          { "type": "string" },
     "bannerLine2":          { "type": "string" },
     "bannerLine3":          { "type": "string" },
+    "errorignore": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "deploymentPaths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "title"],
+        "properties": {
+          "key":   { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
     "shortcuts": {
       "type": "array",
       "items": {
