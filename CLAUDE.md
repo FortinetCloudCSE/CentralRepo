@@ -11,14 +11,16 @@ are in use and they are not equivalent:
 1. **Dev-first (the documented route):** edit on `prreviewJune23` → push (dev image rebuilds) → PR
    `prreviewJune23` → `main` → prod image rebuilds. Use this when the change needs proving in a real
    workshop build before it reaches every consuming repo.
-2. **Feature branch → PR → `main`** — what the deployment-path work did (#72, #73, #74). Fine for a
-   change already tested with the `LOCAL=true` dev image, but it leaves `prreviewJune23`
+2. **Feature branch → PR → `main`** — what the deployment-path work did (#72, #73, #74, #77). Fine for
+   a change already tested with the `LOCAL=true` dev image, but it leaves `prreviewJune23`
    content-behind, so **the dev image silently lacks the change**.
 
-**Route 2 has left the branches diverged as of 2026-08-19:** `main` is ahead of `prreviewJune23` by
-17 files / ~1240 lines — the whole path gate, `scripts/static.yml`, `batch_repo_update.py`, and the
-base-image pin. Anyone testing against the dev image right now is testing pre-gate, unpinned
-CentralRepo. Merge `main` → `prreviewJune23` before trusting a dev-image result.
+**If you take route 2, push `main` → `prreviewJune23` in the same session.** Route 2 left the branches
+diverged for a week in August 2026 (17 files / ~1240 lines: the path gate, `scripts/static.yml`,
+`batch_repo_update.py`, the base-image pin), and the only symptom was dev-image test results that
+looked valid and were pre-gate. Resynced 2026-08-19; both refs are `e0d4a14f`. The resync is a
+fast-forward as long as nothing is committed to `prreviewJune23` directly:
+`git push origin origin/main:refs/heads/prreviewJune23`.
 
 Never push straight to `main` without a PR — it is protected, and a bypass is logged.
 
@@ -146,7 +148,7 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 - **Two-hop deploy path — an upstream edit is invisible until it reaches a workshop site.** Edit → merge to `main` → `image-build-push-prod.yaml` rebuilds and pushes the prod ECR image → each workshop repo picks it up on its *next* build. Nothing upstream is visible before that; don't debug a workshop site against an unbuilt CentralRepo commit.
 - **A floating tag hides two separate lies.** A green image-build run is not proof `fortinet-hugo:latest` moved — read the push step's log for the digest it reported. And `docker pull` on a tag you already hold locally can serve the *stale* manifest: `docker rmi -f` first, then pull, then confirm a file the change introduced actually exists inside the image. Skipping this produces a confident wrong conclusion that the merge didn't ship.
 - **`dev` means `prreviewJune23`, asserted in two places that must stay in agreement:** `.github/workflows/image-build-push-dev.yaml:6` (push trigger) and `Dockerfile` (`ADD …CentralRepo.git#prreviewJune23`). Change one without the other and the dev image builds a branch nothing pushes to. `prreviewJuly23` is a decoy — commits behind `main`, last commit 2026-06-11, referenced by no workflow and no Dockerfile stage. Never branch from it.
-- **Measure branch divergence with `git diff --quiet origin/prreviewJune23 origin/main`, not `rev-list --left-right --count`.** A merge-back workflow routinely leaves the dev branch *history*-behind while the content is identical; that is not staleness. The counts answer the wrong question. As of 2026-08-19 the diff does **not** pass — see Working Branch above.
+- **Measure branch divergence with `git diff --quiet origin/prreviewJune23 origin/main`, not `rev-list --left-right --count`.** A merge-back workflow routinely leaves the dev branch *history*-behind while the content is identical; that is not staleness. The counts answer the wrong question. The diff passed as of 2026-08-19 — re-run it, don't trust this line.
 - **Repo-local files shadow CentralRepo's, silently.** `scripts/local_copy.sh:3-4` runs a non-recursive `cp` of `../UserRepo/layouts/shortcodes/*` and `../UserRepo/layouts/partials/*` over CentralRepo's, so a same-named workshop file wins with no warning and an upstream fix to it does nothing in that repo. A repo-local `custom-header.html` is worse — the copy is whole-file, so it replaces CentralRepo's outright, losing every Fortinet colour token, the support widget, **and the entire deployment-path gate**. Adding a new, differently-named partial or shortcode is safe. Full detail in `README.md` → "Notes & gotchas" → UserRepo shadowing.
 - **A shortcode's `.Page.Store` guard is per page, NOT per output format.** Hugo renders page content once per output format while the Store is shared across them, so a `once per page` asset block lands in whichever format builds first and is silently absent from the rest — including `layouts/_default/allpages.html`'s whole-site PRINT page, which inlines every page's content, and any page carrying `outputs: ["html", "print"]` (the `ai-101` handouts do). Guard the bulky assets; emit anything whose absence changes rendering — a print-hiding rule, say — unguarded per block. `pathtabs.html` does exactly this split.
 - **Test a CentralRepo edit before merging with `docker build --build-arg LOCAL=true --target dev -t hugotester-local .`.** Both the normal dev and prod stages `ADD` the repo from GitHub, so they cannot see your working tree; `LOCAL=true` swaps in `COPY . /home/CentralRepo`. Mount the workshop repo read-only, which is safe because `local_copy.sh` only copies *out* of the mount and Hugo writes to `/home/CentralRepo/public`. Mount a host dir there too if you need the HTML.
