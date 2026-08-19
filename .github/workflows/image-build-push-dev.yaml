@@ -13,6 +13,9 @@ on:
       - 'LICENSE'
       - 'LICENSE-SAMPLECODE'
       - 'LICENSE-SUMMARY'
+      - '.gitignore'
+      - '.claude/**'
+      - '.githooks/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:

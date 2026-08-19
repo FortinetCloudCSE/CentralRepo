@@ -7,7 +7,8 @@ on:
     # A push that touches only these paths changes nothing inside the image, and
     # rebuilding republishes `fortinet-hugo:latest` to all 65 workshop repos for
     # no reason. Keep this list to paths that are provably not baked in: root-level
-    # docs, the docs/ and review/ trees, and the licences. Anything under scripts/,
+    # docs, the docs/ and review/ trees, the licences, and the repo-tooling config
+    # that lands in the image but is never read by Hugo. Anything under scripts/,
     # layouts/, assets/, i18n/, static/, archetypes/, themes/ or the Dockerfile
     # itself DOES reach the image — never add those here.
     paths-ignore:
@@ -17,6 +18,9 @@ on:
       - 'LICENSE'
       - 'LICENSE-SAMPLECODE'
       - 'LICENSE-SUMMARY'
+      - '.gitignore'
+      - '.claude/**'
+      - '.githooks/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
