@@ -461,6 +461,21 @@ html[data-deployment-path="{{ .key }}"] .pathmiss[data-for-path="{{ .key }}"] {
          cosmetic: permalink.gotmpl appends `index.html` to any link ending in "/"
          while `disableExplicitIndexURLs` is false, which is every section page. */}}
     {{- $navid := partial "permalink.gotmpl" (dict "to" $p) }}
+    {{/* Both of the following are errors rather than best-effort rules, because
+         the failure they prevent is silent in both directions: a selector keyed
+         on the wrong value matches no element and hides nothing, and CSS reports
+         neither. `data-nav-id` is the only page identity on the <li>, so there
+         is no second attribute to fall back to. */}}
+    {{- if or $p.Params.menuPageRef $p.Params.menuUrl }}
+      {{- $file := "[virtual file]" }}
+      {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
+      {{- errorf "%s: a page cannot combine deploymentPath with menuPageRef/menuUrl. Those params make the sidebar entry a crosslink, so menu.html keys its data-nav-id on the crosslink target (:130,:133,:137) rather than on the page's own permalink, and the generated rule would match nothing -- the page would stay visible to every path with no error. Drop one of the two." $file }}
+    {{- end }}
+    {{- if not $navid }}
+      {{- $file := "[virtual file]" }}
+      {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
+      {{- errorf "%s: this page is scoped to the %q path but has no permalink, so menu.html renders it headless with data-nav-id=\"\" (:149). A rule keyed on the empty string would hide every headless entry in the sidebar, not this one." $file $own }}
+    {{- end }}
     {{- range $paths }}
       {{- if ne .key $own }}
 html[data-deployment-path="{{ .key }}"] #R-sidebar li[data-nav-id="{{ $navid | safeCSS }}"] {
@@ -716,6 +731,112 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
     if (!btn) { return; }
     e.preventDefault();
     window.fortiPath.set(btn.getAttribute('data-choose-path'));
+  });
+})();
+</script>
+
+{{/* Search scoping. The sidebar and prev/next gating above is worthless while
+     search still offers the other path's pages: a search hit is exactly the
+     "arrived from somewhere else" case the pathmiss banner exists to catch, and
+     it is the one the reader is most likely to hit.
+
+     Filtered client-side rather than by building one index per path, because the
+     index is generated once from site.Home (dependencies/search.html:60-65) and
+     is shared by every page, so there is no per-path build hook to use. The
+     filter also deliberately does NOT extend the index entry shape: relearn
+     resolves the index template through params.search.index.template and feeds
+     the same entries to two different engines -- lunr declares its own field
+     list (search-lunr.js:68-89) and the orama adapter a strict schema
+     (search-orama-esm.mjs:32-56) -- so adding a field there is a theme-wide
+     contract change. `uri` is already a unique per-page identity that reaches
+     the results, and one small side map keyed on it needs neither engine to
+     agree to anything. (lunr also writes `page.index` onto every entry, so
+     `index` is a field name that must never be added.) */}}
+{{- $scoped := slice }}
+{{- range $p := site.Pages }}
+  {{- with $p.Params.deploymentPath }}
+    {{- $scoped = $scoped | append (dict "uri" (partial "permalink.gotmpl" (dict "to" $p)) "path" .) }}
+  {{- end }}
+{{- end }}
+<script>
+(function () {
+  // uri is built by the same partial the search index uses for its own `uri`
+  // (_relearn_searchindex.js:12), so these match by string equality with no
+  // normalising. Only path-scoped pages are listed; an absent entry means the
+  // page belongs to every path, which is the overwhelming majority.
+  var SCOPED = [
+    {{- range $i, $e := $scoped }}{{ if $i }},{{ end }}
+    { uri: {{ $e.uri }}, path: {{ $e.path }} }
+    {{- end }}
+  ];
+  var OWNER = {};
+  for (var i = 0; i < SCOPED.length; i++) { OWNER[SCOPED[i].uri] = SCOPED[i].path; }
+
+  var root = document.documentElement;
+
+  // No choice stored means no filtering, which diverges from the default-deny
+  // rule the content gate follows. Deliberate: a reader who has not chosen yet
+  // is being shown the whole site everywhere else, and a search that silently
+  // returned nothing would read as a broken index rather than as a gate.
+  function allowed(page) {
+    var active = (window.fortiPath && window.fortiPath.get()) || '';
+    if (!active) { return true; }
+    var owner = page && page.uri ? OWNER[page.uri] : null;
+    return !owner || owner === active;
+  }
+
+  // One wrap covers both surfaces. The dropdown (search.js:178-181) and the
+  // dedicated results page (search.js:130-133) are the only two callers and
+  // both await this same function, and the "N results found" count is computed
+  // from the array we return (search.js:133), so it stays truthful without a
+  // second patch.
+  function install() {
+    var s = window.relearn && window.relearn.search;
+    if (!s || !s.adapter || typeof s.adapter.search !== 'function') { return; }
+    if (s.adapter.fortiPathFiltered) { return; }
+    var inner = s.adapter.search;
+    s.adapter.search = async function () {
+      var results = await inner.apply(this, arguments);
+      if (!Array.isArray(results)) { return results; }
+      return results.filter(function (r) { return allowed(r && r.page); });
+    };
+    s.adapter.fortiPathFiltered = true;
+  }
+
+  // The adapter is registered by a deferred script (search-lunr.js:155-157), so
+  // it does not exist while this inline block parses. It always exists by
+  // DOMContentLoaded, since every deferred script runs first. Presence-checked
+  // rather than assumed because search.html:57,115 omit the whole bundle when a
+  // site disables search.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install, { once: true });
+  } else {
+    install();
+  }
+
+  // documentElement, not window: fortiPath dispatches a CustomEvent, which does
+  // not bubble.
+  root.addEventListener('forti:pathchange', function () {
+    // auto-complete.js hangs `cache` straight off the input element (:75) and
+    // keys it on the raw input value (:152-154). Worse than staleness, :226-233
+    // short-circuits any term whose shorter prefix cached zero results, so one
+    // term that legitimately found nothing on the old path poisons itself and
+    // every extension of it. Neither survives a path change, and the instance
+    // that owns destroy() is discarded at construction (search.js:173), so
+    // clearing the element's own properties is both the available lever and
+    // the sufficient one.
+    var box = document.getElementById('R-search-by');
+    if (box) {
+      box.cache = {};
+      box.last_val = '';
+    }
+    // Results already on screen were filtered for the previous path. The
+    // results page is the one place a reader can switch path while looking at
+    // matches, so re-run rather than leave them contradicting the new choice.
+    if (document.getElementById('R-searchresults') &&
+        window.relearn && typeof window.relearn.executeTriggeredSearch === 'function') {
+      window.relearn.executeTriggeredSearch();
+    }
   });
 })();
 </script>

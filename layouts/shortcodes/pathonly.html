@@ -23,7 +23,15 @@
     {{- errorf "%s: pathonly cannot be nested inside %s. The enclosing block already restricts its body to one path, so this is either redundant or unreachable. Move the content out, or use the enclosing block's path." $file .Name }}
   {{- end }}
 {{- end }}
-{{- $body := trim ($page.RenderString (dict "display" "block") .Inner) "\n\r\t " }}
+{{/* Emitted for the page's own markdown pass to render -- deliberately NOT
+     rendered here with RenderString, and this is why the shortcode must be
+     called with the `{{%` delimiters. RenderString runs in its own render
+     context, so headings inside it never join the page's fragment set: an
+     in-page `[link](#heading)` pointing into this block warns at build time
+     ("heading ID not found") and does nothing when a reader clicks it, and the
+     heading is missing from the page's table of contents. Handing the body back
+     to the page is what registers them. */}}
+{{- $body := trim .Inner "\n\r\t " }}
 {{- if not $body }}
   {{- errorf "%s: this pathonly block is empty. Write the content for the %q path, or delete the block -- an empty pathonly is indistinguishable from a gate that is silently hiding the wrong thing." $file $path }}
 {{- end }}
@@ -31,7 +39,16 @@
      in, so there is one path-gating attribute in the codebase rather than two.
      The gating CSS lives in layouts/partials/custom-header.html: it hides every
      .pathonly by default and re-shows only the matching key, so this markup is
-     inert in exactly one direction -- with the CSS missing, everything shows. */}}
+     inert in exactly one direction -- with the CSS missing, everything shows.
+
+     The blank lines around the body are load-bearing, not formatting. A line
+     starting with `<div` opens a CommonMark raw-HTML block that runs to the next
+     blank line, so without them the body's first block is swallowed into it and
+     emitted as literal text -- a leading `## Heading` renders as the characters
+     "## Heading". A blank line closes the block and hands the body back to the
+     markdown renderer, which is also what registers its heading IDs. */}}
 <div class="pathgate pathonly" data-path="{{ $path }}">
+
 {{ $body | safeHTML }}
+
 </div>

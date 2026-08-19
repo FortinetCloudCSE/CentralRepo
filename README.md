@@ -179,18 +179,18 @@ Gotcha — never emit reader-facing prose from a shortcode that a page's `<meta 
 A standalone block that belongs to exactly one path, for content with no counterpart on the other path — where a `pathtabs` group would mean writing an empty or padded tab just to satisfy the every-path-exactly-once rule.
 
 ```
-{{< pathonly path="docker" >}}
+{{% pathonly path="docker" %}}
 ### Compose profiles
 The stack ships three profiles. Enable the GPU profile with
 `docker compose --profile gpu up -d`.
-{{< /pathonly >}}
+{{% /pathonly %}}
 ```
 
 Parameters:
 - `path`: Required. Must match a `key` in `deploymentPaths`; anything else is a build `errorf`.
 
 Behavior:
-- Note the delimiters: `{{< >}}`, unlike `pathtab`'s `{{% %}}`. The shortcode renders its own body with `RenderString` so the markdown works, and using `{{< >}}` keeps the *output* from being re-processed as markdown.
+- **`{{% %}}`, not `{{< >}}` — this is not stylistic.** The percent form hands the body back to the page's own markdown pass. The angle form would force the shortcode to render its body with `RenderString`, which runs in a separate render context, so headings inside the block never join the page's fragment set: an in-page `[link](#heading)` pointing into a `pathonly` block builds with `WARN … heading ID "…" not found` and does nothing when a reader clicks it, and the heading is absent from the page's table of contents.
 - Wraps its body in the same `.pathgate[data-path]` element the tab panels use, so there is one path-gating attribute in the codebase rather than two, gated by the same CSS.
 - Nesting inside `pathtab` or another `pathonly` is a build `errorf`, not a no-op. The enclosing block already restricts its body to one path, so a nested `pathonly` is either redundant (same key) or content that can never render (different key) — and the second case looks like working authoring right up until a reader reports missing steps.
 - An empty body is a build `errorf`, since it is indistinguishable from a gate silently hiding the wrong thing.
@@ -211,6 +211,14 @@ Two asymmetries here are deliberate:
 - **Every gate rule only ever hides — none forces `display` back on.** Sidebar `<li>`s and topbar buttons carry the theme's own responsive `display` rules (`[data-width-s="hide"]` and friends), so a rule re-showing the active path's element would defeat them at small widths and break the sidebar flyout. Reveal by `:not()`, never by re-assertion.
 
 A page-scoping decision is only visible in the built HTML as absent CSS, so it fails silently: if the generated selector does not byte-match the sidebar's real `data-nav-id`, the rule matches nothing and no error is raised.
+
+### Search
+Search results are filtered to the reader's path, because a search hit is the single most likely way a reader reaches a page the sidebar and prev/next gating just removed from their route.
+
+- Filtered client-side, in a wrapper around `window.relearn.search.adapter.search`. That is the only function both search surfaces go through — the dropdown suggestions (`search.js:178-181`) and the dedicated results page (`search.js:130-133`) — and the "N results found" count is computed from the array the wrapper returns, so it stays truthful.
+- The index entry shape is deliberately **not** extended. Relearn generates the index once from `site.Home` and feeds the same entries to two engines with independent field declarations — lunr's field list and the orama adapter's strict schema — so adding a field there is a theme-wide contract change. Instead `custom-header.html` emits a small `uri → path` side map for scoped pages only, keyed on the same `permalink.gotmpl` output the index itself uses for `uri`. If you ever do extend the index, note that lunr writes `page.index` onto every entry, so `index` is a field name that must never be added.
+- **With no path chosen, nothing is filtered.** Same reasoning as the sidebar: an undecided reader sees the whole site everywhere else, and a search that silently returned nothing would read as a broken index rather than as a gate.
+- Switching paths clears the autocomplete cache. `auto-complete.js` stores results on the `#R-search-by` element keyed by raw input value, and short-circuits any term whose shorter prefix cached zero results — so one term that legitimately found nothing on the old path would otherwise poison itself and every extension of it. If results are already on screen, the search re-runs.
 
 ### Repos that declare no paths
 `deploymentPaths` is absent from nearly every workshop repo, and all of the above is inert without it: no gate script, no gate CSS, one unclassed prev/next button each, and no `pathnav` classes. Output is byte-identical to a build without the feature.
