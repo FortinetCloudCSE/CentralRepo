@@ -66,13 +66,16 @@
   font-weight: 400;
   opacity: .8;
 }
-@media print {
-  .pathlock__banner {
-    display: none;
-  }
-}
 </style>
 {{- end -}}
+{{/* The print rule is deliberately OUTSIDE the once-per-page guard. Hugo renders
+     page content once per output format while Page.Store is shared across them,
+     so the guarded block above lands in whichever format is built first and is
+     silently absent from the others — including CentralRepo's whole-site
+     layouts/_default/allpages.html PRINT page, which inlines every page's
+     content, and any page carrying `outputs: ["html", "print"]`. Duplicating one
+     55-byte rule per block is cheaper than a banner that survives into print. */}}
+<style>@media print{.pathlock__banner{display:none}}</style>
 <div class="pathlock">
   <div class="pathlock__banner">
     <div class="pathlock__head"><i class="fa-fw fas fa-lock"></i> {{ $label }}: <span class="pathlock__value" aria-live="polite">{{ $firstTitle }}</span></div>
