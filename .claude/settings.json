@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(hugo:*)",
+      "Bash(docker:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(bash scripts/:*)"
+    ]
+  }
+}
