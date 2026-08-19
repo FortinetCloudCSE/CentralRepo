@@ -1,0 +1,59 @@
+{{- /*
+  Return the next or previous page for one deployment path, skipping any page
+  whose `deploymentPath` front matter names a different path.
+
+  Why a walk rather than a filter: there is one HTML output per page and the
+  reader's path is only known client-side, so prev/next cannot be resolved for
+  "the reader's path" at build time. The callers run this once per declared path
+  and emit one button per result; the gate CSS in custom-header.html reveals the
+  one that matches. Pages with no `deploymentPath` belong to every path and are
+  always accepted, so a site that declares no paths never reaches this partial.
+
+  Arguments:
+    page  the page to walk from
+    dir   "next" or "prev"
+    path  the deployment-path key to walk for; "" means accept anything, which
+          reproduces the theme's own unfiltered result
+
+  Returns a Page, or "" when the walk runs out.
+*/ -}}
+{{- $page := .page }}
+{{- $dir := .dir }}
+{{- $key := .path }}
+{{- $walker := cond (eq $dir "next") "_relearn/pageNext.gotmpl" "_relearn/pagePrev.gotmpl" }}
+{{- $cur := $page }}
+{{- $found := "" }}
+{{- $done := false }}
+{{- /*
+  Bounded rather than open-ended, because Go templates have no `while` and two of
+  the terminating conditions are the walkers' own quirks rather than anything
+  this partial controls: pageNext returns "" at the end of the site, while
+  pagePrev falls back to site.Home (`_relearn/pagePrev.gotmpl:12`) and so returns
+  the same page forever once it gets there. 24 is far above any plausible run of
+  consecutive same-path pages; exhausting it warns rather than failing, because a
+  missing prev/next button is a worse outcome than a slightly wrong one.
+*/ -}}
+{{- range seq 24 }}
+  {{- if not $done }}
+    {{- $cand := partialCached $walker $cur $cur.Path }}
+    {{- if not $cand }}
+      {{- $done = true }}
+    {{- else if eq $cand.Path $cur.Path }}
+      {{- $done = true }}
+    {{- else }}
+      {{- $cp := $cand.Params.deploymentPath | default "" }}
+      {{- if or (not $key) (not $cp) (eq $cp $key) }}
+        {{- $found = $cand }}
+        {{- $done = true }}
+      {{- else }}
+        {{- $cur = $cand }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if not $done }}
+  {{- $file := "[virtual file]" }}
+  {{- with and $page $page.File $page.File.Filename }}{{ $file = . }}{{ end }}
+  {{- warnf "%s: gave up looking for the %s page on the %q path after 24 hops; the %s button will be disabled there. Either the site has a run of more than 24 consecutive same-path pages, or a page's deploymentPath is wrong." $file $dir $key $dir }}
+{{- end }}
+{{- return $found }}

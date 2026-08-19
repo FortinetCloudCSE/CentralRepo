@@ -1,28 +1,46 @@
 {{- $onwidths := cond (isset . "onwidths") .onwidths "show" }}
 {{- $onwidthm := cond (isset . "onwidthm") .onwidthm "show" }}
 {{- $onwidthl := cond (isset . "onwidthl") .onwidthl "show" }}
-{{- with .page }}
+{{- $page := .page }}
+{{- with $page }}
 	{{- $show := not (.Param "disableNextPrev") }}
 	{{- if $show }}
 		{{- $endarrow := "🡒" }}
 		{{- if eq (.Language.Direction | default (T "Reading-direction") | default "ltr") "rtl" }}
 			{{- $endarrow = "🡐" }}
 		{{- end }}
-        {{- $next := partialCached "_relearn/pageNext.gotmpl" . .Path }}
-		{{- $nextTitle := partial "title.gotmpl" (dict "page" $next "outputFormat" "html") }}
-		{{- $href := "" }}
-		{{- with (and $next $next.Path) }}
-			{{- $href = . }}
+		{{/* See prev.html for why this emits one button per path. The two must stay
+		     symmetrical: a next button that skips a page while prev does not walks
+		     the reader into a page they cannot get back out of. */}}
+		{{- $variants := slice (dict "key" "" "class" "") }}
+		{{- with site.Params.deploymentPaths }}
+			{{- $variants = slice (dict "key" "" "class" "pathnav pathnav--any") }}
+			{{- range . }}
+				{{- $variants = $variants | append (dict "key" .key "class" (printf "pathnav pathnav--%s" .key)) }}
+			{{- end }}
 		{{- end }}
-		{{- partial "topbar/func/button.html" (dict
-			"page" .
-			"class" "topbar-button-next"
-			"href" $href
-			"icon" "chevron-right"
-			"onwidths" $onwidths
-			"onwidthm" $onwidthm
-			"onwidthl" $onwidthl
-			"hint" (printf "%s (%s)" $nextTitle ($endarrow | safeHTML))
-		)}}
+		{{- range $variants }}
+			{{- $next := "" }}
+			{{- if .key }}
+				{{- $next = partial "pathnav/step.gotmpl" (dict "page" $page "dir" "next" "path" .key) }}
+			{{- else }}
+				{{- $next = partialCached "_relearn/pageNext.gotmpl" $page $page.Path }}
+			{{- end }}
+			{{- $nextTitle := partial "title.gotmpl" (dict "page" $next "outputFormat" "html") }}
+			{{- $href := "" }}
+			{{- with (and $next $next.Path) }}
+				{{- $href = . }}
+			{{- end }}
+			{{- partial "topbar/func/button.html" (dict
+				"page" $page
+				"class" (trim (printf "topbar-button-next %s" .class) " ")
+				"href" $href
+				"icon" "chevron-right"
+				"onwidths" $onwidths
+				"onwidthm" $onwidthm
+				"onwidthl" $onwidthl
+				"hint" (printf "%s (%s)" $nextTitle ($endarrow | safeHTML))
+			)}}
+		{{- end }}
 	{{- end }}
 {{- end }}
