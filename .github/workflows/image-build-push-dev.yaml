@@ -4,6 +4,15 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["prreviewJune23"]
+    # Same reasoning as image-build-push-prod.yaml — see the comment there before
+    # adding anything to this list.
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'review/**'
+      - 'LICENSE'
+      - 'LICENSE-SAMPLECODE'
+      - 'LICENSE-SUMMARY'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
