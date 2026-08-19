@@ -6,8 +6,13 @@ ARG LOCAL=false
 # Global ARG must be declared before first FROM to be usable in FROM instructions
 ARG LOCAL=false
 
-# Base Hugo image (uses Alpine 3.21)
-FROM hugomods/hugo:std as base
+# Base Hugo image (uses Alpine 3.21). PINNED ON PURPOSE — do not revert to the
+# floating `:std` tag. Every push to main republishes `fortinet-hugo:latest`, and
+# all 65 workshop repos build against that tag, so a floating base silently hands
+# every repo whatever Hugo minor upstream shipped that week. 0.165.0 is what
+# production already runs, so this pin is behaviourally a no-op today.
+# To bump: change the tag here, in its own PR, and say which Hugo version it moves to.
+FROM hugomods/hugo:std-0.165.0 as base
 
 ############################
 # DEV STAGE — source variants

@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### ci(image): pin the Hugo base image and stop rebuilding on docs-only pushes
+
+Two independent ways a CentralRepo merge could hand all 65 workshop repos an unintended change are now closed.
+
+`Dockerfile` pinned `hugomods/hugo:std` → `hugomods/hugo:std-0.165.0`. The floating tag meant the Hugo version inside `fortinet-hugo:latest` was whatever upstream had published most recently at build time, decided by *when* someone merged rather than by any decision in this repo — observed live on 2026-08-19, when a merge moved the published image from Hugo 0.164.0 to 0.165.0 with nothing in the diff asking for it. 0.165.0 is what production already runs, so the pin changes no behaviour today; it only makes the next Hugo bump an explicit, reviewable commit. Pinning the base also pins Alpine, so the `apk add python3 py3-pip tini-static` layer stops drifting too.
+
+`image-build-push-prod.yaml` and `image-build-push-dev.yaml` gained matching `paths-ignore` lists. Neither had one, so a README- or docs-only merge rebuilt and republished `latest` to every consumer. The list covers only paths that are provably not baked into the image — root-level `*.md`, `docs/**`, `review/**` and the three licence files. Everything under `scripts/`, `layouts/`, `assets/`, `i18n/`, `static/`, `archetypes/`, `themes/` and the `Dockerfile` itself does reach the image and is deliberately absent from the list.
+
+Known consequence, accepted: `versioning.yml` still runs on every push to `main` and is intentionally left without `paths-ignore`, so a docs-only push still cuts a `vYY.Q.<letter>` tag and GitHub release. Image version letters can therefore skip — a tag can exist with no image built for it. Tagging a docs release is defensible and unifying the two is a separate decision.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `Dockerfile` | Pin base image to `hugomods/hugo:std-0.165.0`, with a comment on why and how to bump |
+| `.github/workflows/image-build-push-prod.yaml` | Add `paths-ignore` to the `push` trigger |
+| `.github/workflows/image-build-push-dev.yaml` | Same `paths-ignore` |
+
 ### feat(shortcodes): single deployment path per reader — pathtabs / pathonly / deploymentPath
 
 A reader picks Docker vs Kubernetes once and every page of the site follows that choice. This started as `pathtabs` / `pathtab` upstreamed from `ai-101` — previously a local copy there, now the only copy anywhere, and `local_copy.sh` no longer has a same-named repo-local file to shadow it with.
