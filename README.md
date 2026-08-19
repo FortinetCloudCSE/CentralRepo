@@ -95,6 +95,46 @@ Direct src override:
 {{< quizframe src="https://quiz.example.com/take-quiz" >}}
 ```
 
+### pathtabs / pathtab
+Parallel steps for two or more mutually exclusive deployment paths, of which a reader follows exactly one. Only the reader's chosen path is shown — in the page body, the sidebar, the next/previous buttons, and search.
+
+Requires `deploymentPaths` in the workshop's `scripts/repoConfig.json`. There is no default vocabulary: a repo that does not declare paths cannot use these shortcodes, and no repo inherits another repo's paths.
+
+Usage:
+```
+{{< pathtabs title="Deploy the stack" >}}
+{{% pathtab path="docker" %}}
+docker compose up -d
+{{% /pathtab %}}
+{{% pathtab path="k8s" %}}
+helm upgrade --install mylab ./chart
+{{% /pathtab %}}
+{{< /pathtabs >}}
+```
+Parameters:
+- `pathtabs` — `title`: optional banner label (default `Your path`). `groupid`: optional tab-group id (default `deploy-path`); leave it alone unless you need two independent groups on one page.
+- `pathtab` — `path`: required, one of the `key` values in `deploymentPaths`.
+
+Note the delimiters: `{{< pathtabs >}}` (angle) for the wrapper, `{{% pathtab %}}` (percent) for each body, so the body is rendered as markdown.
+
+Build fails when: `deploymentPaths` is unset; a block omits any configured path; a block defines the same path twice; a body is empty; `path=` names an unknown key; a `pathtab` sits outside a `pathtabs`. Each failure is a deliberate error rather than a warning, because the alternative is a gate that silently shows the wrong path's steps.
+
+### pathonly
+One path's content with no tab UI — prose, a warning, or a whole section that has no counterpart on the other paths. Same gating mechanism as `pathtab` (both emit `.pathgate[data-path]`), so there is one gate, not two.
+
+Usage:
+```
+{{% pathonly path="k8s" %}}
+Your cluster needs a default StorageClass before you continue.
+{{% /pathonly %}}
+```
+Parameters:
+- `path`: required, one of the `key` values in `deploymentPaths`. It takes no other parameters.
+
+**Must be called with the percent form.** With `{{< pathonly >}}`, `RenderString` gives the body its own render context, so headings inside never join the page's fragment set and every in-page anchor to them breaks silently. Blank lines above and below the tags are also load-bearing: a line beginning `<div` opens a CommonMark type-6 raw-HTML block that runs to the next blank line, and without them the body is never rendered as markdown.
+
+Build fails when: `deploymentPaths` is unset; `path=` names an unknown key; the block is nested inside `pathtabs`/`pathonly`; the body is empty.
+
 ### colortext
 Inline colored text.
 
@@ -271,6 +311,8 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 - `quizUrl`: Base URL for `quizframe`.
 - `videoHeaderSrc`: Path to the sidebar header background MP4 (`CloudCSEMovie` theme only).
 - `videoHeaderInterval`: Seconds between video play cycles (`CloudCSEMovie` theme only, default `60`).
+- `deploymentPaths`: Optional list of `{ "key": …, "title": … }` declaring a workshop's mutually exclusive deployment paths. Required by `pathtabs`/`pathtab`/`pathonly` and by any page carrying a `deploymentPath` front-matter param; omitting it leaves every one of those features inert. `key` must start with a letter and contain only letters, digits, hyphens and underscores, because it is interpolated into CSS class names as well as attribute values. **Order is load-bearing** — the first entry is the JavaScript-off default and the server-side active tab. **Renaming a `title` silently resets every returning reader's stored choice** (the selection is keyed on the title text); renaming a `key` fails the build instead, which is the safer failure.
+- `errorignore`: Optional list of regexes suppressing relearn's URL error report for targets it cannot resolve as pages (e.g. a PDF referenced from `menu.shortcuts`).
 - `deploymentPaths`: List of `{key, title}` objects defining the path vocabulary for `pathtabs`, `pathonly` and the `deploymentPath` page param. Required by all three — the build fails if it is absent. Declaring it is also what switches the whole gate on; a repo without it builds byte-identically to one built before the feature existed. Keys are used as CSS class suffixes as well as attribute values, so a key must start with a letter and contain only letters, digits, hyphens and underscores.
 - `errorignore`: List of regex strings. Relearn matches each one against the offending URL in `themes/hugo-theme-relearn/layouts/partials/_relearn/urlErrorReport.gotmpl:5` and suppresses the link/image/include/openapi warning or error when any matches.
 
