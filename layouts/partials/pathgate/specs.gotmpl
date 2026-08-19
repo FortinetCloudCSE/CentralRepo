@@ -1,0 +1,42 @@
+{{- /*
+  Return the deployment-path vocabulary in effect for one page.
+
+  Two places can declare it, for two different jobs:
+
+    site.Params.deploymentPaths  (scripts/repoConfig.json)
+      The whole workshop is gated. Content blocks, the sidebar, prev/next and
+      search all follow the reader's one choice, and the switcher is on every
+      page. This is what a real two-path workshop wants.
+
+    deploymentPaths in a page's front matter
+      Only that page gates anything. No sidebar entry is hidden, no prev/next
+      button is filtered, search is untouched, and the switcher appears on that
+      page alone. This is what a single self-contained page wants -- a live
+      example inside a guide, or one lab page that happens to fork.
+
+  Why the page-level form exists at all: UserRepo is cloned to start every new
+  workshop, so anything in its scripts/repoConfig.json is inherited by every new
+  repo. A site-level declaration there would hand every new workshop a path
+  vocabulary it never asked for, and the switcher on every one of its pages.
+  Front matter travels with the one page that demonstrates the feature and
+  disappears when that page is deleted.
+
+  Declaring both is a hard error rather than a precedence rule. There is exactly
+  one stored choice per reader per site (`<absBaseUri>/deployment-path`), so a
+  page-local key would be written into the same slot the site-wide gate reads
+  back. Every site-wide gated page would then fail to match it and fall through
+  to default-deny, showing the reader nothing at all -- with no error anywhere,
+  because default-deny is also the correct behaviour before a first choice.
+
+  Argument: the page.
+  Returns the spec list, or an empty slice when neither place declares one.
+*/ -}}
+{{- $page := . }}
+{{- $site := site.Params.deploymentPaths | default slice }}
+{{- $own := $page.Params.deploymentPaths | default slice }}
+{{- if and $own $site }}
+  {{- $file := "[virtual file]" }}
+  {{- with and $page $page.File $page.File.Filename }}{{ $file = . }}{{ end }}
+  {{- errorf "%s: this page declares deploymentPaths in its front matter, but the site already declares them in scripts/repoConfig.json. Use one or the other: front matter gates this page only, the site param gates the whole workshop. Both at once puts two vocabularies behind one stored choice, and the site-wide pages silently show nothing." $file }}
+{{- end }}
+{{- return (cond (gt (len $own) 0) $own $site) }}

@@ -316,9 +316,16 @@
 </style>
 
 {{- $page := . }}
-{{- with .Site.Params.deploymentPaths }}
-{{/* Deployment-path gate. Everything below is emitted only for a site that
-     declares deploymentPaths, so it is zero bytes for every repo that does not
+{{/* Site-declared paths, kept separate from the page's effective vocabulary
+     below: the three site-wide behaviours (sidebar, prev/next, search) must only
+     ever follow a site-level declaration. A page that declares deploymentPaths
+     in its own front matter gates its own blocks and nothing else -- see
+     partials/pathgate/specs.gotmpl for why that form exists. */}}
+{{- $sitePaths := site.Params.deploymentPaths | default slice }}
+{{- $noPages := slice }}
+{{- with partial "pathgate/specs.gotmpl" $page }}
+{{/* Deployment-path gate. Everything below is emitted only for a page with a
+     path vocabulary in effect, so it is zero bytes for every repo that does not
      use the pathtabs shortcode.
 
      Why it lives here rather than in the shortcode: the CSS has to be in <head>
@@ -447,8 +454,12 @@ html[data-deployment-path="{{ .key }}"] .pathmiss[data-for-path="{{ .key }}"] {
    Nothing is hidden while data-deployment-path is "" -- a reader who has not
    chosen yet gets the full table of contents. Default-deny is right for steps,
    where showing both paths is the original failure; it is wrong for navigation,
-   where it would present a workshop with pages missing and no way to tell why. */
-{{- range $p := site.Pages }}
+   where it would present a workshop with pages missing and no way to tell why.
+
+   Walked only when the *site* declares the vocabulary. A page-local declaration
+   gates that page's own blocks, so hiding another page's sidebar entry on the
+   strength of it would key a site-wide rule on one page's private list. */
+{{- range $p := (cond (gt (len $sitePaths) 0) site.Pages $noPages) }}
   {{- with $p.Params.deploymentPath }}
     {{- $own := . }}
     {{- if not (in $keys $own) }}
@@ -498,15 +509,22 @@ html[data-deployment-path="{{ .key }}"] #R-sidebar li[data-nav-id="{{ $navid | s
    `pathnav--any` one for the no-choice state; all but the matching one are
    hidden. Hiding a page from the sidebar while leaving it on the linear walk
    would march the reader into a page the sidebar says does not exist, which is
-   why this ships with the sidebar rules above and never after them. */
-{{- range . }}
+   why this ships with the sidebar rules above and never after them.
+
+   Site-declared paths only, for the same reason as the sidebar -- and because
+   the buttons themselves only carry the `pathnav` classes when the site declares
+   the vocabulary (topbar/button/next.html), so under a page-local declaration
+   these rules would be dead CSS. */
+{{- range $sitePaths }}
 html[data-deployment-path="{{ .key }}"] .topbar-button.pathnav:not(.pathnav--{{ .key }}) {
   display: none;
 }
 {{- end }}
+{{- if $sitePaths }}
 html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
   display: none;
 }
+{{- end }}
 
 .pathswitch {
   align-items: center;
@@ -759,9 +777,13 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
      contract change. `uri` is already a unique per-page identity that reaches
      the results, and one small side map keyed on it needs neither engine to
      agree to anything. (lunr also writes `page.index` onto every entry, so
-     `index` is a field name that must never be added.) */}}
+     `index` is a field name that must never be added.)
+
+     Site-declared paths only: a page-local vocabulary gates that page's blocks,
+     and filtering the whole site's search results on one page's private list
+     would hide pages a reader can still legitimately reach. */}}
 {{- $scoped := slice }}
-{{- range $p := site.Pages }}
+{{- range $p := (cond (gt (len $sitePaths) 0) site.Pages $noPages) }}
   {{- with $p.Params.deploymentPath }}
     {{- $scoped = $scoped | append (dict "uri" (partial "permalink.gotmpl" (dict "to" $p)) "path" .) }}
   {{- end }}
