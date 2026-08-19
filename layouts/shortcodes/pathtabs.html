@@ -14,8 +14,6 @@
 {{- range $specs }}
   {{- $keys = $keys | append .key }}
 {{- end }}
-{{- $firstTitle := "" }}
-{{- with $specs }}{{ $firstTitle = (index . 0).title }}{{ end }}
 {{- $tabs := slice }}
 {{- range $spec := $specs }}
   {{- $match := where $collected "path" $spec.key }}
@@ -24,61 +22,49 @@
   {{- else if gt (len $match) 1 }}
     {{- errorf "%s: pathtabs block defines the %q path %d times; expected exactly once." $file $spec.key (len $match) }}
   {{- else }}
+    {{- $body := trim (index $match 0).content "\n\r\t " }}
+    {{- if not $body }}
+      {{- errorf "%s: the %q pathtab in this pathtabs block is empty. Write the steps for that path, or remove the path from deploymentPaths — an empty pathtab renders a path-gated panel with nothing in it, which reads as \"this path has no work to do\" rather than as the authoring mistake it is." $file $spec.key }}
+    {{- end }}
+    {{/* Wrap each path's body in a keyed element so the gating CSS can select by
+         path key. The alternative — selecting relearn's own .tab-content by its
+         data-tab-item — means re-deriving itemid = anchorize(plainify(title)) in
+         CSS, which is not expressible, or hardcoding it, which breaks silently
+         the moment a title changes. The wrapper is what `:has()` reaches through
+         in custom-header.html. It is also what the `pathonly` shortcode reuses,
+         so there is exactly one path-gating mechanism, not two. */}}
     {{- $tabs = $tabs | append (dict
       "title"   $spec.title
-      "content" (index $match 0).content
+      "content" (printf "<div class=\"pathgate\" data-path=\"%s\">\n%s\n</div>" $spec.key $body)
       "color"   ""
       "icon"    ""
       "style"   ""
     ) }}
   {{- end }}
 {{- end }}
-{{- $needAssets := not ($page.Store.Get "pathlockAssets") }}
-{{- if $needAssets -}}
-<style>
-.pathlock__banner {
-  margin: 0 0 .4rem 0;
-  padding: .5rem .75rem;
-  border: 1px solid rgba(var(--theme-color, 218,41,28), .35);
-  border-left: 4px solid rgba(var(--theme-color, 218,41,28), .9);
-  border-radius: 3px;
-  background: rgba(var(--theme-color, 218,41,28), .07);
-  line-height: 1.4;
-}
-.pathlock__head {
-  font-weight: 600;
-}
-/* Accent only the icon and the live value. Colouring the whole banner puts
-   brand-red text on a brand-red tint, which is borderline at body size and
-   fails outright for the .8rem hint at reduced opacity — and it inverts badly
-   in the theme's dark variants, where the tint is dark but the accent is not.
-   Everything else inherits the theme's own foreground colour. */
-.pathlock__head > .fa-lock,
-.pathlock__value {
-  color: rgb(var(--theme-color, 218,41,28));
-}
-.pathlock__value {
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-.pathlock__hint {
-  font-size: .8rem;
-  font-weight: 400;
-  opacity: .8;
-}
-</style>
-{{- end -}}
-{{/* The print rule is deliberately OUTSIDE the once-per-page guard. Hugo renders
-     page content once per output format while Page.Store is shared across them,
-     so the guarded block above lands in whichever format is built first and is
-     silently absent from the others — including CentralRepo's whole-site
-     layouts/_default/allpages.html PRINT page, which inlines every page's
-     content, and any page carrying `outputs: ["html", "print"]`. Duplicating one
-     55-byte rule per block is cheaper than a banner that survives into print. */}}
-<style>@media print{.pathlock__banner{display:none}}</style>
+{{/* No <style> or <script> here on purpose. Everything this block needs is
+     emitted once per page from layouts/partials/custom-header.html, which runs
+     inside <head> in every output format — so the gating CSS is present before
+     first paint and cannot be lost to the Page.Store-vs-output-format split that
+     used to strip this block's assets out of index.print.html. The markup below
+     is inert without that CSS in exactly one direction: everything shows. */}}
+{{/* The no-choice chooser and the no-JavaScript warning are NOT emitted here.
+     Anything a shortcode writes lands in .Content, and relearn builds
+     <meta name="description"> from `.Summary | plainify`
+     (themes/hugo-theme-relearn/layouts/partials/meta.html:44) and its lunr index
+     from the same content -- so a chooser here put "JavaScript is disabled, so
+     all 2 deployment paths are shown below" into the description and the search
+     results of every lab page, and inflated the word count by 120. They live in
+     layouts/partials/content-header.html instead, which is outside .Content and
+     runs once per page rather than once per block. */}}
 <div class="pathlock">
   <div class="pathlock__banner">
-    <div class="pathlock__head"><i class="fa-fw fas fa-lock"></i> {{ $label }}: <span class="pathlock__value" aria-live="polite">{{ $firstTitle }}</span></div>
+    {{/* &nbsp; rather than a literal space: the {{- on the range trims plain
+         whitespace, and the range has to trim so that the hidden value spans do
+         not leave stray spaces after the visible one. */}}
+    <div class="pathlock__head"><i class="fa-fw fas fa-lock"></i> {{ $label }}:&nbsp;
+      {{- range $specs }}<span class="pathlock__value" data-path="{{ .key }}">{{ .title }}</span>{{ end }}
+    </div>
     <div class="pathlock__hint">Locked in — every lab page follows this choice.</div>
   </div>
   {{ partial "shortcodes/tabs.html" (dict
@@ -91,48 +77,3 @@
     "style"   ""
   ) }}
 </div>
-{{- if $needAssets -}}
-<script>
-(function () {
-  function activeTitle(panel) {
-    var active = panel.querySelector('.tab-nav-button.active .tab-nav-text');
-    return active ? active.textContent.trim() : '';
-  }
-  function initBlock(block) {
-    if (block.dataset.pathlockInit) {
-      return;
-    }
-    var panel = block.querySelector('.tab-panel');
-    var value = block.querySelector('.pathlock__value');
-    if (!panel || !value) {
-      return;
-    }
-    block.dataset.pathlockInit = '1';
-    function sync() {
-      var title = activeTitle(panel);
-      if (title && title !== value.textContent) {
-        value.textContent = title;
-      }
-    }
-    // The observer only sees future class changes, and the theme's
-    // restoreTabSelections() may already have switched the tab before this
-    // runs, so the immediate read below is required, not belt-and-braces.
-    new MutationObserver(sync).observe(panel, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class']
-    });
-    sync();
-  }
-  function initAll() {
-    Array.prototype.forEach.call(document.querySelectorAll('.pathlock'), initBlock);
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAll);
-  } else {
-    initAll();
-  }
-})();
-</script>
-{{- $page.Store.Set "pathlockAssets" true }}
-{{- end }}
