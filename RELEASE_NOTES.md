@@ -4,6 +4,33 @@
 
 ## [Unreleased]
 
+### feat(shortcodes): pathtabs / pathtab with locked-path banner, upstreamed from ai-101
+
+`pathtabs` / `pathtab` render a deployment-path tab group whose selection is remembered site-wide, so a reader picks Docker vs Kubernetes once and every lab page follows. They previously existed only as a local copy in `ai-101`; this is now the only copy anywhere, and `local_copy.sh` no longer has a same-named repo-local file to shadow it with.
+
+Two changes from `ai-101`'s version make the shortcode genuinely shared rather than one workshop's component: `groupid` is now a parameter (default `deploy-path`) so a site can carry two independent locked choices, and the hardcoded `docker`/`k8s` fallback vocabulary is gone — a missing `deploymentPaths` is a build `errorf` instead, so no repo silently inherits another repo's paths.
+
+New in this version: a `.pathlock__banner` above the tab nav reading `🔒 Your path: <VALUE>` plus `Locked in — every lab page follows this choice.` `<VALUE>` live-updates as the reader switches tabs. The banner observes tab state via a `MutationObserver` on the panel plus an initial read at install time; it never calls `switchTab` and never writes `localStorage`, because relearn only persists a selection when the click event is real. It degrades to the server-rendered first tab with JavaScript off and is hidden in print. CSS and JS are emitted by the shortcode itself, once per page, guarded with `.Page.Store` — except the one `@media print` rule that hides the banner, which is emitted per block on purpose: Hugo renders content once per output format while `.Page.Store` is shared across them, so a guarded rule reaches only whichever format builds first and would leave the banner visible in `layouts/_default/allpages.html`'s whole-site PRINT page.
+
+Two new optional site params support it and close a long-standing build warning: `deploymentPaths` (the path vocabulary) and `errorignore` (a list of regexes relearn has always honoured but CentralRepo never emitted — it suppresses the local-URL warning for non-page targets like a PDF, where the suggested `pageRef` does not apply). Both are omitted from `hugo.toml` entirely when absent, so no existing site changes behaviour.
+
+`scripts/static.yml` also becomes the canonical workshop-repo workflow template rather than a copy of CentralRepo's own image build.
+
+**Blast radius:** merging to `main` rebuilds the prod ECR image that ~12 workshop repos build against. Verified locally against `hugotester-local` first.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/shortcodes/pathtabs.html` | New — path tab group + locked-path banner, inline CSS/JS once per page |
+| `layouts/shortcodes/pathtab.html` | New — collects one path's content for the parent `pathtabs` block |
+| `scripts/templates/hugo.jinja` | Emit optional `errorignore` and `deploymentPaths` params |
+| `scripts/repoConfig.schema.json` | Add `errorignore` and `deploymentPaths` (required — `additionalProperties: false`) |
+| `scripts/static.yml` | Now the workshop template: ECR pull with backoff, `trap cleanup EXIT`, `docker wait` status, `::error::` on failure, `image_variant` input |
+| `scripts/batch_repo_update.py` | `FILES_TO_COPY` sources `scripts/static.yml`, matching `update_scripts.sh:14` |
+| `README.md` | New `### pathtabs / pathtab` section, both new site params, and the `local_copy.sh` shadowing gotcha |
+
+---
+
 ### fix(launchdemoform): resolve CORS error on Azure Automation webhook
 
 `fetch()` was rejecting with TypeError and showing a red "Network error" to users on sites like PublicCloud105-FortiFlex. Root cause: Azure Automation webhooks return no `Access-Control-Allow-Origin` header; the POST itself goes through fine but the browser blocks JS from reading the opaque response. Fixed by adding `mode: 'no-cors'` so `fetch` resolves (opaque response) instead of rejecting. Status message updated to "Provisioning request sent."

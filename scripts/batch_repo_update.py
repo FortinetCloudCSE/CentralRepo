@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 FILES_TO_COPY = [
-    (".github/workflows/static.yml", ".github/workflows/static.yml"),
+    ("scripts/static.yml", ".github/workflows/static.yml"),
     ("Dockerfile", "Dockerfile")
 ]
 FILES_TO_DELETE = [
