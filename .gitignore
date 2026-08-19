@@ -12,4 +12,5 @@ __pycache__/
 VERSION
 node_modules/
 tmp/
-public/.claude/settings.local.json
+public/
+.claude/settings.local.json
