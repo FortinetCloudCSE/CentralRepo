@@ -476,9 +476,17 @@ html[data-deployment-path="{{ .key }}"] .pathmiss[data-for-path="{{ .key }}"] {
       {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
       {{- errorf "%s: this page is scoped to the %q path but has no permalink, so menu.html renders it headless with data-nav-id=\"\" (:149). A rule keyed on the empty string would hide every headless entry in the sidebar, not this one." $file $own }}
     {{- end }}
+    {{/* `:not(.active)` keeps the reader's own location in the table of contents.
+         A reader on another path can still arrive here from a bookmark or a search
+         result, and hiding the entry for the page they are currently reading
+         leaves the sidebar with nothing highlighted -- which reads as a broken
+         build, not as a gate. It leaks nothing: the content-header pathmiss banner
+         already states the page belongs to the other path, and an entry for the
+         page already on screen reveals no steps the reader could not see anyway.
+         `active` is the first class on the <li> (menu.html:149,184,309,345). */}}
     {{- range $paths }}
       {{- if ne .key $own }}
-html[data-deployment-path="{{ .key }}"] #R-sidebar li[data-nav-id="{{ $navid | safeCSS }}"] {
+html[data-deployment-path="{{ .key }}"] #R-sidebar li[data-nav-id="{{ $navid | safeCSS }}"]:not(.active) {
   display: none;
 }
       {{- end }}
