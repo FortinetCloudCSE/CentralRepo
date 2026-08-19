@@ -3,9 +3,14 @@
      cannot proceed without choosing and must be offered the chooser. */}}
 {{- $hasPathtabs := or (.HasShortcode "pathtabs") (.HasShortcode "pathonly") }}
 {{- $ownPath := .Params.deploymentPath | default "" }}
+{{/* Site param or this page's own front matter -- see partials/pathgate/specs.gotmpl.
+     Under a page-local declaration everything below is emitted for that one page,
+     which is exactly the scope of the gating it drives. */}}
+{{- $paths := partial "pathgate/specs.gotmpl" $page }}
+{{- $siteWide := gt (len (site.Params.deploymentPaths | default slice)) 0 }}
 {{- $titles := slice }}
-{{- range .Site.Params.deploymentPaths }}{{ $titles = $titles | append .title }}{{ end }}
-{{- with .Site.Params.deploymentPaths }}
+{{- range $paths }}{{ $titles = $titles | append .title }}{{ end }}
+{{- with $paths }}
 {{/* The no-choice chooser and the no-JavaScript warning live here rather than in
      the pathtabs shortcode. A shortcode writes into .Content, which relearn
      plainifies into <meta name="description"> (partials/meta.html:44) and indexes
@@ -28,7 +33,7 @@
 {{- if not $ownPath }}
 <div class="pathgate-chooser" role="group" aria-label="Choose your deployment path">
   <div class="pathgate-chooser__lead">Choose your deployment path</div>
-  <div class="pathgate-chooser__hint">This page's steps are hidden until you pick one. Every other lab page then follows the same choice, and you can switch at any time from the header.</div>
+  <div class="pathgate-chooser__hint">This page's steps are hidden until you pick one. {{ if $siteWide }}Every other lab page then follows the same choice, and you can switch at any time from the header.{{ else }}The choice affects this page only, and you can switch at any time.{{ end }}</div>
   <div class="pathgate-chooser__actions">
     {{- range . }}
     <button type="button" class="pathgate-chooser__btn" data-choose-path="{{ .key }}">{{ .title }}</button>
@@ -46,17 +51,17 @@
 {{- with $ownPath }}
   {{- $own := . }}
   {{- $ownTitle := "" }}
-  {{- range $.Site.Params.deploymentPaths }}{{ if eq .key $own }}{{ $ownTitle = .title }}{{ end }}{{ end }}
+  {{- range $paths }}{{ if eq .key $own }}{{ $ownTitle = .title }}{{ end }}{{ end }}
 <div class="pathmiss" data-for-path="" role="note">
   <strong>This page is part of the {{ $ownTitle }} path.</strong>
   You have not chosen a path yet. Pick one and every page follows it, including the sidebar and the next/previous buttons.
   <div class="pathmiss__actions">
-    {{- range $.Site.Params.deploymentPaths }}
+    {{- range $paths }}
     <button type="button" class="pathgate-chooser__btn" data-choose-path="{{ .key }}">{{ .title }}</button>
     {{- end }}
   </div>
 </div>
-  {{- range $.Site.Params.deploymentPaths }}
+  {{- range $paths }}
     {{- if ne .key $own }}
 <div class="pathmiss" data-for-path="{{ .key }}" role="note">
   <strong>This page is part of the {{ $ownTitle }} path, and you are following {{ .title }}.</strong>
@@ -68,11 +73,13 @@
     {{- end }}
   {{- end }}
 {{- end }}
-{{/* The switcher goes on every page, not only pages that use pathtabs, because
-     the choice is site-wide: a reader who picks the wrong path otherwise has to
-     find a page that happens to contain a pathtabs block before they can change
-     it. Hidden by CSS until a path is actually chosen -- see the gate block in
-     custom-header.html for the state machine. */}}
+{{/* Under a site-level declaration the switcher goes on every page, not only the
+     pages that use pathtabs, because the choice is site-wide: a reader who picks
+     the wrong path otherwise has to find a page that happens to contain a
+     pathtabs block before they can change it. Under a page-level declaration
+     this partial only reaches this branch on the declaring page, which is the
+     only page the choice affects. Hidden by CSS until a path is actually chosen
+     -- see the gate block in custom-header.html for the state machine. */}}
 <div class="pathswitch">
   <span class="pathswitch__label" aria-live="polite"><i class="fa-fw fas fa-lock"></i>
     {{- range . }}<span class="pathswitch__value" data-path="{{ .key }}">{{ .title }}</span>{{ end }}

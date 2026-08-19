@@ -6,9 +6,10 @@
 {{- $groupid := .Get "groupid" | default "deploy-path" }}
 {{- $label := .Get "title" | default "Your path" }}
 {{- $shape := `"deploymentPaths": [{"key": "docker", "title": "Docker Compose"}, {"key": "k8s", "title": "Kubernetes / Helm"}]` }}
-{{- $specs := site.Params.deploymentPaths | default slice }}
+{{- $specs := partial "pathgate/specs.gotmpl" $page }}
+{{- $siteWide := gt (len (site.Params.deploymentPaths | default slice)) 0 }}
 {{- if not $specs }}
-  {{- errorf "%s: pathtabs requires site.Params.deploymentPaths, which is unset or empty. Declare the path vocabulary in scripts/repoConfig.json, e.g. %s — each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the tab label). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
+  {{- errorf "%s: pathtabs needs a deploymentPaths vocabulary and none is in effect for this page. Declare the path vocabulary either in scripts/repoConfig.json as a site param, e.g. %s, or -- for a single self-contained page -- as deploymentPaths in this page's own front matter. Each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the label readers see). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
 {{- end }}
 {{- $keys := slice }}
 {{- range $specs }}
@@ -65,7 +66,7 @@
     <div class="pathlock__head"><i class="fa-fw fas fa-lock"></i> {{ $label }}:&nbsp;
       {{- range $specs }}<span class="pathlock__value" data-path="{{ .key }}">{{ .title }}</span>{{ end }}
     </div>
-    <div class="pathlock__hint">Locked in — every lab page follows this choice.</div>
+    <div class="pathlock__hint">Locked in — {{ if $siteWide }}every lab page follows this choice{{ else }}this page follows this choice{{ end }}.</div>
   </div>
   {{ partial "shortcodes/tabs.html" (dict
     "page"    $page

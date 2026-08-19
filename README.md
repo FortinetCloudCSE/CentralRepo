@@ -98,7 +98,7 @@ Direct src override:
 ### pathtabs / pathtab
 Parallel steps for two or more mutually exclusive deployment paths, of which a reader follows exactly one. Only the reader's chosen path is shown — in the page body, the sidebar, the next/previous buttons, and search.
 
-Requires `deploymentPaths` in the workshop's `scripts/repoConfig.json`. There is no default vocabulary: a repo that does not declare paths cannot use these shortcodes, and no repo inherits another repo's paths.
+Requires a `deploymentPaths` declaration — either the site param in the workshop's `scripts/repoConfig.json` (gates the whole workshop: blocks, sidebar, prev/next, search, and a switcher on every page) or the same list in one page's front matter (gates that page's blocks only, and nothing else in the site). There is no default vocabulary: a repo that does not declare paths cannot use these shortcodes, and no repo inherits another repo's paths. Declaring both at once is a build error.
 
 Usage:
 ```
@@ -117,7 +117,7 @@ Parameters:
 
 Note the delimiters: `{{< pathtabs >}}` (angle) for the wrapper, `{{% pathtab %}}` (percent) for each body, so the body is rendered as markdown.
 
-Build fails when: `deploymentPaths` is unset; a block omits any configured path; a block defines the same path twice; a body is empty; `path=` names an unknown key; a `pathtab` sits outside a `pathtabs`. Each failure is a deliberate error rather than a warning, because the alternative is a gate that silently shows the wrong path's steps.
+Build fails when: no `deploymentPaths` is in effect for the page; a page declares `deploymentPaths` in front matter while the site param also exists; a block omits any configured path; a block defines the same path twice; a body is empty; `path=` names an unknown key; a `pathtab` sits outside a `pathtabs`. Each failure is a deliberate error rather than a warning, because the alternative is a gate that silently shows the wrong path's steps.
 
 ### pathonly
 One path's content with no tab UI — prose, a warning, or a whole section that has no counterpart on the other paths. Same gating mechanism as `pathtab` (both emit `.pathgate[data-path]`), so there is one gate, not two.
@@ -133,7 +133,7 @@ Parameters:
 
 **Must be called with the percent form.** With `{{< pathonly >}}`, `RenderString` gives the body its own render context, so headings inside never join the page's fragment set and every in-page anchor to them breaks silently. Blank lines above and below the tags are also load-bearing: a line beginning `<div` opens a CommonMark type-6 raw-HTML block that runs to the next blank line, and without them the body is never rendered as markdown.
 
-Build fails when: `deploymentPaths` is unset; `path=` names an unknown key; the block is nested inside `pathtabs`/`pathonly`; the body is empty.
+Build fails when: no `deploymentPaths` is in effect for the page; a page declares `deploymentPaths` in front matter while the site param also exists; `path=` names an unknown key; the block is nested inside `pathtabs`/`pathonly`; the body is empty.
 
 ### colortext
 Inline colored text.
@@ -163,9 +163,9 @@ A reader picks a path once — Docker Compose vs Kubernetes, for example — and
 
 If the content is a *sentence* rather than a block, none of these fit — reword it to be path-neutral, or name both mechanisms. A block-level shortcode cannot wrap half a sentence, and gating a whole paragraph to hide one clause hides information the other path needed.
 
-Usage (two parts — the site param is a prerequisite):
+Usage (two parts — a `deploymentPaths` declaration is a prerequisite):
 
-1. Declare the path vocabulary in `scripts/repoConfig.json`:
+1. Declare the path vocabulary. Site-wide, in `scripts/repoConfig.json`:
 ```json
 {
   "deploymentPaths": [
@@ -174,6 +174,15 @@ Usage (two parts — the site param is a prerequisite):
   ]
 }
 ```
+   …or, for a single self-contained page, in that page's front matter:
+```yaml
+deploymentPaths:
+  - key: docker
+    title: Docker Compose
+  - key: k8s
+    title: Kubernetes / Helm
+```
+   The site param gates the whole workshop — blocks, sidebar, prev/next, search, switcher on every page. The front-matter form gates that page's own blocks and touches none of the site-wide behaviour, which is what a live example inside a guide needs. `layouts/partials/pathgate/specs.gotmpl` resolves the two and hard-errors if both are present, because one stored choice cannot serve two vocabularies: the page would write its key into the slot every site-wide page reads back, and those pages would fall through to default-deny and show nothing, with no error anywhere.
 
 2. Wrap one `pathtab` per configured path in the content:
 ```
@@ -199,7 +208,10 @@ Parameters (`pathtab`):
 - `path`: Required. Must match a `key` in `deploymentPaths`, and the shortcode must be nested inside a `pathtabs` block. An unknown key or an unnested `pathtab` is a build `errorf`.
 
 Site params:
-- `deploymentPaths`: Required list of `{key, title}` objects. There is no built-in default — if the param is missing the build fails with an `errorf` naming it. A shared shortcode must not carry one workshop's vocabulary.
+- `deploymentPaths`: Required list of `{key, title}` objects, unless the page declares its own (below). There is no built-in default — if neither is present the build fails with an `errorf` naming it. A shared shortcode must not carry one workshop's vocabulary.
+
+Page params:
+- `deploymentPaths`: The same list in a page's front matter, for a page that gates itself and nothing else. Mutually exclusive with the site param. `deploymentPath` (singular, scoping a whole page to one path) still requires the **site** param, because what it gates — sidebar, prev/next, search — is site-wide by definition.
 
 Behavior:
 - Every `pathtabs` block must define every configured path exactly once. A missing path or a duplicate path is a build `errorf`, so a reader on the missing path can never silently be shown the other path's steps. An empty `pathtab` body is also an `errorf`.
@@ -261,7 +273,7 @@ Search results are filtered to the reader's path, because a search hit is the si
 - Switching paths clears the autocomplete cache. `auto-complete.js` stores results on the `#R-search-by` element keyed by raw input value, and short-circuits any term whose shorter prefix cached zero results — so one term that legitimately found nothing on the old path would otherwise poison itself and every extension of it. If results are already on screen, the search re-runs.
 
 ### Repos that declare no paths
-`deploymentPaths` is absent from nearly every workshop repo, and all of the above is inert without it: no gate script, no gate CSS, one unclassed prev/next button each, and no `pathnav` classes. Output is byte-identical to a build without the feature.
+`deploymentPaths` is absent from nearly every workshop repo, and all of the above is inert without it: no gate script, no gate CSS, one unclassed prev/next button each, and no `pathnav` classes. Output is byte-identical to a build without the feature. A page-level declaration narrows this to the declaring page: every other page in that site is still byte-identical to a build without the feature, and the sidebar, prev/next and search gating are not emitted at all.
 
 ## Theme variants
 
@@ -311,9 +323,9 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 - `quizUrl`: Base URL for `quizframe`.
 - `videoHeaderSrc`: Path to the sidebar header background MP4 (`CloudCSEMovie` theme only).
 - `videoHeaderInterval`: Seconds between video play cycles (`CloudCSEMovie` theme only, default `60`).
-- `deploymentPaths`: Optional list of `{ "key": …, "title": … }` declaring a workshop's mutually exclusive deployment paths. Required by `pathtabs`/`pathtab`/`pathonly` and by any page carrying a `deploymentPath` front-matter param; omitting it leaves every one of those features inert. `key` must start with a letter and contain only letters, digits, hyphens and underscores, because it is interpolated into CSS class names as well as attribute values. **Order is load-bearing** — the first entry is the JavaScript-off default and the server-side active tab. **Renaming a `title` silently resets every returning reader's stored choice** (the selection is keyed on the title text); renaming a `key` fails the build instead, which is the safer failure.
+- `deploymentPaths`: Optional list of `{ "key": …, "title": … }` declaring a workshop's mutually exclusive deployment paths. Required by `pathtabs`/`pathtab`/`pathonly` (or the same list in the page's own front matter, which gates that page alone and cannot coexist with this param) and by any page carrying a `deploymentPath` front-matter param, which needs this site-level form; omitting it leaves every one of those features inert. `key` must start with a letter and contain only letters, digits, hyphens and underscores, because it is interpolated into CSS class names as well as attribute values. **Order is load-bearing** — the first entry is the JavaScript-off default and the server-side active tab. **Renaming a `title` silently resets every returning reader's stored choice** (the selection is keyed on the title text); renaming a `key` fails the build instead, which is the safer failure.
 - `errorignore`: Optional list of regexes suppressing relearn's URL error report for targets it cannot resolve as pages (e.g. a PDF referenced from `menu.shortcuts`).
-- `deploymentPaths`: List of `{key, title}` objects defining the path vocabulary for `pathtabs`, `pathonly` and the `deploymentPath` page param. Required by all three — the build fails if it is absent. Declaring it is also what switches the whole gate on; a repo without it builds byte-identically to one built before the feature existed. Keys are used as CSS class suffixes as well as attribute values, so a key must start with a letter and contain only letters, digits, hyphens and underscores.
+- `deploymentPaths`: List of `{key, title}` objects defining the path vocabulary for `pathtabs`, `pathonly` and the `deploymentPath` page param. Required by all three — the build fails if neither this nor a page-level `deploymentPaths` is present (`deploymentPath` needs this site-level form specifically). Declaring it is also what switches the whole gate on; a repo without it builds byte-identically to one built before the feature existed. Keys are used as CSS class suffixes as well as attribute values, so a key must start with a letter and contain only letters, digits, hyphens and underscores.
 - `errorignore`: List of regex strings. Relearn matches each one against the offending URL in `themes/hugo-theme-relearn/layouts/partials/_relearn/urlErrorReport.gotmpl:5` and suppresses the link/image/include/openapi warning or error when any matches.
 
 ## Cookie overview

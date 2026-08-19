@@ -49,8 +49,9 @@ layouts/
     google_analytics_authorMode.html — ⚠️ DO NOT DELETE — hugoServer_authorMode.sh mv's this into place at dev startup
     silent_cross_site_checkin.html — Background cross-site attendance propagation
     prefill-useremail.html        — Cookie/profile-based form prefill helpers
-    custom-header.html            — 1249 lines: CloudCSEMovie video injection + the ENTIRE deployment-path gate (CSS at :332-510, pre-paint script, search scoping at :746-840)
-    content-header.html           — 101 lines: path chooser, pathmiss banners, .pathswitch, <noscript> fallback
+    custom-header.html            — 1271 lines: CloudCSEMovie video injection + the ENTIRE deployment-path gate (gate CSS at :338-644, pre-paint script at :663-762, search scoping at :791-872)
+    content-header.html           — 108 lines: path chooser, pathmiss banners, .pathswitch, <noscript> fallback
+    pathgate/specs.gotmpl         — Resolves the path vocabulary in effect for ONE page (site param vs. its own front matter); every gate consumer calls this, never site.Params directly
     pathnav/step.gotmpl           — Resolves the next/prev page for ONE deployment path
     topbar/button/prev.html       — Emits one .pathnav prev button per configured path
     topbar/button/next.html       — Emits one .pathnav next button per configured path
@@ -67,7 +68,7 @@ layouts/
     fortihugorunner.html          — Dev harness shortcode (local testing only)
     Xperts24Banner.html           — Xperts 2024 themed banner
     Xperts25Banner.html           — Xperts 2025 themed banner
-    pathtabs.html                 — Deployment-path tab group + locked-path banner; needs site.Params.deploymentPaths
+    pathtabs.html                 — Deployment-path tab group + locked-path banner; needs a vocabulary from pathgate/specs.gotmpl
     pathtab.html                  — One path's content, collected by its parent pathtabs block
     pathonly.html                 — Content shown to ONE path with no tab UI; must be called with {{%…%}}
     colortext.html                — Inline colored text
@@ -159,6 +160,9 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 ### The deployment-path gate
 
 - **It is pre-paint and CSS-only.** An inline synchronous `<script>` in `<head>` sets `<html data-deployment-path="…">` before `<body>` exists; every gating rule is CSS keyed off that attribute. **Nothing mutates the DOM after load** — that is what prevents the other path's steps flashing on screen before being hidden. Don't "improve" any of it into a `DOMContentLoaded` handler.
+- **Two declaration scopes, resolved in exactly one place: `partials/pathgate/specs.gotmpl`.** `site.Params.deploymentPaths` (repoConfig.json) gates the whole workshop; `deploymentPaths` in a **page's front matter** gates that page's blocks and nothing else. Every consumer — `content-header.html`, `pathtabs`, `pathtab`, `pathonly` — calls the partial; none reads `site.Params.deploymentPaths` for content gating. The page form exists because UserRepo is cloned to start every new workshop, so a site param there is inherited by every new repo; front matter travels with the demo page and leaves when it is deleted.
+- **Declaring both is a hard `errorf`, not a precedence rule.** There is one stored choice per reader per site (`<absBaseUri>/deployment-path`), so a page-local key lands in the same slot the site-wide gate reads back — every site-wide gated page would then fall through to default-deny and show nothing, with no error, because default-deny is also correct before a first choice.
+- **The three site-wide behaviours stay bound to the site param alone.** In `custom-header.html` the sidebar loop, the prev/next CSS and the search `SCOPED` list all key off `$sitePaths` (the raw site param), never the resolved per-page vocabulary — filtering the whole site's navigation on one page's private list would hide pages the reader can legitimately reach. Same reason `deploymentPath` (singular) still requires the site param.
 - **Content is default-deny; navigation is deliberately NOT.** A `pathonly`/`pathtab` block with no stored choice shows nothing. But with no choice the sidebar, prev/next and search show **everything** — a table of contents with pages silently missing reads as a broken build, not as a gate, and the reader has no way to tell which it is.
 - **Every navigation rule only ever hides, via `:not(...)` — never force `display` back on.** Sidebar `<li>`s and `.topbar-button`s carry the theme's own responsive `display` rules; re-asserting `display` from the gate overrides them and breaks the mobile layout.
 - **`:not(.active)` on the sidebar hide rule is load-bearing.** It keeps a foreign-path reader's *own* "you are here" entry, so the sidebar still highlights something. It leaks nothing — the `pathmiss` banner already names the mismatch, and an entry for the page on screen reveals no steps the reader can't see. `active` is the first class on the `<li>` (`menu.html:149,184,309,345`).
@@ -192,7 +196,7 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 }
 ```
 
-- **`deploymentPaths`** — required by `pathtabs`/`pathtab`/`pathonly` and by any page carrying a `deploymentPath` front-matter param; optional for every other site. **This is the single source of a repo's path vocabulary** — a consuming repo's tooling should derive its path list from here rather than hardcoding it. `key` is what `pathtab path="…"` matches; `title` is the tab label. **Order is load-bearing:** the first entry is the tab Hugo marks active server-side, so it is both the first-time default and the banner text with JS off. **Renaming a `title` silently resets every returning reader** — relearn keys the stored selection on `anchorize(title)` (`themes/hugo-theme-relearn/layouts/partials/shortcodes/tabs.html:42`), so old selections stop matching with no build error. Renaming a `key` is the loud kind of change: every `pathtab path=` must follow or the build fails.
+- **`deploymentPaths`** — gates the whole workshop. Required by any page carrying a `deploymentPath` front-matter param, and by `pathtabs`/`pathtab`/`pathonly` unless the page declares its own `deploymentPaths` in front matter (page-scoped alternative; the two are mutually exclusive — see the gate section). **This is the single source of a repo's site-wide path vocabulary** — a consuming repo's tooling should derive its path list from here rather than hardcoding it. `key` is what `pathtab path="…"` matches; `title` is the tab label. **Order is load-bearing:** the first entry is the tab Hugo marks active server-side, so it is both the first-time default and the banner text with JS off. **Renaming a `title` silently resets every returning reader** — relearn keys the stored selection on `anchorize(title)` (`themes/hugo-theme-relearn/layouts/partials/shortcodes/tabs.html:42`), so old selections stop matching with no build error. Renaming a `key` is the loud kind of change: every `pathtab path=` must follow or the build fails.
 - **`errorignore`** — list of regexes, matched unanchored with `findRE` against the offending URL in `themes/hugo-theme-relearn/layouts/partials/_relearn/urlErrorReport.gotmpl:5,15-19`. Site-wide across the link/image/include/openapi checks, so prefer an anchored pattern over `\.pdf$`.
 - Both params are emitted by `scripts/templates/hugo.jinja` only when present and non-empty, so omitting them changes no existing site. Both are declared in `scripts/repoConfig.schema.json`; `deploymentPaths` entries are `additionalProperties: false` with `key` and `title` required.
 

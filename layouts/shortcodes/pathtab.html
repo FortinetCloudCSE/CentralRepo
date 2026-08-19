@@ -3,14 +3,14 @@
 {{- $file := "[virtual file]" }}
 {{- with and $page $page.File $page.File.Filename }}{{ $file = . }}{{ end }}
 {{- $shape := `"deploymentPaths": [{"key": "docker", "title": "Docker Compose"}, {"key": "k8s", "title": "Kubernetes / Helm"}]` }}
-{{- $specs := site.Params.deploymentPaths | default slice }}
+{{- $specs := partial "pathgate/specs.gotmpl" $page }}
 {{- $keys := slice }}
 {{- range $specs }}
   {{- $keys = $keys | append .key }}
 {{- end }}
 {{- $path := .Get "path" }}
 {{- if not $specs }}
-  {{- errorf "%s: pathtab requires site.Params.deploymentPaths, which is unset or empty. Declare the path vocabulary in scripts/repoConfig.json, e.g. %s — each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the tab label). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
+  {{- errorf "%s: pathtab needs a deploymentPaths vocabulary and none is in effect for this page. Declare the path vocabulary either in scripts/repoConfig.json as a site param, e.g. %s, or -- for a single self-contained page -- as deploymentPaths in this page's own front matter. Each entry needs a \"key\" (matched by pathtab path=\"…\") and a \"title\" (the label readers see). There is deliberately no built-in default, so no repo silently inherits another repo's paths." $file $shape }}
 {{- else if not (in $keys $path) }}
   {{- errorf "%s: pathtab needs path=\"<key>\" where key is one of %v; got %q." $file $keys $path }}
 {{- end }}
