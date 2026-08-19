@@ -112,8 +112,16 @@ Usage:
 {{< Xperts25Banner line1="Line A" line2="Line B" line3="Line C" >}}
 ```
 
-### pathtabs / pathtab
-Deployment-path tabs whose selection is remembered across the whole site. A reader picks a path once — Docker Compose vs Kubernetes, for example — and every other lab page shows that path's steps without asking again.
+### Deployment paths — pathtabs / pathtab / pathonly
+A reader picks a path once — Docker Compose vs Kubernetes, for example — and every other page follows that choice without asking again. There are three ways to scope content, and picking the wrong one is the main authoring mistake:
+
+| Form | Scope | Use when |
+|------|-------|----------|
+| `pathtabs` / `pathtab` | One block, every path | The paths are genuine alternatives to the same goal and a reader might want to see the other one. |
+| `pathonly` | One block, one path | The block only exists for one path and has no counterpart. |
+| `deploymentPath` front matter | A whole page | The entire page is one path's. |
+
+If the content is a *sentence* rather than a block, none of these fit — reword it to be path-neutral, or name both mechanisms. A block-level shortcode cannot wrap half a sentence, and gating a whole paragraph to hide one clause hides information the other path needed.
 
 Usage (two parts — the site param is a prerequisite):
 
@@ -167,6 +175,46 @@ Gotcha — renaming a `title` silently resets every returning reader. Relearn de
 
 Gotcha — never emit reader-facing prose from a shortcode that a page's `<meta name="description">` or the search index should not contain. Relearn builds the description from `.Summary | plainify` (`themes/hugo-theme-relearn/layouts/partials/meta.html:44`) and indexes the same content, so an earlier revision that put the chooser and the `<noscript>` warning inside the `pathtabs` shortcode pushed "JavaScript is disabled, so all 2 deployment paths are shown below" into the description and search snippet of every lab page, and added 120 words to each. Anything that is chrome rather than content belongs in a partial, outside `.Content`.
 
+### pathonly
+A standalone block that belongs to exactly one path, for content with no counterpart on the other path — where a `pathtabs` group would mean writing an empty or padded tab just to satisfy the every-path-exactly-once rule.
+
+```
+{{< pathonly path="docker" >}}
+### Compose profiles
+The stack ships three profiles. Enable the GPU profile with
+`docker compose --profile gpu up -d`.
+{{< /pathonly >}}
+```
+
+Parameters:
+- `path`: Required. Must match a `key` in `deploymentPaths`; anything else is a build `errorf`.
+
+Behavior:
+- Note the delimiters: `{{< >}}`, unlike `pathtab`'s `{{% %}}`. The shortcode renders its own body with `RenderString` so the markdown works, and using `{{< >}}` keeps the *output* from being re-processed as markdown.
+- Wraps its body in the same `.pathgate[data-path]` element the tab panels use, so there is one path-gating attribute in the codebase rather than two, gated by the same CSS.
+- Nesting inside `pathtab` or another `pathonly` is a build `errorf`, not a no-op. The enclosing block already restricts its body to one path, so a nested `pathonly` is either redundant (same key) or content that can never render (different key) — and the second case looks like working authoring right up until a reader reports missing steps.
+- An empty body is a build `errorf`, since it is indistinguishable from a gate silently hiding the wrong thing.
+- It may sit inside a plain (non-path) `tabs` group.
+
+### deploymentPath front matter — scoping a whole page
+Set `deploymentPath: docker` (or any declared `key`) in a page's front matter and the page belongs to that path alone. A key not in `deploymentPaths` is a build `errorf` — a page scoped to a path that does not exist is hidden from every reader.
+
+This does more than gate the body; it removes the page from the other path's route through the site:
+
+- **Sidebar.** `custom-header.html` generates one CSS rule per (scoped page × other path) hiding that page's `<li>`. The selector is keyed on the permalink from `permalink.gotmpl` — the same partial `menu.html` builds `data-nav-id` from — *not* on `.RelPermalink`, which omits the `index.html` that `disableExplicitIndexURLs = false` appends to every section page.
+- **Prev/next.** Relearn resolves these at build time and honours only `params.hidden`, so hiding a page from the sidebar while leaving it on the linear walk marches the reader into a page the sidebar says does not exist. `layouts/partials/pathnav/step.gotmpl` re-runs relearn's walk once per path, skipping foreign pages, and `topbar/button/{prev,next}.html` emit one button per path plus a `pathnav--any` for the no-choice state; CSS reveals the matching one.
+- **Arriving anyway.** A bookmark, a search result or someone else's link can still land a reader on a foreign page, so `content-header.html` emits a `.pathmiss` banner per foreign state — naming both the page's path and the reader's — with a switch button. The content still renders below it: a blank page with a switcher reads as a broken build, not as a gate. The blocking chooser is suppressed on these pages, so an undecided reader gets one prompt rather than two.
+
+Two asymmetries here are deliberate:
+
+- **Navigation is not default-deny, unlike step content.** With no choice stored, every page shows in the sidebar and prev/next is the theme's own unfiltered walk. Default-deny is right for steps, where showing both paths is the bug this whole mechanism exists to fix; it is wrong for navigation, where it would present a workshop with pages missing from the table of contents and no explanation.
+- **Every gate rule only ever hides — none forces `display` back on.** Sidebar `<li>`s and topbar buttons carry the theme's own responsive `display` rules (`[data-width-s="hide"]` and friends), so a rule re-showing the active path's element would defeat them at small widths and break the sidebar flyout. Reveal by `:not()`, never by re-assertion.
+
+A page-scoping decision is only visible in the built HTML as absent CSS, so it fails silently: if the generated selector does not byte-match the sidebar's real `data-nav-id`, the rule matches nothing and no error is raised.
+
+### Repos that declare no paths
+`deploymentPaths` is absent from nearly every workshop repo, and all of the above is inert without it: no gate script, no gate CSS, one unclassed prev/next button each, and no `pathnav` classes. Output is byte-identical to a build without the feature.
+
 ## Theme variants
 
 Set `themeVariant` in `scripts/repoConfig.json` to control the sidebar header appearance. Available values:
@@ -215,7 +263,7 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 - `quizUrl`: Base URL for `quizframe`.
 - `videoHeaderSrc`: Path to the sidebar header background MP4 (`CloudCSEMovie` theme only).
 - `videoHeaderInterval`: Seconds between video play cycles (`CloudCSEMovie` theme only, default `60`).
-- `deploymentPaths`: List of `{key, title}` objects defining the path vocabulary for `pathtabs`. Required by that shortcode — the build fails if it is absent.
+- `deploymentPaths`: List of `{key, title}` objects defining the path vocabulary for `pathtabs`, `pathonly` and the `deploymentPath` page param. Required by all three — the build fails if it is absent. Declaring it is also what switches the whole gate on; a repo without it builds byte-identically to one built before the feature existed. Keys are used as CSS class suffixes as well as attribute values, so a key must start with a letter and contain only letters, digits, hyphens and underscores.
 - `errorignore`: List of regex strings. Relearn matches each one against the offending URL in `themes/hugo-theme-relearn/layouts/partials/_relearn/urlErrorReport.gotmpl:5` and suppresses the link/image/include/openapi warning or error when any matches.
 
 ## Cookie overview

@@ -4,30 +4,47 @@
 
 ## [Unreleased]
 
-### feat(shortcodes): pathtabs / pathtab with locked-path banner, upstreamed from ai-101
+### feat(shortcodes): single deployment path per reader — pathtabs / pathonly / deploymentPath
 
-`pathtabs` / `pathtab` render a deployment-path tab group whose selection is remembered site-wide, so a reader picks Docker vs Kubernetes once and every lab page follows. They previously existed only as a local copy in `ai-101`; this is now the only copy anywhere, and `local_copy.sh` no longer has a same-named repo-local file to shadow it with.
+A reader picks Docker vs Kubernetes once and every page of the site follows that choice. This started as `pathtabs` / `pathtab` upstreamed from `ai-101` — previously a local copy there, now the only copy anywhere, and `local_copy.sh` no longer has a same-named repo-local file to shadow it with.
 
-Two changes from `ai-101`'s version make the shortcode genuinely shared rather than one workshop's component: `groupid` is now a parameter (default `deploy-path`) so a site can carry two independent locked choices, and the hardcoded `docker`/`k8s` fallback vocabulary is gone — a missing `deploymentPaths` is a build `errorf` instead, so no repo silently inherits another repo's paths.
+**The problem this exists to fix:** workshop participants were doing the Docker steps *and* the Kubernetes steps, because both tabs were on screen. Anything that leaves the other path reachable is the bug, so the gate is **default-deny for content**: until a path is chosen, no path's steps are visible anywhere on the site, and a page carrying a path block renders a blocking chooser instead. There is deliberately no default path.
 
-New in this version: a `.pathlock__banner` above the tab nav reading `🔒 Your path: <VALUE>` plus `Locked in — every lab page follows this choice.` `<VALUE>` live-updates as the reader switches tabs. The banner observes tab state via a `MutationObserver` on the panel plus an initial read at install time; it never calls `switchTab` and never writes `localStorage`, because relearn only persists a selection when the click event is real. It degrades to the server-rendered first tab with JavaScript off and is hidden in print. CSS and JS are emitted by the shortcode itself, once per page, guarded with `.Page.Store` — except the one `@media print` rule that hides the banner, which is emitted per block on purpose: Hugo renders content once per output format while `.Page.Store` is shared across them, so a guarded rule reaches only whichever format builds first and would leave the banner visible in `layouts/_default/allpages.html`'s whole-site PRINT page.
+**Everything is server-rendered and CSS-gated.** An inline synchronous `<script>` in `<head>` reads `localStorage[absBaseUri + '/deployment-path']` and sets `<html data-deployment-path>` before first paint — the same pre-paint pattern relearn uses for `themeVariant`. Every path's markup is emitted once and CSS reveals whichever matches. Nothing mutates the DOM after load, so there is no frame in which the wrong path is on screen. The corollary is that any per-path variation must be emitted once per path at build time, because there is one HTML output per page and the reader's path is known only client-side; that is why prev/next emits one button per path rather than resolving "the reader's path".
 
-Two new optional site params support it and close a long-standing build warning: `deploymentPaths` (the path vocabulary) and `errorignore` (a list of regexes relearn has always honoured but CentralRepo never emitted — it suppresses the local-URL warning for non-page targets like a PDF, where the suggested `pageRef` does not apply). Both are omitted from `hugo.toml` entirely when absent, so no existing site changes behaviour.
+Three authoring forms, covered in the README with guidance on which to reach for:
+
+- `pathtabs` / `pathtab` — alternatives to the same goal. Every declared path exactly once per block, or the build fails, so a reader can never be silently shown the other path's steps. Once a path is chosen the relearn tab nav is hidden and a `.pathlock__banner` reads `Your path: <VALUE>`; the switcher in `content-header.html` becomes the only control that writes the choice, so there is one control writing one state instead of two.
+- `pathonly` — a standalone one-path block, for content with no counterpart. Nesting it inside a `pathtab` or another `pathonly` is an `errorf`: same key is redundant, different key is unreachable, and the second looks like working authoring until a reader reports missing steps.
+- `deploymentPath` front matter — a whole page. This also removes the page from the other path's **sidebar** and from its **prev/next** walk, and renders a `.pathmiss` banner naming both paths with a switch button when a reader arrives anyway via a bookmark or a search result.
+
+Hiding a page from the sidebar without also filtering prev/next would march the reader into a page the sidebar says does not exist, so `layouts/partials/pathnav/step.gotmpl` re-runs relearn's walk once per path. The sidebar selector is keyed on `permalink.gotmpl` — the partial `menu.html` itself builds `data-nav-id` from — not `.RelPermalink`, which omits the `index.html` that `disableExplicitIndexURLs = false` appends to every section page.
+
+Two asymmetries worth knowing before extending this: **navigation is not default-deny** (with no choice stored, the sidebar and prev/next are the theme's own unfiltered behaviour, because a table of contents with pages silently missing reads as a broken build), and **every gate rule only ever hides** — sidebar `<li>`s and topbar buttons carry the theme's own responsive `display` rules, so re-asserting `display` for the active path would defeat them at small widths.
+
+With JavaScript off, nothing sets the attribute and none of the gating applies: **all** paths render, stacked, with a `<noscript>` warning naming them in order. Failing open is deliberate — unreadable-but-complete beats silently empty. Print carries exactly one path.
+
+Two new optional site params support it and close a long-standing build warning: `deploymentPaths` (the path vocabulary) and `errorignore` (a list of regexes relearn has always honoured but CentralRepo never emitted — it suppresses the local-URL warning for non-page targets like a PDF, where the suggested `pageRef` does not apply). Both are omitted from `hugo.toml` entirely when absent.
 
 `scripts/static.yml` also becomes the canonical workshop-repo workflow template rather than a copy of CentralRepo's own image build.
 
-**Blast radius:** merging to `main` rebuilds the prod ECR image that ~12 workshop repos build against. Verified locally against `hugotester-local` first.
+**Blast radius:** merging to `main` rebuilds the prod ECR image that ~65 workshop repos build against. `deploymentPaths` is absent from all but `ai-101`, and without it the whole mechanism is inert — no gate script, no gate CSS, one unclassed prev/next button each. Verified by building `faig-training-workshop` against both the unmodified and modified theme: **byte-identical across all 36 pages** once the four known per-build noise tokens are normalised.
 
 **Files changed**
 | File | Change |
 |------|--------|
-| `layouts/shortcodes/pathtabs.html` | New — path tab group + locked-path banner, inline CSS/JS once per page |
+| `layouts/partials/custom-header.html` | The gate: pre-paint script, all gating CSS (panels, sidebar, prev/next, chooser, banners), `deploymentPaths` key-format and page-key validation |
+| `layouts/partials/content-header.html` | Blocking chooser, `<noscript>` warning, path switcher, per-foreign-state `.pathmiss` banners — all outside `.Content` so none of it reaches `<meta name="description">` or the search index |
+| `layouts/shortcodes/pathtabs.html` | New — path tab group; markup only, assets moved to `custom-header.html` |
 | `layouts/shortcodes/pathtab.html` | New — collects one path's content for the parent `pathtabs` block |
+| `layouts/shortcodes/pathonly.html` | New — standalone one-path block, same `.pathgate[data-path]` contract as the panels |
+| `layouts/partials/pathnav/step.gotmpl` | New — relearn's prev/next walk, re-run per path, skipping foreign pages |
+| `layouts/partials/topbar/button/prev.html`, `next.html` | One button variant per path plus `pathnav--any`; unclassed and byte-identical when no paths are declared |
 | `scripts/templates/hugo.jinja` | Emit optional `errorignore` and `deploymentPaths` params |
 | `scripts/repoConfig.schema.json` | Add `errorignore` and `deploymentPaths` (required — `additionalProperties: false`) |
 | `scripts/static.yml` | Now the workshop template: ECR pull with backoff, `trap cleanup EXIT`, `docker wait` status, `::error::` on failure, `image_variant` input |
 | `scripts/batch_repo_update.py` | `FILES_TO_COPY` sources `scripts/static.yml`, matching `update_scripts.sh:14` |
-| `README.md` | New `### pathtabs / pathtab` section, both new site params, and the `local_copy.sh` shadowing gotcha |
+| `README.md` | New deployment-paths section: the three forms and when to use each, page scoping, the two asymmetries, and the `local_copy.sh` shadowing gotcha |
 
 ---
 
