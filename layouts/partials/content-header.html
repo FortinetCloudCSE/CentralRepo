@@ -1,4 +1,8 @@
-{{- $hasPathtabs := .HasShortcode "pathtabs" }}
+{{- $page := . }}
+{{/* Either shortcode gates content on this page, so either one means the reader
+     cannot proceed without choosing and must be offered the chooser. */}}
+{{- $hasPathtabs := or (.HasShortcode "pathtabs") (.HasShortcode "pathonly") }}
+{{- $ownPath := .Params.deploymentPath | default "" }}
 {{- $titles := slice }}
 {{- range .Site.Params.deploymentPaths }}{{ $titles = $titles | append .title }}{{ end }}
 {{- with .Site.Params.deploymentPaths }}
@@ -18,6 +22,10 @@
     {{ delimit $titles ", " ", then " }}. They are alternatives, not a sequence — follow one path only.
   </div>
 </noscript>
+{{/* Suppressed on a page that is itself scoped to one path: the pathmiss banner
+     below already prompts an undecided reader there, and two competing prompts on
+     one screen is how a reader ends up choosing twice. */}}
+{{- if not $ownPath }}
 <div class="pathgate-chooser" role="group" aria-label="Choose your deployment path">
   <div class="pathgate-chooser__lead">Choose your deployment path</div>
   <div class="pathgate-chooser__hint">This page's steps are hidden until you pick one. Every other lab page then follows the same choice, and you can switch at any time from the header.</div>
@@ -27,6 +35,38 @@
     {{- end }}
   </div>
 </div>
+{{- end }}
+{{- end }}
+{{/* A page whose front matter scopes it to one path. It is reachable by a reader
+     on another path -- a bookmark, a search result, a link in someone else's
+     notes -- and the sidebar and prev/next gating cannot prevent that. One banner
+     per foreign state, revealed by CSS, because which state applies is only known
+     client-side. The page's own content still renders below: a blank page with a
+     switcher reads as a broken build, not as a gate. */}}
+{{- with $ownPath }}
+  {{- $own := . }}
+  {{- $ownTitle := "" }}
+  {{- range $.Site.Params.deploymentPaths }}{{ if eq .key $own }}{{ $ownTitle = .title }}{{ end }}{{ end }}
+<div class="pathmiss" data-for-path="" role="note">
+  <strong>This page is part of the {{ $ownTitle }} path.</strong>
+  You have not chosen a path yet. Pick one and every page follows it, including the sidebar and the next/previous buttons.
+  <div class="pathmiss__actions">
+    {{- range $.Site.Params.deploymentPaths }}
+    <button type="button" class="pathgate-chooser__btn" data-choose-path="{{ .key }}">{{ .title }}</button>
+    {{- end }}
+  </div>
+</div>
+  {{- range $.Site.Params.deploymentPaths }}
+    {{- if ne .key $own }}
+<div class="pathmiss" data-for-path="{{ .key }}" role="note">
+  <strong>This page is part of the {{ $ownTitle }} path, and you are following {{ .title }}.</strong>
+  Nothing on this page applies to your path — you have most likely arrived from a bookmark or a search result. Use the sidebar to get back, or switch paths.
+  <div class="pathmiss__actions">
+    <button type="button" class="pathgate-chooser__btn" data-choose-path="{{ $own }}">Switch to {{ $ownTitle }}</button>
+  </div>
+</div>
+    {{- end }}
+  {{- end }}
 {{- end }}
 {{/* The switcher goes on every page, not only pages that use pathtabs, because
      the choice is site-wide: a reader who picks the wrong path otherwise has to

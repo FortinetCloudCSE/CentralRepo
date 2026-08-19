@@ -383,6 +383,131 @@ html[data-deployment-path="{{ .key }}"] .pathswitch__btn:not([data-choose-path="
 }
 {{- end }}
 
+/* Standalone path-scoped blocks -- the `pathonly` shortcode, for prose and whole
+   sections that belong to one path but do not warrant a tabs group. Same
+   default-deny shape as the panels above, and the same `.pathgate[data-path]`
+   attribute, so the path key is read from one attribute name site-wide. */
+html[data-deployment-path] .pathonly {
+  display: none;
+}
+{{- range . }}
+html[data-deployment-path="{{ .key }}"] .pathonly[data-path="{{ .key }}"] {
+  display: block;
+}
+{{- end }}
+
+/* A page that belongs to one path, opened by a reader following another -- from a
+   bookmark, a search result, or a link in someone else's notes. The page still
+   renders: a blank page with a switcher is worse than the wrong page with an
+   explanation, because the reader cannot tell a gate from a broken build. */
+.pathmiss {
+  display: none;
+  margin: 0 0 .8rem 0;
+  padding: .6rem .8rem;
+  border: 1px solid #b58900;
+  border-left: 4px solid #b58900;
+  border-radius: 3px;
+  background: rgba(181, 137, 0, .1);
+  line-height: 1.4;
+}
+.pathmiss__actions {
+  margin-top: .5rem;
+}
+html[data-deployment-path=""] .pathmiss[data-for-path=""] {
+  display: block;
+}
+{{- range . }}
+html[data-deployment-path="{{ .key }}"] .pathmiss[data-for-path="{{ .key }}"] {
+  display: block;
+}
+{{- end }}
+
+{{- $paths := . }}
+{{- $keys := slice }}
+{{- range . }}{{ $keys = $keys | append .key }}{{ end }}
+{{- range . }}
+  {{/* The key becomes part of a CSS class name below, not only an attribute
+       value, so anything that is not a bare identifier would silently produce a
+       selector that never matches. Fail the build instead. */}}
+  {{- if not (findRE `^[A-Za-z][A-Za-z0-9_-]*$` .key) }}
+    {{- errorf "deploymentPaths key %q is not usable: keys must start with a letter and contain only letters, digits, hyphens and underscores, because they are used as CSS class-name suffixes as well as attribute values." .key }}
+  {{- end }}
+{{- end }}
+
+/* Sidebar. A page declaring `deploymentPath` in front matter is hidden from the
+   sidebar of every other path. Build-time CSS keyed on the permalink, so there is
+   no flash and no JS: the reader never sees the other path's pages appear and
+   then vanish.
+
+   These rules only ever hide. `.topbar-button` and the sidebar entries carry the
+   theme's own responsive display rules (`[data-width-s="hide"]` and friends, and
+   the flyout's own state), and a rule that forced `display` back on for the
+   active path would defeat them at small widths.
+
+   Nothing is hidden while data-deployment-path is "" -- a reader who has not
+   chosen yet gets the full table of contents. Default-deny is right for steps,
+   where showing both paths is the original failure; it is wrong for navigation,
+   where it would present a workshop with pages missing and no way to tell why. */
+{{- range $p := site.Pages }}
+  {{- with $p.Params.deploymentPath }}
+    {{- $own := . }}
+    {{- if not (in $keys $own) }}
+      {{- $file := "[virtual file]" }}
+      {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
+      {{- errorf "%s: deploymentPath: %q is not one of the declared deploymentPaths %v. A page scoped to a path that does not exist is hidden from every reader's sidebar." $file $own $keys }}
+    {{- end }}
+    {{/* data-nav-id is `{{ $url }}` from the same partial the theme's menu.html
+         uses (:149,:184,:309,:345) -- not `.RelPermalink`. The difference is not
+         cosmetic: permalink.gotmpl appends `index.html` to any link ending in "/"
+         while `disableExplicitIndexURLs` is false, which is every section page. */}}
+    {{- $navid := partial "permalink.gotmpl" (dict "to" $p) }}
+    {{/* Both of the following are errors rather than best-effort rules, because
+         the failure they prevent is silent in both directions: a selector keyed
+         on the wrong value matches no element and hides nothing, and CSS reports
+         neither. `data-nav-id` is the only page identity on the <li>, so there
+         is no second attribute to fall back to. */}}
+    {{- if or $p.Params.menuPageRef $p.Params.menuUrl }}
+      {{- $file := "[virtual file]" }}
+      {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
+      {{- errorf "%s: a page cannot combine deploymentPath with menuPageRef/menuUrl. Those params make the sidebar entry a crosslink, so menu.html keys its data-nav-id on the crosslink target (:130,:133,:137) rather than on the page's own permalink, and the generated rule would match nothing -- the page would stay visible to every path with no error. Drop one of the two." $file }}
+    {{- end }}
+    {{- if not $navid }}
+      {{- $file := "[virtual file]" }}
+      {{- with and $p $p.File $p.File.Filename }}{{ $file = . }}{{ end }}
+      {{- errorf "%s: this page is scoped to the %q path but has no permalink, so menu.html renders it headless with data-nav-id=\"\" (:149). A rule keyed on the empty string would hide every headless entry in the sidebar, not this one." $file $own }}
+    {{- end }}
+    {{/* `:not(.active)` keeps the reader's own location in the table of contents.
+         A reader on another path can still arrive here from a bookmark or a search
+         result, and hiding the entry for the page they are currently reading
+         leaves the sidebar with nothing highlighted -- which reads as a broken
+         build, not as a gate. It leaks nothing: the content-header pathmiss banner
+         already states the page belongs to the other path, and an entry for the
+         page already on screen reveals no steps the reader could not see anyway.
+         `active` is the first class on the <li> (menu.html:149,184,309,345). */}}
+    {{- range $paths }}
+      {{- if ne .key $own }}
+html[data-deployment-path="{{ .key }}"] #R-sidebar li[data-nav-id="{{ $navid | safeCSS }}"]:not(.active) {
+  display: none;
+}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+/* prev/next. topbar/button/{prev,next}.html emit one button per path plus a
+   `pathnav--any` one for the no-choice state; all but the matching one are
+   hidden. Hiding a page from the sidebar while leaving it on the linear walk
+   would march the reader into a page the sidebar says does not exist, which is
+   why this ships with the sidebar rules above and never after them. */
+{{- range . }}
+html[data-deployment-path="{{ .key }}"] .topbar-button.pathnav:not(.pathnav--{{ .key }}) {
+  display: none;
+}
+{{- end }}
+html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
+  display: none;
+}
+
 .pathswitch {
   align-items: center;
   flex-wrap: wrap;
@@ -493,6 +618,7 @@ html[data-deployment-path="{{ .key }}"] .pathswitch__btn:not([data-choose-path="
 @media print {
   html[data-deployment-path] .pathlock__banner,
   html[data-deployment-path] .pathgate-chooser,
+  html[data-deployment-path] .pathmiss,
   html[data-deployment-path] .pathswitch {
     display: none;
   }
@@ -505,7 +631,13 @@ html[data-deployment-path="{{ .key }}"] .pathswitch__btn:not([data-choose-path="
      `#R-body .pathlock .tab-content` is (1,2,1), which beats the theme's
      `#R-body .tab-content.active` (1,2,0). <style> inside <noscript> inside
      <head> is valid HTML and is the only way to branch CSS on JS availability
-     without a frame of wrong paint. */}}
+     without a frame of wrong paint.
+
+     `.pathonly`, the sidebar and the prev/next buttons need nothing here: each of
+     those hide rules is keyed on `html[data-deployment-path]` *existing*, so with
+     JavaScript off none of them apply and the content is simply all present. Only
+     the tab panels need an override, because relearn's own stylesheet marks tab
+     #1 active server-side whether this gate runs or not. */}}
 <noscript><style>
 #R-body .pathlock .tab-content { display: block; }
 #R-body .pathlock .tab-nav { display: none; }
@@ -607,6 +739,112 @@ html[data-deployment-path="{{ .key }}"] .pathswitch__btn:not([data-choose-path="
     if (!btn) { return; }
     e.preventDefault();
     window.fortiPath.set(btn.getAttribute('data-choose-path'));
+  });
+})();
+</script>
+
+{{/* Search scoping. The sidebar and prev/next gating above is worthless while
+     search still offers the other path's pages: a search hit is exactly the
+     "arrived from somewhere else" case the pathmiss banner exists to catch, and
+     it is the one the reader is most likely to hit.
+
+     Filtered client-side rather than by building one index per path, because the
+     index is generated once from site.Home (dependencies/search.html:60-65) and
+     is shared by every page, so there is no per-path build hook to use. The
+     filter also deliberately does NOT extend the index entry shape: relearn
+     resolves the index template through params.search.index.template and feeds
+     the same entries to two different engines -- lunr declares its own field
+     list (search-lunr.js:68-89) and the orama adapter a strict schema
+     (search-orama-esm.mjs:32-56) -- so adding a field there is a theme-wide
+     contract change. `uri` is already a unique per-page identity that reaches
+     the results, and one small side map keyed on it needs neither engine to
+     agree to anything. (lunr also writes `page.index` onto every entry, so
+     `index` is a field name that must never be added.) */}}
+{{- $scoped := slice }}
+{{- range $p := site.Pages }}
+  {{- with $p.Params.deploymentPath }}
+    {{- $scoped = $scoped | append (dict "uri" (partial "permalink.gotmpl" (dict "to" $p)) "path" .) }}
+  {{- end }}
+{{- end }}
+<script>
+(function () {
+  // uri is built by the same partial the search index uses for its own `uri`
+  // (_relearn_searchindex.js:12), so these match by string equality with no
+  // normalising. Only path-scoped pages are listed; an absent entry means the
+  // page belongs to every path, which is the overwhelming majority.
+  var SCOPED = [
+    {{- range $i, $e := $scoped }}{{ if $i }},{{ end }}
+    { uri: {{ $e.uri }}, path: {{ $e.path }} }
+    {{- end }}
+  ];
+  var OWNER = {};
+  for (var i = 0; i < SCOPED.length; i++) { OWNER[SCOPED[i].uri] = SCOPED[i].path; }
+
+  var root = document.documentElement;
+
+  // No choice stored means no filtering, which diverges from the default-deny
+  // rule the content gate follows. Deliberate: a reader who has not chosen yet
+  // is being shown the whole site everywhere else, and a search that silently
+  // returned nothing would read as a broken index rather than as a gate.
+  function allowed(page) {
+    var active = (window.fortiPath && window.fortiPath.get()) || '';
+    if (!active) { return true; }
+    var owner = page && page.uri ? OWNER[page.uri] : null;
+    return !owner || owner === active;
+  }
+
+  // One wrap covers both surfaces. The dropdown (search.js:178-181) and the
+  // dedicated results page (search.js:130-133) are the only two callers and
+  // both await this same function, and the "N results found" count is computed
+  // from the array we return (search.js:133), so it stays truthful without a
+  // second patch.
+  function install() {
+    var s = window.relearn && window.relearn.search;
+    if (!s || !s.adapter || typeof s.adapter.search !== 'function') { return; }
+    if (s.adapter.fortiPathFiltered) { return; }
+    var inner = s.adapter.search;
+    s.adapter.search = async function () {
+      var results = await inner.apply(this, arguments);
+      if (!Array.isArray(results)) { return results; }
+      return results.filter(function (r) { return allowed(r && r.page); });
+    };
+    s.adapter.fortiPathFiltered = true;
+  }
+
+  // The adapter is registered by a deferred script (search-lunr.js:155-157), so
+  // it does not exist while this inline block parses. It always exists by
+  // DOMContentLoaded, since every deferred script runs first. Presence-checked
+  // rather than assumed because search.html:57,115 omit the whole bundle when a
+  // site disables search.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install, { once: true });
+  } else {
+    install();
+  }
+
+  // documentElement, not window: fortiPath dispatches a CustomEvent, which does
+  // not bubble.
+  root.addEventListener('forti:pathchange', function () {
+    // auto-complete.js hangs `cache` straight off the input element (:75) and
+    // keys it on the raw input value (:152-154). Worse than staleness, :226-233
+    // short-circuits any term whose shorter prefix cached zero results, so one
+    // term that legitimately found nothing on the old path poisons itself and
+    // every extension of it. Neither survives a path change, and the instance
+    // that owns destroy() is discarded at construction (search.js:173), so
+    // clearing the element's own properties is both the available lever and
+    // the sufficient one.
+    var box = document.getElementById('R-search-by');
+    if (box) {
+      box.cache = {};
+      box.last_val = '';
+    }
+    // Results already on screen were filtered for the previous path. The
+    // results page is the one place a reader can switch path while looking at
+    // matches, so re-run rather than leave them contradicting the new choice.
+    if (document.getElementById('R-searchresults') &&
+        window.relearn && typeof window.relearn.executeTriggeredSearch === 'function') {
+      window.relearn.executeTriggeredSearch();
+    }
   });
 })();
 </script>
