@@ -43,11 +43,19 @@
   border-left: 4px solid rgba(var(--theme-color, 218,41,28), .9);
   border-radius: 3px;
   background: rgba(var(--theme-color, 218,41,28), .07);
-  color: rgba(var(--theme-color, 218,41,28), 1);
   line-height: 1.4;
 }
 .pathlock__head {
   font-weight: 600;
+}
+/* Accent only the icon and the live value. Colouring the whole banner puts
+   brand-red text on a brand-red tint, which is borderline at body size and
+   fails outright for the .8rem hint at reduced opacity — and it inverts badly
+   in the theme's dark variants, where the tint is dark but the accent is not.
+   Everything else inherits the theme's own foreground colour. */
+.pathlock__head > .fa-lock,
+.pathlock__value {
+  color: rgb(var(--theme-color, 218,41,28));
 }
 .pathlock__value {
   text-transform: uppercase;
