@@ -1,3 +1,47 @@
+{{- $hasPathtabs := .HasShortcode "pathtabs" }}
+{{- $titles := slice }}
+{{- range .Site.Params.deploymentPaths }}{{ $titles = $titles | append .title }}{{ end }}
+{{- with .Site.Params.deploymentPaths }}
+{{/* The no-choice chooser and the no-JavaScript warning live here rather than in
+     the pathtabs shortcode. A shortcode writes into .Content, which relearn
+     plainifies into <meta name="description"> (partials/meta.html:44) and indexes
+     for search -- so emitting them per block put "JavaScript is disabled..." into
+     the description and search snippet of every lab page. Here they are outside
+     .Content, and there is one chooser per page instead of one per block. */}}
+{{- if $hasPathtabs }}
+<noscript>
+  {{/* The tab nav is hidden without JavaScript, since its buttons are inert
+       without switchTab, so the path titles have to be named here or the reader
+       gets unlabelled stacked panels. */}}
+  <div class="pathlock__noscript">
+    <strong>JavaScript is disabled, so all {{ len . }} deployment paths are shown below</strong>, in this order:
+    {{ delimit $titles ", " ", then " }}. They are alternatives, not a sequence — follow one path only.
+  </div>
+</noscript>
+<div class="pathgate-chooser" role="group" aria-label="Choose your deployment path">
+  <div class="pathgate-chooser__lead">Choose your deployment path</div>
+  <div class="pathgate-chooser__hint">This page's steps are hidden until you pick one. Every other lab page then follows the same choice, and you can switch at any time from the header.</div>
+  <div class="pathgate-chooser__actions">
+    {{- range . }}
+    <button type="button" class="pathgate-chooser__btn" data-choose-path="{{ .key }}">{{ .title }}</button>
+    {{- end }}
+  </div>
+</div>
+{{- end }}
+{{/* The switcher goes on every page, not only pages that use pathtabs, because
+     the choice is site-wide: a reader who picks the wrong path otherwise has to
+     find a page that happens to contain a pathtabs block before they can change
+     it. Hidden by CSS until a path is actually chosen -- see the gate block in
+     custom-header.html for the state machine. */}}
+<div class="pathswitch">
+  <span class="pathswitch__label" aria-live="polite"><i class="fa-fw fas fa-lock"></i>
+    {{- range . }}<span class="pathswitch__value" data-path="{{ .key }}">{{ .title }}</span>{{ end }}
+  </span>
+  {{- range . }}
+  <button type="button" class="pathswitch__btn" data-choose-path="{{ .key }}">Switch to {{ .title }}</button>
+  {{- end }}
+</div>
+{{- end }}
 {{- partial "tags.html" . }}
 {{ if eq .Kind "home"}}
   {{ if eq .Site.Params.themeVariant "Xperts2025" }}
