@@ -213,6 +213,20 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 | `.github/workflows/static.yml` | Push to `main` | CentralRepo's own site build + GitHub Pages deploy (`docker build --target=prod`) |
 | `scripts/static.yml` | (not a CentralRepo workflow) | Template copied into workshop repos; pulls the prod image from ECR |
 
+- **`main` has `enforce_admins: true`** (2026-08-20, part of `ai-101` plan `plans/0004_...md`'s
+  branch-protection hardening — an admin push used to bypass the PR requirement with only a warning;
+  now it's a hard reject, same as everyone else). Required-check contexts are unchanged — still just
+  the no-op `ci/jenkins/build-status` — deliberately left open rather than guessed at; see that plan's
+  Open Questions.
+- **Before making `ci.yml`'s `lint-and-validate`/`hugo-build` a required check, fix its `paths-ignore`
+  first, or it will block every doc-only PR forever, not just until CI runs.** `ci.yml`'s
+  `pull_request` trigger uses `paths-ignore: ["**.md"]` — a PR touching only `.md` files never makes
+  the workflow run at all, so a required check with that name would simply never report on such a PR.
+  GitHub treats "check never ran" as permanently blocking, not as "passing" or "pending" — a wait never
+  fixes it. Hit for real in `ai-101` (`lint`/`handouts`, same shape, `paths:` not `paths-ignore`) the
+  same day this repo's `enforce_admins` was flipped; fixed there by moving the path filtering from the
+  trigger into a job step that still reports. Do the same here before requiring `ci.yml`.
+
 ## Common Tasks
 
 **Add a new shortcode:** Create `layouts/shortcodes/<name>.html` (partial content only — no `<!DOCTYPE html>` wrapper), document params in README.md, test with `hugoServer_authorMode.sh` or against a real workshop repo via the `LOCAL=true` dev image. Never also land a copy in a workshop repo — `local_copy.sh` makes the local one win silently.
