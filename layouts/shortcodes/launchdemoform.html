@@ -351,8 +351,7 @@
         if (!parsed.token) throw new Error('start endpoint returned no token');
         writeToken(parsed.token);
         writeAttempt({ status: parsed.status, percent: 0, step: parsed.isDuplicate ? 'Resuming existing attempt' : '', error: null });
-        render();
-        ensurePolling(parsed.token);
+        render(); // pending/running branch starts polling via ensurePolling(readToken())
       } catch (err) {
         if (DEBUG) console.error('launchdemoform: start failed', err);
         writeAttempt({ status: 'Failed', percent: 0, step: '', error: 'Network error while starting provisioning: ' + (err && err.message ? err.message : err) });
