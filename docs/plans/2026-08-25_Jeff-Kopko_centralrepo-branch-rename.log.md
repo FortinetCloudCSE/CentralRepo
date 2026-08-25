@@ -109,6 +109,28 @@ CI; only the (separate) modernization would touch them.
   verification, not 1.2.** Neither workflow has a `workflow_dispatch` fallback that
   could have manually exercised the pre-rename trigger content either.
 
+- **GitHub does NOT keep a fetch/push redirect from the old branch name after a
+  non-default-branch rename — it fails cleanly, immediately.** Empirically checked
+  post-rename (branch renamed `prreviewJune23` → `dev` via the API at
+  2026-08-25T18:31:51Z): `git fetch origin prreviewJune23` → `fatal: couldn't find
+  remote ref prreviewJune23`, exit code 128. `git ls-remote origin prreviewJune23` →
+  exit code 0 but empty output (no matching ref, no error — `ls-remote`'s normal
+  behavior for a non-matching refspec). So anything anywhere still hardcoding
+  `prreviewJune23` as a fetch/clone/checkout target will fail hard and immediately
+  post-rename, not silently succeed against stale content. This resolves the plan's own
+  "Risks / Open Questions" item on this exact point — no grace period, no redirect.
+- **A local branch name is unique per repository and shared across all worktrees of
+  that repository (they share one `.git`).** Renaming this worktree's local branch to
+  `dev` (`git checkout -B dev origin/dev`) succeeded first, which then blocked the
+  primary checkout's `git branch -m prreviewJune23 dev` with `fatal: a branch named
+  'dev' already exists` — not a worktree-checkout-exclusivity error, a plain branch-name
+  collision, because the ref exists repo-wide the moment either worktree creates it.
+  Fixed by renaming the worktree's local branch back to `phase1-rename-work` (freeing
+  `dev` for the primary checkout), both still tracking `origin/dev`. Same underlying
+  constraint as the original worktree-naming note at the top of this phase's task
+  (a branch can't be checked out in two worktrees at once) — just tripped from the
+  opposite direction, on branch *creation* rather than *checkout*.
+
 ## Rejected / considered options
 
 - **Delete + recreate the branch instead of GitHub's rename API** — rejected. Rename

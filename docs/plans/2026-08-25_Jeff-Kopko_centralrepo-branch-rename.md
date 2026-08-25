@@ -137,13 +137,20 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       pushed commit's `branches: [dev]` filter no longer matches the still-`prreviewJune23`
       ref, so neither workflow fired — zero runs, not a failure. 1.6 is the real
       verification.
-- [ ] **1.3** Rename the branch via the GitHub API (preserves history):
+- [x] **1.3** Rename the branch via the GitHub API (preserves history):
       `gh api -X POST repos/FortinetCloudCSE/CentralRepo/branches/prreviewJune23/rename -f new_name=dev`
-- [ ] **1.4** Update local git state: `git fetch origin`, `git branch -m prreviewJune23 dev`,
-      `git branch --set-upstream-to=origin/dev dev`.
-- [ ] **1.5** Empirically verify: does `git fetch origin prreviewJune23` (old name) still
+- [x] **1.4** Update local git state: `git fetch origin`, `git branch -m prreviewJune23 dev`,
+      `git branch --set-upstream-to=origin/dev dev`. Hit a naming collision doing this in
+      both places (see log): a local branch name is unique per repo, shared across all
+      worktrees, so the worktree and the primary checkout couldn't both hold a local branch
+      literally named `dev` at once. Resolved by keeping `dev` in the primary checkout
+      (canonical) and renaming the worktree's local branch back to `phase1-rename-work`
+      (still tracking `origin/dev`).
+- [x] **1.5** Empirically verify: does `git fetch origin prreviewJune23` (old name) still
       resolve post-rename, or fail cleanly? Document the actual behavior in the log file —
-      don't assume.
+      don't assume. **Fails cleanly, immediately, no redirect** — `git fetch origin
+      prreviewJune23` → `fatal: couldn't find remote ref prreviewJune23` (exit 128); see log
+      for full detail, including the `ls-remote` comparison.
 - [ ] **1.6** Push a trivial follow-up commit (or the next real change) to `dev` and confirm
       `image-build-push-dev.yaml` fires and completes, proving the workflow trigger survived
       the rename correctly.
