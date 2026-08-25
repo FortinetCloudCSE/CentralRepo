@@ -2,7 +2,7 @@
 Date: 2026-08-25
 Owner: Jeff Kopko
 Slug: centralrepo-branch-rename
-Status: Approved
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md
@@ -372,6 +372,29 @@ user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
   - Local git state: worktree branch renamed `phase1-rename-work` → tracks `origin/dev`;
     primary checkout (`/home/ubuntu/pythonProjects/CentralRepo`) local branch renamed
     `prreviewJune23` → `dev`, tracking `origin/dev`, fast-forwarded clean
+- **Phase 2 (UserRepo docs):** [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79)
+  — `content/01GettingStarted/6_CentralRepo/index.md`, open for review.
+- **Phase 3 (33 repos):** each repo's `.github/workflows/static.yml` replaced,
+  `Dockerfile` (+`Dockerfile-dev` for 2 repos) deleted. Full per-repo commit SHAs in the
+  log file's "Phase 3 execution notes".
+- **Phase 4 (19 repos):** same file changes as Phase 3, applied via pilot-3 then bulk-16.
+  Full per-repo commit SHAs in the log file's "Phase 4 pilot/bulk execution notes".
+- **FTNThugoFlow retirement (13 repos):** `content/_index.md`, the shortcode-doc page
+  (`content/02Hugo/5_shortcodes/index.md` or `content/02Hugo/shortcodes.md` depending on
+  repo), and `layouts/shortcodes/FTNThugoFlow.html` deleted where present. 12 direct-pushed;
+  [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) open for review.
+- **Final 6-repo fix batch:**
+  - `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+    `FortiSASE` — `content/_index.md`, stripped stray quotes around 2 markdown link URLs
+  - `cFOS-GKE-Workshop` — `content/01Chapter1/_index.md` (removed duplicate `weight: 1`),
+    plus GitHub Pages enabled via `POST /repos/.../pages` (`build_type=workflow`) — not a
+    file change, a repo-settings change
+  - `FortiCNAPPRoadshow` — `content/01Introduction/01cert.md`, removed `{{< quizdown >}}` /
+    `{{< /quizdown >}}` delimiters
+  - `fortiweb-threat-protection` — no action needed; a concurrent session already deleted
+    the stray `content/images/layouts/shortcodes/launchdemoform.html`
+- **CentralRepo itself, this closeout:** `CLAUDE.md` (5 new/updated gotchas),
+  `RELEASE_NOTES.md` (new `[Unreleased]` entry), this plan file and its log.
 
 ## Session Summary
 - Renamed CentralRepo's `prreviewJune23` branch to `dev` (Phase 1) with zero CI gap,
@@ -403,13 +426,24 @@ user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
   so these couldn't be direct-pushed like everything else this session.
 
 ## Promotion
-- [ ] `Decisions & Commentary` walked
-- [ ] Durable facts promoted to `CLAUDE.md` — list them: <fill in at close-out — expect at
-      minimum: the branch is now `dev`; the prod-stage-pins-main / dev-stage-pins-branch
-      split and why it matters for future renames; the 33-vs-19 modernization split and
-      where the full list lives>
-- [ ] Nothing to promote (say so explicitly rather than leaving this section blank)
-- [ ] `Status:` set to `Complete`
+- [x] `Decisions & Commentary` walked
+- [x] Durable facts promoted to `CLAUDE.md`:
+  - Working Branch section fully rewritten `prreviewJune23` → `dev` (done live during
+    Phase 1, not a closeout addition)
+  - The `prod`-stage-pins-`#main` / `dev`-stage-pins-branch split, and why it makes a
+    future `dev` rename similarly low-risk to downstream repos
+  - GitHub Actions' `on.push.branches` filter is evaluated from the pushed commit's own
+    workflow content, not the pre-push filter — you cannot verify an old-name trigger by
+    pushing the rename to the old ref
+  - `batch_repo_update.py`'s `FILES_TO_DELETE` removes implementation files but never
+    touches content that calls them — check for live references before adding anything
+    else to that list
+  - `UserRepo` is a real, protected (`main` requires PR) GitHub template repo, and the
+    single propagation point for both fixes and breakage into every new workshop repo
+  - A green pre-2026-08-25 "Deploy static content to Pages" run is not proof a site
+    actually built — `static.yml` didn't check the build container's exit code until this
+    plan fixed it org-wide, and doing so surfaced 8 real, previously-invisible bugs
+- [x] `Status:` set to `Complete`
 
 ## Follow-ups
 - [x] **`FTNThugoFlow` shortcode retired org-wide** — was going to be a Follow-up
