@@ -195,3 +195,155 @@ CI; only the (separate) modernization would touch them.
   Follow-ups. High fan-out (dozens of repos, all cosmetic/low-traffic doc pages) for low
   value relative to fixing the UserRepo template itself, which stops the bleeding for every
   *future* repo.
+- **Reused `batch_repo_update.py` directly for Phase 3 instead of writing a purpose-built
+  script** — rejected. That script also unconditionally rewrites each target repo's
+  `README.md` (if GitHub Pages is enabled) and sets custom repo properties — both
+  unrelated side effects with real potential to clobber existing README content across 33
+  repos for no reason tied to this plan. Wrote a minimal script instead: replace
+  `static.yml`, delete `Dockerfile`(-dev), nothing else.
+
+## Phase 3 execution notes (2026-08-25)
+
+Script used (`phase3_modernize.py`, run from scratch, not committed to the repo — it's a
+one-off operational tool with a hardcoded REPOS list, same spirit as `batch_repo_update.py`
+itself, which also expects `REPOS` filled in ad hoc per run):
+
+```python
+#!/usr/bin/env python3
+"""Phase 3 of docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md.
+
+For each of the 33 "safe" repos: replace .github/workflows/static.yml with
+CentralRepo's current canonical scripts/static.yml, and delete the dead
+Dockerfile (and Dockerfile-dev where present). Nothing else -- no README
+rewrite, no custom-properties update, no config.toml conversion (unlike
+batch_repo_update.py, which does all three and isn't appropriate here).
+
+Usage:
+  GITHUB_TOKEN=$(gh auth token) python3 phase3_modernize.py --dry-run
+  GITHUB_TOKEN=$(gh auth token) python3 phase3_modernize.py --live
+"""
+import base64
+import json
+import os
+import sys
+
+import requests
+
+ORG = "FortinetCloudCSE"
+BRANCH = "main"
+API = "https://api.github.com"
+
+TOKEN = os.getenv("GITHUB_TOKEN")
+HEADERS = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github+json"}
+
+STATIC_YML_LOCAL = "scripts/static.yml"
+STATIC_YML_REMOTE = ".github/workflows/static.yml"
+
+REPOS = [  # 33 repos confirmed to already pull the prebuilt ECR image
+    "AWS-FGT-101", "AWS-FGT-201", "AppSec103-203-FortiADC",
+    "Autoscale-Simplified-Template", "FGCP-in-AWS", "FortiCloud-Orgs-FortiFlex",
+    "FortiGate-AWS-Autoscale-TEC-Workshop", "FortiGate-AWS-Autoscale-TEC-Workshop-Backup",
+    "FortiGate-AWS-CNF-TEC-Workshop", "GWLB-in-AWS", "MGMT-in-AWS", "OCI_Solutions",
+    "Public-Cloud-104-CNAPP", "PublicCloud105-FortiFlex", "azure-102-foundational",
+    "azure-202-advanced", "fortianalyzer-aws-ha-dualaz-cloudformation",
+    "fortianalyzer-aws-ha-singleaz-cloudformation", "fortianalyzer-aws-standalone-cloudformation",
+    "fortigate-automation-stitch-workshop", "fortigate-aws-gwlb-cloudformation",
+    "fortigate-aws-gwlb-terraform", "fortigate-aws-ha-dualaz-cloudformation",
+    "fortigate-aws-ha-dualaz-terraform", "fortigate-aws-standalone-cloudformation",
+    "fortigate-aws-vpc-routeserver-active-active-cloudformation",
+    "fortigate-aws-vpc-routeserver-ha-dual-az-cloudformation",
+    "fortimanager-aws-ha-dualaz-cloudformation", "fortimanager-aws-ha-singleaz-cloudformation",
+    "fortimanager-aws-standalone-cloudformation", "fortiweb-security-foundations-201",
+    "gcp-ncc-mrr-fortigate", "k8s-101-workshop",
+]
+
+# fortigate-automation-stitch-workshop: found in the original 2026-08-25 audit.
+# FortiGate-AWS-CNF-TEC-Workshop: missed by that audit, caught live by this
+# script's dry-run instead -- confirmed stale (#prreviewJune23 ADD, ancient
+# klakegg/hugo:0.107.0 base) and this repo's static.yml already pulls ECR.
+DOCKERFILE_DEV_REPOS = {"fortigate-automation-stitch-workshop", "FortiGate-AWS-CNF-TEC-Workshop"}
+
+# ... (blob/tree/commit git-data-API plumbing, same pattern as batch_repo_update.py's
+#      create_blob/create_tree/create_commit/update_branch_ref -- omitted here for length;
+#      each repo: read tree, replace static.yml blob, mark Dockerfile[-dev] blobs for
+#      deletion (sha: None), one commit, PATCH the main ref)
+```
+
+**Dry-run result:** caught the `FortiGate-AWS-CNF-TEC-Workshop` `Dockerfile-dev` gap (see
+Decisions above). Re-ran clean, 33/33 planned correctly.
+
+**Go/no-go:** asked explicitly per plan step 3.3, confirmed, proceeded.
+
+**Live run — full output** (33/33 pushes succeeded):
+
+```
+AWS-FGT-101: pushed 703c3828 -- update .github/workflows/static.yml; delete Dockerfile
+AWS-FGT-201: pushed 2db23f63 -- update .github/workflows/static.yml; delete Dockerfile
+AppSec103-203-FortiADC: pushed 70d19068 -- update .github/workflows/static.yml; delete Dockerfile
+Autoscale-Simplified-Template: pushed 1ce3f779 -- update .github/workflows/static.yml; delete Dockerfile
+FGCP-in-AWS: pushed 7b9d147b -- update .github/workflows/static.yml; delete Dockerfile
+FortiCloud-Orgs-FortiFlex: pushed 8a99db3d -- update .github/workflows/static.yml; delete Dockerfile
+FortiGate-AWS-Autoscale-TEC-Workshop: pushed 8f31f80e -- update .github/workflows/static.yml; delete Dockerfile
+FortiGate-AWS-Autoscale-TEC-Workshop-Backup: pushed 7d5b4ba4 -- update .github/workflows/static.yml; delete Dockerfile
+FortiGate-AWS-CNF-TEC-Workshop: pushed 06ef9029 -- update .github/workflows/static.yml; delete Dockerfile; delete Dockerfile-dev
+GWLB-in-AWS: pushed 84a8caeb -- update .github/workflows/static.yml; delete Dockerfile
+MGMT-in-AWS: pushed c772ecec -- update .github/workflows/static.yml; delete Dockerfile
+OCI_Solutions: pushed e9bb1b2d -- update .github/workflows/static.yml; delete Dockerfile
+Public-Cloud-104-CNAPP: pushed 3b8dc3a2 -- update .github/workflows/static.yml; delete Dockerfile
+PublicCloud105-FortiFlex: pushed bc05e059 -- update .github/workflows/static.yml; delete Dockerfile
+azure-102-foundational: pushed ea0b544e -- update .github/workflows/static.yml; delete Dockerfile
+azure-202-advanced: pushed 2f4b2160 -- update .github/workflows/static.yml; delete Dockerfile
+fortianalyzer-aws-ha-dualaz-cloudformation: pushed 2a1f94b3 -- update .github/workflows/static.yml; delete Dockerfile
+fortianalyzer-aws-ha-singleaz-cloudformation: pushed 64856e9b -- update .github/workflows/static.yml; delete Dockerfile
+fortianalyzer-aws-standalone-cloudformation: pushed b04a3c7c -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-automation-stitch-workshop: pushed 0dc3292d -- update .github/workflows/static.yml; delete Dockerfile; delete Dockerfile-dev
+fortigate-aws-gwlb-cloudformation: pushed 8b35aba8 -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-gwlb-terraform: pushed 980731e1 -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-ha-dualaz-cloudformation: pushed e90dd1b3 -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-ha-dualaz-terraform: pushed e916078e -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-standalone-cloudformation: pushed 5b93d4bc -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-vpc-routeserver-active-active-cloudformation: pushed c81ef915 -- update .github/workflows/static.yml; delete Dockerfile
+fortigate-aws-vpc-routeserver-ha-dual-az-cloudformation: pushed d0cefe28 -- update .github/workflows/static.yml; delete Dockerfile
+fortimanager-aws-ha-dualaz-cloudformation: pushed 1e17fbe9 -- update .github/workflows/static.yml; delete Dockerfile
+fortimanager-aws-ha-singleaz-cloudformation: pushed 8232ae05 -- update .github/workflows/static.yml; delete Dockerfile
+fortimanager-aws-standalone-cloudformation: pushed 80f719d0 -- update .github/workflows/static.yml; delete Dockerfile
+fortiweb-security-foundations-201: pushed 2e792c44 -- update .github/workflows/static.yml; delete Dockerfile
+gcp-ncc-mrr-fortigate: pushed 793c7fd7 -- update .github/workflows/static.yml; delete Dockerfile
+k8s-101-workshop: pushed 943fafef -- update .github/workflows/static.yml; delete Dockerfile
+```
+
+**Actions outcome check — all 33, not just a 3-5 sample** (cheap to do exhaustively): 32/33
+`success`, 1 `failure` (`MGMT-in-AWS`, run 32885656600). Root cause investigation:
+
+1. `gh run view 32885656600 --log-failed` → Hugo build failed inside the container:
+   `ERROR error building site: assemble: failed to create page from pageMetaSource :
+   "/home/UserRepo/content/_index.md:26:1": failed to extract shortcode: template for
+   shortcode "FTNThugoFlow" not found`.
+2. Checked whether `FTNThugoFlow.html` is in the live `fortinet-hugo:latest` image:
+   `docker run --rm --entrypoint sh public.ecr.aws/k4n6m5h8/fortinet-hugo:latest -c "ls
+   /home/CentralRepo/layouts/shortcodes/ | grep -i FTNThugo"` → not found.
+3. Checked CentralRepo git history: `git log --oneline -- layouts/shortcodes/FTNThugoFlow.html`
+   → two commits, most recent is `9bd2d1f remove shortcodes & add script for layouts copy
+   from UserRepo`. `git ls-tree HEAD -- layouts/shortcodes/FTNThugoFlow.html` and `git
+   ls-tree origin/main -- ...` both empty — the file isn't tracked on `dev` or `main`
+   anymore. (A stale untracked copy still sits in the local `/home/ubuntu/pythonProjects/
+   CentralRepo` working directory from before that removal, which is why an `ls` there
+   found it — a local-disk artifact, not something git or the built image has.)
+4. Checked `MGMT-in-AWS`'s own `layouts/shortcodes/` — only `ContainerFlow.html`, no
+   `FTNThugoFlow.html` shadow copy of its own.
+5. Checked whether this is new: compared against `MGMT-in-AWS`'s previous "successful" run
+   (`32807783983`, 2026-08-25T04:08:02) — its `static.yml` was the pre-Phase-3 version,
+   which does `docker wait "$CONT_ID"` with no `STATUS=` capture, so it always reports
+   success regardless of what happened inside the container. No way to tell from that run
+   alone whether the Hugo build itself failed too; the log format differs enough
+   (`UNKNOWN STEP` grouping) that a direct text diff didn't resolve it either way. What's
+   certain: `FTNThugoFlow.html` has been absent from the shipped image since at least
+   commit `9bd2d1f` (predates today entirely), and `MGMT-in-AWS`'s content still references
+   it — so this failure mode has existed for a while, independent of anything in this plan.
+
+Conclusion: real, pre-existing, silently-masked production bug, not a regression from
+Phase 3. Left as-is (out of scope), flagged as a Follow-up in the plan for an owner
+decision (restore the shortcode upstream vs. fix `MGMT-in-AWS`'s content).
+
+Cleaned up: `docker rmi public.ecr.aws/k4n6m5h8/fortinet-hugo:latest` after the
+investigation (was pulled locally just to inspect the image contents).

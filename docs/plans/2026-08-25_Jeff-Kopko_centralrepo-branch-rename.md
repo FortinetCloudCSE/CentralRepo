@@ -182,20 +182,33 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       the latter is dated changelog history; both are acceptable to leave stale (see Risks).
 
 ### Phase 3 — Modernize the 33 repos already on the ECR-pull pattern (bulk, direct-push, single confirmation gate)
-- [ ] **3.1** Extend `batch_repo_update.py` (or a copy of it) with:
-      `REPOS` = the 33-repo list (see log file), `FILES_TO_COPY` unchanged except drop the
-      `Dockerfile` copy line, `FILES_TO_DELETE` += `["Dockerfile"]` (+ `"Dockerfile-dev"`
-      for `fortigate-automation-stitch-workshop`, the only repo in this group carrying one).
-      `scripts/static.yml` copy already happens — since CentralRepo's own template already
-      has the exit-code-capture fix, this single copy resolves that bug in all 33 repos too.
-- [ ] **3.2** Dry-run: print the diff the script *would* make per repo without pushing
-      (add a `DRY_RUN` guard if the script doesn't have one) — review before executing.
-- [ ] **3.3** **Explicit go/no-go checkpoint before running** — this bulk-pushes directly to
-      `main` on 33 repos with no PR, each triggering that repo's live Pages deploy
-      immediately. Get a fresh confirmation at this step even though the plan itself is
-      approved; do not treat plan approval as authorization to fire this script.
-- [ ] **3.4** Run it. Spot-check 3-5 resulting Actions runs for a clean deploy before
-      considering the phase done.
+- [x] **3.1** Wrote a purpose-built script (not an extended `batch_repo_update.py` — that
+      script also rewrites each repo's `README.md` and sets custom properties, side effects
+      out of scope here) at
+      `/tmp/claude-1000/.../scratchpad/phase3_modernize.py`: for each of the 33 repos,
+      replace `.github/workflows/static.yml` with CentralRepo's current canonical
+      `scripts/static.yml` (picks up the exit-code-capture fix for free) and delete the dead
+      `Dockerfile`.
+- [x] **3.2** Dry-run caught a real gap in the original audit: `FortiGate-AWS-CNF-TEC-Workshop`
+      has a `Dockerfile-dev` the original 52-repo search hadn't flagged for this group (only
+      `fortigate-automation-stitch-workshop` was recorded). Verified live — same stale
+      `#prreviewJune23` pattern, even an ancient `klakegg/hugo:0.107.0` base image — and this
+      repo's `static.yml` already pulls ECR, so same dead-weight reasoning applies. Added to
+      the script's delete list before going live. Re-ran dry-run clean, 33/33.
+- [x] **3.3** **Explicit go/no-go checkpoint before running** — asked and got explicit
+      confirmation before the live push, per plan.
+- [x] **3.4** Ran it live: 33/33 pushes succeeded. Spot-checked Actions outcomes across all
+      33 (not just 3-5, since it was cheap): **32/33 succeeded, 1 failure**
+      (`MGMT-in-AWS`) — root-caused as a genuine PRE-EXISTING content bug, not caused by this
+      push: its content references the `FTNThugoFlow` shortcode, which was removed from
+      CentralRepo's tracked layouts at some earlier commit (`9bd2d1f`, "remove shortcodes &
+      add script for layouts copy from UserRepo") and confirmed absent from the live
+      `fortinet-hugo:latest` image; `MGMT-in-AWS` never got its own local copy. Its build has
+      silently failed and served stale Pages output for a while — masked because the *old*
+      `static.yml` (pre-modernization) never captured the container's exit code, so a failed
+      Hugo build was always reported as CI success. This fix is the first thing to actually
+      surface it. Not fixed here — out of scope (content bug, not branch-rename/CI tooling) —
+      flagged to the user and logged as a Follow-up.
 
 ### Phase 4 — migrate the 19 repos still building locally (staged, in scope)
 - [ ] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
@@ -303,6 +316,13 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] `Status:` set to `Complete`
 
 ## Follow-ups
+- [ ] **`MGMT-in-AWS`'s GitHub Pages site has been silently serving stale/broken output** —
+      its content references the `FTNThugoFlow` shortcode, which CentralRepo stopped
+      shipping at some earlier commit (`9bd2d1f`) and this repo never got its own copy. The
+      Phase 3 exit-code-capture fix surfaced this for the first time (previously the build
+      failed inside the container but CI still reported success). Needs an owner decision:
+      restore `FTNThugoFlow.html` to CentralRepo's shared layouts, or remove/replace the
+      reference in `MGMT-in-AWS`'s content. Not attempted here — out of this plan's scope.
 - [ ] Fix the 2 downstream repos whose own `CLAUDE.md` documents the stale
       `#prreviewJune23` pin as current fact (`Public-Cloud-104-CNAPP`, `k8s-101-workshop`) —
       cosmetic doc drift, low urgency.
