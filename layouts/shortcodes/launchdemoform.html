@@ -164,7 +164,31 @@
         percent: typeof data.percent === 'number' ? data.percent : 0,
         step: data.step || data.currentStep || '',
         error: data.error || null,
-        credentials: data.credentials || null
+        credentials: data.credential ? normalizeCredential(data.credential) : null,
+        retryAfterSeconds: typeof data.retryAfterSeconds === 'number' ? data.retryAfterSeconds : null
+      };
+    }
+
+    // Real backend shape confirmed live 2026-08-25 (see this repo's plan file, Plan
+    // Changes): a singular `credential` object with userPrincipalName/
+    // temporaryAccessPass/resourceGroups (an array, not one group)/labDurationDays —
+    // not the guessed username/signInInfo/resourceGroup/expiry shape. Mapped here so
+    // renderCredentialCard's display-side rows don't need to change.
+    function normalizeCredential(raw) {
+      raw = raw || {};
+      const days = raw.labDurationDays;
+      let duration = '';
+      if (typeof days === 'number') {
+        duration = days < 1 ? Math.round(days * 24) + ' hours' : days + ' day' + (days === 1 ? '' : 's');
+      }
+      return {
+        username: raw.userPrincipalName || '',
+        signInInfo: raw.temporaryAccessPass
+          ? 'Temporary Access Pass: ' + raw.temporaryAccessPass
+          : '',
+        resourceGroup: Array.isArray(raw.resourceGroups) ? raw.resourceGroups.join(', ') : (raw.resourceGroups || ''),
+        expiry: duration,
+        portalUrl: 'https://portal.azure.com'
       };
     }
 
@@ -246,7 +270,7 @@
         ['Username', creds.username],
         ['Sign-in info', creds.signInInfo],
         ['Resource group', creds.resourceGroup],
-        ['Expires', creds.expiry]
+        ['Lab duration', creds.expiry]
       ];
       rows.forEach(function (row) {
         if (!row[1]) return;
@@ -294,13 +318,17 @@
           poll.delay = POLL_DELAY_MIN;
           poll.lastSignature = signature;
         }
-        writeAttempt({ status: parsed.status, percent: parsed.percent, step: parsed.step, error: parsed.error });
-        if ((parsed.status || '').toLowerCase() === 'succeeded' && parsed.credentials) {
+        writeAttempt({ status: parsed.status, percent: parsed.percent, step: parsed.step, error: parsed.error, retryAfterSeconds: parsed.retryAfterSeconds });
+        if ((parsed.status || '').toLowerCase() === 'completed' && parsed.credentials) {
           writeCredentials(parsed.credentials);
         }
         render();
+        // Completed/Failed are the two outcomes a participant retries from; Duplicate/
+        // RateLimited are also permanent (the underlying orchestration is done and will
+        // never change) — all four stop polling, or a poll would hit an unchanging
+        // response forever.
         const statusLower = (parsed.status || '').toLowerCase();
-        if (statusLower === 'succeeded' || statusLower === 'failed') {
+        if (['completed', 'failed', 'duplicate', 'ratelimited'].indexOf(statusLower) !== -1) {
           poll.activeToken = null;
           return;
         }
@@ -378,7 +406,7 @@
 
       const status = (attempt.status || '').toLowerCase();
 
-      if (status === 'succeeded') {
+      if (status === 'completed') {
         const creds = readCredentials();
         btn.hidden = false;
         btn.disabled = true;
@@ -403,6 +431,25 @@
         return;
       }
 
+      if (status === 'ratelimited' || status === 'duplicate') {
+        // Both are permanent outcomes of *this* attempt (the underlying orchestration
+        // already finished) — without a retry affordance the participant would be
+        // stuck on this state forever, since nothing will poll it again.
+        btn.hidden = false;
+        btn.disabled = disabledByGate;
+        btn.textContent = 'Retry Provisioning';
+        hideProgress();
+        hideCredentials();
+        const wait = typeof attempt.retryAfterSeconds === 'number' ? Math.ceil(attempt.retryAfterSeconds) : null;
+        setStatus(
+          status === 'ratelimited'
+            ? ('Please wait' + (wait ? ' ~' + wait + 's' : ' a moment') + ' before trying again.')
+            : 'An attempt for this lab is already in progress or complete.',
+          'err'
+        );
+        return;
+      }
+
       // Pending / Running — in-flight, resume polling if not already active.
       btn.hidden = false;
       btn.disabled = true;
@@ -418,7 +465,7 @@
       const attempt = readAttempt();
       const status = attempt ? (attempt.status || '').toLowerCase() : '';
       if (!attempt) { startProvisioning(); return; }
-      if (status === 'failed') { clearAttempt(); startProvisioning(); }
+      if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); }
       // Any other state: button is disabled, click is a no-op.
     });
 
