@@ -211,11 +211,11 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       flagged to the user and logged as a Follow-up.
 
 ### Phase 4 — migrate the 19 repos still building locally (staged, in scope)
-- [ ] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
+- [x] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
       (local `docker build --target=prod` inside `static.yml` → pulling the prebuilt ECR
       image), not dead-code cleanup, so it gets its own pilot/verify/gate sequence rather
       than sharing Phase 3's single confirmation.
-- [ ] **4.2** Pilot on 3 repos chosen for structural diversity, not convenience — each
+- [x] **4.2** Pilot on 3 repos chosen for structural diversity, not convenience — each
       covers a different divergent shape found in the audit, so a template mismatch surfaces
       on 3 repos instead of on repo #14 of a 19-repo bulk push:
       - `cFOS-GKE-Workshop` — oldest/most divergent overall (`checkout@v3`,
@@ -231,12 +231,32 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       For each pilot: replace `.github/workflows/static.yml` with CentralRepo's current
       canonical `scripts/static.yml`, delete the local `Dockerfile` (and `Dockerfile-dev`
       for `cFOS-GKE-Workshop`), push, and watch the resulting Actions run to completion.
-- [ ] **4.3** Verify: each of the 3 pilots' GitHub Pages deploy actually succeeds and serves
-      the same content as before (spot-check the live site, not just a green checkmark —
-      a workflow can report success while deploying stale or empty `docs/`).
-- [ ] **4.4** **Explicit go/no-go checkpoint** before touching the remaining ~16 — if any
-      pilot's deploy broke or behaved differently, stop and diagnose before scaling out; do
-      not treat 2-of-3 pilots succeeding as good enough to proceed.
+- [x] **4.3** Verify: **1 of 3 pilots (`FortiADCIntro`) succeeded cleanly** — real deploy,
+      not just a green checkmark. **2 of 3 failed, both root-caused to genuine,
+      migration-unrelated issues:**
+      - `fortigate-azure-sdwan-networking-workshop`: identical `FTNThugoFlow` shortcode
+        error to `MGMT-in-AWS` in Phase 3 (see that entry) — pre-existing, masked by the old
+        static.yml's missing exit-code capture, not caused by this migration.
+      - `cFOS-GKE-Workshop`: found a real gap in the Phase 4 script — this repo had no
+        `scripts/repoConfig.json`, only the legacy `config.toml`, and the current
+        `generate_toml.py` has no fallback for that. Fixed by converting `config.toml` →
+        `repoConfig.json` using the exact same field mapping `batch_repo_update.py`'s
+        `run_toml_to_json()` already uses for this scenario (pushed as a follow-up commit,
+        `90c7d6df`). That got past the original error, but surfaced a **second, unrelated**
+        pre-existing bug: malformed YAML front matter in this repo's own
+        `content/01Chapter1/_index.md` (`weight` key defined twice, lines 2 and 3) — a
+        genuine content-authoring error, not a CI/tooling issue. Confirmed via
+        `gh run list` that this repo has exactly one run in its entire Actions history (this
+        migration's) — no prior baseline exists, so it can't be confirmed whether this repo
+        ever successfully deployed before.
+      **Conclusion: the migration mechanism itself is sound.** Every failure traces to an
+      independent, pre-existing content or config issue that the exit-code-capture fix is
+      surfacing for the first time (same pattern as `MGMT-in-AWS` in Phase 3) — not a defect
+      in replacing `static.yml` or removing the local `Dockerfile`. `repoConfig.json`
+      presence was re-checked across all remaining 16 bulk-target repos before proceeding —
+      confirmed present in every one, so `cFOS-GKE-Workshop`'s gap does not recur there.
+- [x] **4.4** **Explicit go/no-go checkpoint** — asked before touching the remaining 16,
+      with the full pilot diagnosis above laid out. Got explicit go-ahead.
 - [ ] **4.5** Bulk-push the same `static.yml` replacement + Dockerfile deletion to the
       remaining 16 repos (`api-and-websvc-fundamentals`, `cloud-architectures`,
       `forticnapp-code-security-demo`, `fortiweb-threat-protection`,
@@ -244,9 +264,12 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       `k8s-202-workshop`, `technical-recipe-azure-fweb-ztna-fortisoar`,
       `Code-Security-Workshop`, `Forti-ProductXYZ`, `FortiCNAPPRoadshow`, `FortiCNF`,
       `FortiDevOps-v2025`, `FortiDevSec-Workshop`, `FortiSASE`,
-      `FortiWeb-Azure-ZTNA-FortiSoar`).
+      `FortiWeb-Azure-ZTNA-FortiSoar` [+ its `Dockerfile-dev`, found live during dry-run,
+      not in the original audit — see log]).
 - [ ] **4.6** Spot-check 4-5 of the resulting Actions runs for a clean deploy, same as
-      Phase 3.3.
+      Phase 3.3. Given the pilot's hit rate, expect some of the 16 to also surface
+      pre-existing content bugs — that is not a rollout failure, document and move on, same
+      treatment as `MGMT-in-AWS`.
 
 ## Plan Changes
 - **2026-08-25, still Proposed:** initial draft deferred the 19 "still builds locally"
@@ -323,6 +346,15 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       failed inside the container but CI still reported success). Needs an owner decision:
       restore `FTNThugoFlow.html` to CentralRepo's shared layouts, or remove/replace the
       reference in `MGMT-in-AWS`'s content. Not attempted here — out of this plan's scope.
+- [ ] **`fortigate-azure-sdwan-networking-workshop`'s Pages site has the same
+      `FTNThugoFlow`-missing issue as `MGMT-in-AWS`** — surfaced by the Phase 4 pilot,
+      same root cause, same recommended fix, same "needs an owner decision, not attempted
+      here" status.
+- [ ] **`cFOS-GKE-Workshop`'s content has a YAML front-matter error**
+      (`content/01Chapter1/_index.md`, duplicate `weight` key at lines 2-3) that fails the
+      Hugo build outright. This repo also has no confirmed history of ever deploying
+      successfully (only one Actions run exists, from this migration). Needs a content-owner
+      fix, not attempted here.
 - [ ] Fix the 2 downstream repos whose own `CLAUDE.md` documents the stale
       `#prreviewJune23` pin as current fact (`Public-Cloud-104-CNAPP`, `k8s-101-workshop`) —
       cosmetic doc drift, low urgency.

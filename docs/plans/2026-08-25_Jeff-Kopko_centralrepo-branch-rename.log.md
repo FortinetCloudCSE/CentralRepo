@@ -347,3 +347,67 @@ decision (restore the shortcode upstream vs. fix `MGMT-in-AWS`'s content).
 
 Cleaned up: `docker rmi public.ecr.aws/k4n6m5h8/fortinet-hugo:latest` after the
 investigation (was pulled locally just to inspect the image contents).
+
+## Phase 4 pilot execution notes (2026-08-25)
+
+Reused the Phase 3 script's structure (`phase4_migrate.py`, same minimal
+replace-static.yml-delete-Dockerfile approach), split into `--pilot` (3 repos) and
+`--bulk` (16 repos) modes.
+
+**Dry-run (pilot):** clean, 3/3.
+
+**Dry-run (bulk):** caught another audit gap — `FortiWeb-Azure-ZTNA-FortiSoar` has a
+`Dockerfile-dev` not recorded in the original 52-repo audit for this group (only
+`getting-started-general` was). Verified live: identical stale pattern to the
+`FortiGate-AWS-CNF-TEC-Workshop` one found in Phase 3 (`#prreviewJune23` ADD, ancient
+`klakegg/hugo:0.107.0-alpine` base — looks like a copy-pasted template used across
+several repos). Added to the delete list. This is now the **second** time a live
+dry-run caught something the original `gh search code` audit missed — that audit should
+be treated as "confirmed affected," not "exhaustive," per the plan's own Risks section.
+
+**Pilot live push:** 3/3 pushes succeeded (`cFOS-GKE-Workshop` b0993ddf,
+`fortigate-azure-sdwan-networking-workshop` 8e74869d, `FortiADCIntro` 221e139a).
+
+**Pilot Actions outcomes:** `FortiADCIntro` succeeded. Two failed:
+
+1. `fortigate-azure-sdwan-networking-workshop` (run 32886425690): `gh run view --log-failed`
+   → `ERROR error building site: ... failed to extract shortcode: template for shortcode
+   "FTNThugoFlow" not found` — byte-identical error class to `MGMT-in-AWS` in Phase 3. Same
+   root cause (see that entry), no further investigation needed.
+
+2. `cFOS-GKE-Workshop` (run 32886421568): `gh run view --log-failed` →
+   `FileNotFoundError: [Errno 2] No such file or directory:
+   '/home/UserRepo/scripts/repoConfig.json'`. Checked all 19 Phase-4 repos for
+   `scripts/repoConfig.json` presence via `gh api .../contents/scripts/repoConfig.json` —
+   `cFOS-GKE-Workshop` is the **only** one missing it (all 18 others, including all 16 bulk
+   targets, already have it — confirmed before proceeding to bulk). Checked whether this
+   predates the migration: `gh run list` shows exactly ONE run in this repo's entire Actions
+   history — the failing one from this migration — so there's no prior baseline to compare
+   against.
+
+   Fixed by converting `config.toml` → `scripts/repoConfig.json` using the exact field
+   mapping `batch_repo_update.py`'s `run_toml_to_json()` already uses (repoName from
+   baseURL's last path segment, workshopTitle from title, author/themeVariant/
+   logoBannerText/logoBannerSubText from `[params]`, shortcuts from `[[menu.shortcuts]]`,
+   everything else inherited from CentralRepo's own `scripts/repoConfig.json` as the base
+   object — same as the original script does). Used `tomllib` (Python 3.12 stdlib, no
+   external dependency needed). Result reviewed before pushing — sensible values throughout,
+   including `googleServicesID` landing on the same `G-5RZBH288ST` the repo's own
+   `config.toml` already had under a different key name (`googleAnalytics`), so no data
+   loss. Pushed as follow-up commit `90c7d6df` with a message explaining why.
+
+   Re-triggered, waited, checked again: **new, different failure** —
+   `ERROR error building site: assemble: failed to create page from pageMetaSource
+   /01chapter1: "/home/UserRepo/content/01Chapter1/_index.md:4:1": [3:1] mapping key
+   "weight" already defined at [2:1]`. This is a malformed-YAML-front-matter bug in the
+   repo's own content (`weight: 1` then `weight: 10` two lines later) — unrelated to CI
+   tooling, config conversion, or the branch rename. Not fixed — a content-authoring
+   decision, out of scope. Given the "only one Actions run ever" finding above, this repo's
+   Pages site may never have successfully built; not confirmed either way.
+
+**Assessment before requesting the bulk go/no-go:** the migration mechanism (static.yml
+swap + Dockerfile deletion) did not cause either pilot failure — one is a duplicate of an
+already-known pre-existing bug class (`FTNThugoFlow`), the other resolved into a genuine
+script gap (fixed, and confirmed isolated to this one repo) plus a second, independent,
+pre-existing content bug. `repoConfig.json` presence re-verified across all 16 bulk targets
+specifically to rule out `cFOS-GKE-Workshop`'s gap recurring there before asking to proceed.
