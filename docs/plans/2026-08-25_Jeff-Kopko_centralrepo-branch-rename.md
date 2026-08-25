@@ -257,19 +257,66 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       confirmed present in every one, so `cFOS-GKE-Workshop`'s gap does not recur there.
 - [x] **4.4** **Explicit go/no-go checkpoint** — asked before touching the remaining 16,
       with the full pilot diagnosis above laid out. Got explicit go-ahead.
-- [ ] **4.5** Bulk-push the same `static.yml` replacement + Dockerfile deletion to the
-      remaining 16 repos (`api-and-websvc-fundamentals`, `cloud-architectures`,
-      `forticnapp-code-security-demo`, `fortiweb-threat-protection`,
-      `getting-started-general` [+ its `Dockerfile-dev`], `k8s-201-workshop`,
-      `k8s-202-workshop`, `technical-recipe-azure-fweb-ztna-fortisoar`,
-      `Code-Security-Workshop`, `Forti-ProductXYZ`, `FortiCNAPPRoadshow`, `FortiCNF`,
-      `FortiDevOps-v2025`, `FortiDevSec-Workshop`, `FortiSASE`,
-      `FortiWeb-Azure-ZTNA-FortiSoar` [+ its `Dockerfile-dev`, found live during dry-run,
-      not in the original audit — see log]).
-- [ ] **4.6** Spot-check 4-5 of the resulting Actions runs for a clean deploy, same as
-      Phase 3.3. Given the pilot's hit rate, expect some of the 16 to also surface
-      pre-existing content bugs — that is not a rollout failure, document and move on, same
-      treatment as `MGMT-in-AWS`.
+- [x] **4.5** Bulk-pushed to the remaining 16 — 16/16 pushes succeeded.
+- [x] **4.6** Checked all 16 Actions outcomes (not just a sample): **11/16 succeeded, 5
+      failed** — `technical-recipe-azure-fweb-ztna-fortisoar` and `forticnapp-code-security-demo`
+      hit the same `FTNThugoFlow` bug (see the org-wide fix below); `FortiCNAPPRoadshow`
+      hit the sibling case — `template for shortcode "quizdown" not found` (`quizdown.html`
+      is already documented in this repo's own `CLAUDE.md` as "slated for deletion,
+      replaced by CTF quiz app via quizframe" — same bug class, different deprecated
+      shortcode, not fixed here, out of scope, logged as a Follow-up);
+      `fortiweb-threat-protection` hit an unrelated, pre-existing content-organization bug
+      (a stray copy of `launchdemoform.html` sitting under `content/images/layouts/
+      shortcodes/` trips Hugo's `security.allowContent` policy — not a shortcode issue at
+      all, logged as a Follow-up); `FortiSASE` hit `FTNThugoFlow` too (see below).
+
+## FTNThugoFlow org-wide fix (2026-08-25, user-requested mid-Phase-4)
+
+By this point `FTNThugoFlow` had broken 5 repos across Phase 3 + Phase 4
+(`MGMT-in-AWS`, `fortigate-azure-sdwan-networking-workshop`,
+`technical-recipe-azure-fweb-ztna-fortisoar`, `forticnapp-code-security-demo`,
+`FortiSASE`). User asked to fix the root cause: remove the shortcode from all repos
+except `UserRepo`, and stop it being cloned into new ones.
+
+**Root cause traced org-wide, not just the 5 failing repos:** `UserRepo`'s own default
+`content/_index.md` (and its shortcode-documentation page) call `{{< FTNThugoFlow >}}` —
+this is what actually propagates into every new workshop repo at clone time.
+`batch_repo_update.py` has had `layouts/shortcodes/FTNThugoFlow.html` in its
+`FILES_TO_DELETE` list all along (removing the *implementation*), but nothing ever
+touched the *content* still calling it — that mismatch is the real bug. Org-wide code
+search found 13 repos total: `UserRepo` + 12 downstream (5 already broken, 6 still
+carrying a working local copy of the file that would have broken the same way on their
+next `batch_repo_update.py` run, 1 — `FortiCNAPPRoadshow` — with only a stale doc-page
+mention, no live call).
+
+**"Keep in UserRepo but don't let it get cloned" isn't technically achievable** — `UserRepo`
+is a genuine GitHub template repo (`is_template: true`), and template generation copies
+the whole tree with no per-file exclusion mechanism. Full removal (including from
+`UserRepo`) is the only way to guarantee new repos stop inheriting it — flagged to the
+user as the alternate fix taken, per their "I'm open to alternate fixes."
+
+**Fix applied:** removed the `{{< FTNThugoFlow >}}` call block from `content/_index.md`,
+removed the stale doc-page reference, and deleted the shortcode file wherever present, in
+all 13 repos. 12 downstream repos: direct push to `main` (12/13 succeeded — see log for the
+one push that needed a second template-variant fix). `UserRepo`'s `main` is protected
+(PR required, same as CentralRepo's own) — opened
+[UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) instead, left open for
+review, not merged.
+
+**Verification — re-checked all 5 previously-broken repos:** 2/5 now fully succeed
+(`MGMT-in-AWS`, `forticnapp-code-security-demo`). **3/5 still fail**
+(`technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+`FortiSASE`) — confirmed the `FTNThugoFlow` error is gone in all three; a **new, different,
+pre-existing bug** is now exposed underneath: malformed markdown links with the URL
+wrapped in literal quotes (`[Hugo Web Framework]("https://gohugo.io/")` instead of
+`[Hugo Web Framework](https://gohugo.io/)`), which crashes Hugo's `render-link.html`
+partial. This was always broken in these 3 repos' content — previously masked because
+the `FTNThugoFlow` failure happened earlier in the page-assembly phase, before rendering
+ever reached this line. `UserRepo`'s *current* template content does **not** have this
+bug (`content/_index.md:17` uses correct syntax) — it was fixed there at some point after
+these 3 repos were cloned, but that fix never propagated back, same "propagation gap"
+shape as `FTNThugoFlow` itself. Not fixed here — flagged as a Follow-up, offered to the
+user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
 
 ## Plan Changes
 - **2026-08-25, still Proposed:** initial draft deferred the 19 "still builds locally"
@@ -339,17 +386,32 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] `Status:` set to `Complete`
 
 ## Follow-ups
-- [ ] **`MGMT-in-AWS`'s GitHub Pages site has been silently serving stale/broken output** —
-      its content references the `FTNThugoFlow` shortcode, which CentralRepo stopped
-      shipping at some earlier commit (`9bd2d1f`) and this repo never got its own copy. The
-      Phase 3 exit-code-capture fix surfaced this for the first time (previously the build
-      failed inside the container but CI still reported success). Needs an owner decision:
-      restore `FTNThugoFlow.html` to CentralRepo's shared layouts, or remove/replace the
-      reference in `MGMT-in-AWS`'s content. Not attempted here — out of this plan's scope.
-- [ ] **`fortigate-azure-sdwan-networking-workshop`'s Pages site has the same
-      `FTNThugoFlow`-missing issue as `MGMT-in-AWS`** — surfaced by the Phase 4 pilot,
-      same root cause, same recommended fix, same "needs an owner decision, not attempted
-      here" status.
+- [x] **`FTNThugoFlow` shortcode retired org-wide** — was going to be a Follow-up
+      (`MGMT-in-AWS`, `fortigate-azure-sdwan-networking-workshop`), but the user asked for
+      the root-cause fix mid-Phase-4 instead. See "FTNThugoFlow org-wide fix" section above
+      for the full record. Resolved: `MGMT-in-AWS`, `forticnapp-code-security-demo`. Still
+      broken for a *different, unrelated* reason (see next item):
+      `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+      `FortiSASE`. [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) still
+      needs review/merge.
+- [ ] **3 repos have a second, separate, pre-existing bug** unmasked by the `FTNThugoFlow`
+      fix — malformed markdown links with the URL wrapped in literal quotes
+      (`[text]("https://...")` instead of `[text](https://...)`) crash Hugo's
+      `render-link.html` partial: `technical-recipe-azure-fweb-ztna-fortisoar`,
+      `fortigate-azure-sdwan-networking-workshop`, `FortiSASE`. `UserRepo`'s current
+      template content does not have this bug (fixed there at some point, never
+      backported) — same "propagation gap" shape as `FTNThugoFlow`. Well-scoped, low-risk,
+      same fix pattern (strip the stray quotes) — offered to the user as a fast follow-on,
+      not assumed in scope, not attempted here.
+- [ ] **`FortiCNAPPRoadshow` calls the already-deprecated `quizdown` shortcode**
+      (`template for shortcode "quizdown" not found`) — same bug class as `FTNThugoFlow`
+      (a shortcode this org's own `CLAUDE.md` documents as intentionally retired, with
+      content never updated to match). Not fixed here.
+- [ ] **`fortiweb-threat-protection` has a stray file under `content/`** —
+      `content/images/layouts/shortcodes/launchdemoform.html` looks like a
+      content-organization mistake (a copy of the shortcode file landed inside the content
+      tree instead of `layouts/shortcodes/`), tripping Hugo's `security.allowContent`
+      policy. Unrelated to shortcode deprecation — a distinct content bug. Not fixed here.
 - [ ] **`cFOS-GKE-Workshop`'s content has a YAML front-matter error**
       (`content/01Chapter1/_index.md`, duplicate `weight` key at lines 2-3) that fails the
       Hugo build outright. This repo also has no confirmed history of ever deploying

@@ -411,3 +411,129 @@ already-known pre-existing bug class (`FTNThugoFlow`), the other resolved into a
 script gap (fixed, and confirmed isolated to this one repo) plus a second, independent,
 pre-existing content bug. `repoConfig.json` presence re-verified across all 16 bulk targets
 specifically to rule out `cFOS-GKE-Workshop`'s gap recurring there before asking to proceed.
+
+## Phase 4 bulk execution notes (2026-08-25)
+
+Bulk push (16 repos, `phase4_migrate.py --live --bulk`): 16/16 succeeded. Actions outcome
+check across all 16: 11 success, 5 failure. Root-caused each:
+
+- `technical-recipe-azure-fweb-ztna-fortisoar`, `forticnapp-code-security-demo`: `FTNThugoFlow`
+  bug (see the org-wide fix section below).
+- `FortiSASE`: `FTNThugoFlow` bug too.
+- `FortiCNAPPRoadshow`: `template for shortcode "quizdown" not found` — sibling bug, same
+  shape, different already-deprecated shortcode (this repo's own `CLAUDE.md` already
+  documents `quizdown.html` as "slated for deletion, replaced by CTF quiz app via
+  quizframe"). Not fixed.
+- `fortiweb-threat-protection`: `access denied: "text/html" is not whitelisted in policy
+  "security.allowContent"` for `content/images/layouts/shortcodes/launchdemoform.html` —
+  a stray file sitting inside the content tree, unrelated to any shortcode-deprecation
+  pattern. Not fixed.
+
+## FTNThugoFlow org-wide fix execution notes (2026-08-25, user-requested)
+
+User's exact request, after seeing the pattern repeat across Phase 3 (`MGMT-in-AWS`) and
+the Phase 4 pilot (`fortigate-azure-sdwan-networking-workshop`): "proceed with the bulk 16
+and fix the FTNThugoFlow bug. remove it from all repos except UserRepo and make it so it
+doesn't get cloned. I'm open to alternate fixes."
+
+**Investigation, in order:**
+
+1. `gh api .../UserRepo/contents/layouts/shortcodes/FTNThugoFlow.html` → present. Full
+   listing of `UserRepo/layouts/shortcodes/`: `ContainerFlow.html`, `FTNThugoFlow.html`,
+   `fortihugorunner.html`.
+2. `git show --stat 9bd2d1f` (the commit CentralRepo's own history shows removing the
+   file) → `9bd2d1f7d38ad17031d7ccd6e613c35eff6deee5`, dated **2023-05-26** (much older than
+   it looked from a bare `git log --oneline` in a repo whose recent history is all
+   2026-dated) — "remove shortcodes & add script for layouts copy from UserRepo". Also
+   removed `launchdemoform.html` at the same time (which was later properly rebuilt and
+   re-added to CentralRepo's shared layouts — `FTNThugoFlow` never got the same treatment).
+3. Read `UserRepo/content/_index.md` around the call site:
+   ```
+   - Here's a visual representation of our process which will be fully explained in each chapter
+
+   {{< FTNThugoFlow >}}
+   ```
+   And `UserRepo/content/02Hugo/5_shortcodes/index.md`, which explicitly documents
+   `FTNThugoFlow` as a *teaching example* ("This shortcode example is included in your
+   cloned repo at .../FTNThugoFlow.html") of how to write a custom shortcode — not a
+   universally-required piece of infrastructure. New repos are meant to either keep it or
+   replace it with their own; the actual bug is that many kept the reference while losing
+   the file (via `batch_repo_update.py`'s existing `FILES_TO_DELETE` cleanup), with nobody
+   noticing because it silently broke a previously-unverified build (same masking pattern
+   as everywhere else in this investigation).
+4. Inspected `FTNThugoFlow.html`'s actual content: a single hardcoded mxGraph/draw.io
+   embed of one specific diagram (the CentralRepo Docker container build flow) — no
+   parameters, same diagram for every repo regardless of that repo's own content. Compared
+   against `ContainerFlow.html` (also per-repo-copied, not centrally shipped by
+   CentralRepo — confirmed via `git ls-tree HEAD -- layouts/shortcodes/ContainerFlow.html`
+   returning nothing) — same shape of shortcode, same fragility, just currently more widely
+   propagated (found via `gh search code "ContainerFlow"`: ~15+ repos currently carry their
+   own copy, vs 6 for `FTNThugoFlow`). Considered swapping `FTNThugoFlow` for
+   `ContainerFlow` as the "fixed" version; rejected — `ContainerFlow` has the identical
+   shadow-copy fragility and would just relocate the same bug class to a different
+   shortcode name. Noted as a **not-in-scope observation**: the whole
+   per-repo-shadow-copied-shortcode pattern (both `ContainerFlow` and the retired
+   `FTNThugoFlow`) is structurally fragile against `batch_repo_update.py` cleanup passes;
+   not raised as a Follow-up since the user didn't ask about it and fixing the pattern
+   itself is a much larger design change.
+5. Org-wide `gh search code "FTNThugoFlow" --owner FortinetCloudCSE` → 78 raw hits, filtered
+   down to 13 repos with an *actionable* file or content hit (the rest were `CLAUDE.md`
+   mentions, `repo_upgrade_spec.json` boilerplate, `docs/plans/*` historical records —
+   correctly left untouched, same convention as everywhere else in this plan):
+   - `UserRepo`, `MGMT-in-AWS`, `fortigate-azure-sdwan-networking-workshop`,
+     `technical-recipe-azure-fweb-ztna-fortisoar`, `forticnapp-code-security-demo`,
+     `FortiSASE` — already confirmed broken (build failure).
+   - `ai-102-with-fortiappsec`, `Reducing-Risk-111-CNAPP`, `FortiShield`,
+     `zero-touch-provisioning`, `fortiaigate-demo-runbook`, `SASE-203-CASB` — checked via
+     `gh api .../contents/layouts/shortcodes/FTNThugoFlow.html`: all 6 **still have their own
+     working copy** of the file (not currently broken, but fragile — would break the same
+     way the next time something strips the file without updating content).
+   - `FortiCNAPPRoadshow` — no `content/_index.md` call, no file; only a stale doc-page
+     mention in `content/02DemoFlows/shortcodes.md`.
+6. Confirmed the exact call-site text is byte-identical across every repo (down to shared
+   typos — "markdowd", "embeded" — proving all 12 downstream copies trace to the same
+   UserRepo-derived origin, never independently edited).
+
+**"Keep in UserRepo, exclude from clone" is not achievable:** `gh api repos/.../UserRepo
+--jq '.is_template'` → `true`. GitHub's template-generation mechanism copies the whole
+tree; there is no native per-file exclusion. Full removal (including from `UserRepo`) is
+the only way to actually guarantee "doesn't get cloned" — this is the "alternate fix" the
+user said they were open to, applied here.
+
+**Script:** `fix_ftnthugoflow.py` (scratch, not committed — same spirit as the Phase 3/4
+scripts). For each repo: replace-in-place `content/_index.md` (remove the 3-line call
+block verbatim), replace-in-place the shortcode-doc page at whichever of two known paths
+applies (`content/02Hugo/5_shortcodes/index.md` for the newer template shape,
+`content/02Hugo/shortcodes.md` for the older one, `content/02DemoFlows/shortcodes.md` for
+`FortiCNAPPRoadshow`'s differently-numbered chapter structure), delete
+`layouts/shortcodes/FTNThugoFlow.html` if present, one commit.
+
+**Dry-run caught a real matching bug in the script itself**, not the repos: the
+`shortcodes.md`-path variant's reference block is the *last* line of those files (no
+trailing newline), so the template string built assuming a trailing `\n` never matched.
+Fixed by generating both with- and without-trailing-newline variants. Re-ran dry-run clean
+across all 13.
+
+**Live run:** 12/13 direct-pushed successfully. `UserRepo` failed (`422` on the ref
+update) — `gh api repos/.../UserRepo/branches/main/protection` confirmed `main` requires a
+PR (`enforce_admins: true`, same posture as CentralRepo's own `main`). Opened
+[UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) instead via the
+git-data API against a new branch (same mechanism as Phase 2's PR #79), left open, not
+merged.
+
+**Verification — re-checked the 5 previously-broken repos:**
+- `MGMT-in-AWS`, `forticnapp-code-security-demo`: now succeed.
+- `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+  `FortiSASE`: still fail, but confirmed via `gh run view --log-failed` that the
+  `FTNThugoFlow` error is gone — replaced by
+  `template: _partials/shortcodes/link.html:20:14: ... error calling Parse: parse
+  "\"https://gohugo.io/\"": first path segment in URL cannot contain colon`, i.e. a
+  malformed markdown link (`[text]("url")` instead of `[text](url)`) that was always
+  broken in these 3 repos' content but never reached, because the `FTNThugoFlow` failure
+  happened earlier in Hugo's page-assembly phase, before rendering got to this line.
+  Checked `UserRepo`'s *current* `content/_index.md:17` — correct syntax, no quotes — so
+  this was fixed in the template at some point after these 3 repos were cloned, but the
+  fix never propagated back. Same "propagation gap" shape as `FTNThugoFlow` itself, just a
+  different bug. Not fixed here — offered to the user as a fast, well-scoped follow-on
+  rather than assumed in scope, given the session had already expanded scope once at the
+  user's explicit request and this is a distinct decision point.
