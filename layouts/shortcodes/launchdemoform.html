@@ -33,6 +33,11 @@
     <div class="launchdemoform__progress-track"><div class="launchdemoform__progress-fill"></div></div>
     <div class="launchdemoform__progress-label"></div>
   </div>
+  <div class="launchdemoform__reuse-choice" hidden aria-live="polite">
+    <div class="launchdemoform__reuse-choice-text"></div>
+    <button type="button" class="launchdemoform__reuse-choice-reuse-btn">Reuse These Credentials</button>
+    <button type="button" class="launchdemoform__reuse-choice-new-btn">Provision New For This Workshop</button>
+  </div>
   <div class="launchdemoform__credentials" hidden aria-live="polite"></div>
   <noscript><em>JavaScript is required to provision your lab.</em></noscript>
 </div>
@@ -60,6 +65,11 @@
   .launchdemoform__credentials dd { margin: 0; color: #222; word-break: break-word; }
   .launchdemoform__credentials a { color: #0065ff; }
   .launchdemoform__credentials-expired { color: #8a5a00; background: #fff6e0; border: 1px solid #f0d78c; border-radius: 4px; padding: .5rem .6rem; font-weight: 600; }
+  .launchdemoform__reuse-choice { grid-column: 1 / -1; display: grid; gap: .5rem; padding: .75rem; border: 1px solid #c8d1ff; border-radius: 6px; background: #eef3ff; }
+  .launchdemoform__reuse-choice[hidden] { display: none; }
+  .launchdemoform__reuse-choice-text { color: #223; font-size: .95em; }
+  .launchdemoform__reuse-choice-reuse-btn { justify-self: start; padding: .5rem .9rem; border-radius: 6px; border: 0; background: #0065ff; color: #fff; cursor: pointer; }
+  .launchdemoform__reuse-choice-new-btn { justify-self: start; padding: .35rem .7rem; border-radius: 6px; border: 1px solid #c8d1ff; background: #fff; color: #113; cursor: pointer; }
 </style>
 
 {{ partial "prefill-useremail.html" . }}
@@ -104,6 +114,10 @@
     const progressFillEl = root.querySelector('.launchdemoform__progress-fill');
     const progressLabelEl = root.querySelector('.launchdemoform__progress-label');
     const credsEl = root.querySelector('.launchdemoform__credentials');
+    const reuseChoiceEl = root.querySelector('.launchdemoform__reuse-choice');
+    const reuseChoiceTextEl = root.querySelector('.launchdemoform__reuse-choice-text');
+    const reuseBtn = root.querySelector('.launchdemoform__reuse-choice-reuse-btn');
+    const provisionNewBtn = root.querySelector('.launchdemoform__reuse-choice-new-btn');
 
     // --- Storage helpers -----------------------------------------------
     // localStorage (survives tab/browser closure — see the file header comment for
@@ -118,6 +132,10 @@
     const KEY_ATTEMPT = storageBase + '/attempt';
     const KEY_TOKEN = storageBase + '/token';
     const KEY_CREDENTIALS = storageBase + '/credentials';
+    // Scoped per site+lab like the other keys above — declining reuse on this exact
+    // page shouldn't suppress the offer on a different page in the same series,
+    // since that's a legitimately different decision point (plan 0002, Phase 2.3).
+    const KEY_DECLINED_REUSE = storageBase + '/declinedReuse';
 
     function storageGet(key) {
       try { return window.relearn.getItem(window.localStorage, key); } catch (e) { return null; }
@@ -148,6 +166,8 @@
       storageRemove(KEY_TOKEN);
       storageRemove(KEY_CREDENTIALS);
     }
+    function readDeclinedReuse() { return storageGet(KEY_DECLINED_REUSE) === '1'; }
+    function writeDeclinedReuse() { storageSet(KEY_DECLINED_REUSE, '1'); }
 
     // --- Contract normalizers -------------------------------------------
     // The backend (fortinet-on-demand-labs-provisioning-and-tracking) had not
@@ -202,6 +222,7 @@
         resourceGroup: Array.isArray(raw.resourceGroups) ? raw.resourceGroups.join(', ') : (raw.resourceGroups || ''),
         expiry: duration,
         expiresAt: expiresAt,
+        reusedFrom: raw.reusedFrom || '',
         portalUrl: 'https://portal.azure.com'
       };
     }
@@ -294,7 +315,8 @@
         ['Username', creds.username],
         ['Sign-in info', creds.signInInfo],
         ['Resource group', creds.resourceGroup],
-        ['Lab duration', creds.expiry]
+        ['Lab duration', creds.expiry],
+        ['Reused from', creds.reusedFrom]
       ];
       rows.forEach(function (row) {
         if (!row[1]) return;
@@ -314,6 +336,50 @@
       credsEl.hidden = false;
     }
     function hideCredentials() { credsEl.hidden = true; credsEl.innerHTML = ''; }
+
+    // --- Reuse choice -------------------------------------------------------
+    // See GET /api/provision/lookup in the backend README's "Credential reuse"
+    // section (plan 0002, Phase 2). `reuseOffer` is only ever populated by a
+    // successful lookup for the *current* getStoredEmail() — see maybeCheckReuse.
+    let reuseCheckState = 'idle'; // idle -> checking -> done
+    let reuseOffer = null;
+    let reuseCheckedForEmail = null;
+
+    function resetReuseCheck() {
+      reuseCheckState = 'idle';
+      reuseOffer = null;
+      reuseCheckedForEmail = null;
+    }
+
+    async function maybeCheckReuse(email) {
+      reuseCheckState = 'checking';
+      reuseCheckedForEmail = email;
+      try {
+        const url = API_BASE + '/api/provision/lookup?email=' + encodeURIComponent(email) + '&labDefinition=' + encodeURIComponent(labdefinition);
+        const resp = await fetch(url);
+        const data = resp.ok ? await resp.json() : null;
+        reuseOffer = (data && data.found) ? data : null;
+      } catch (e) {
+        if (DEBUG) console.warn('launchdemoform: reuse lookup failed', e);
+        reuseOffer = null;
+      } finally {
+        reuseCheckState = 'done';
+        render();
+      }
+    }
+
+    function renderReuseChoice(offer) {
+      btn.hidden = true;
+      hideProgress();
+      hideCredentials();
+      const sourceLabName = offer.sourceLabName || 'a previous workshop in this series';
+      const completedAt = offer.completedAt ? new Date(offer.completedAt).toLocaleString() : '';
+      reuseChoiceTextEl.textContent = 'We found existing credentials from ' + sourceLabName +
+        (completedAt ? ', issued ' + completedAt : '') + '.';
+      reuseChoiceEl.hidden = false;
+      setStatus('', '');
+    }
+    function hideReuseChoice() { reuseChoiceEl.hidden = true; }
 
     // --- Polling ----------------------------------------------------------
     const poll = { timer: null, activeToken: null, delay: 4000, lastSignature: null };
@@ -420,13 +486,45 @@
       const attempt = readAttempt();
 
       if (!attempt) {
+        const email = getStoredEmail();
+        const declined = readDeclinedReuse();
+        const canCheckReuse = !!email && !disabledByGate && !!API_BASE && !declined;
+
+        if (!canCheckReuse || reuseCheckedForEmail !== email) {
+          resetReuseCheck();
+        }
+
+        if (canCheckReuse && reuseCheckState === 'idle') {
+          maybeCheckReuse(email); // async; calls render() again once resolved
+        }
+
+        if (canCheckReuse && reuseCheckState !== 'done') {
+          // Don't show the plain button until we know whether there's a reusable
+          // credential to offer instead (plan 0002, Phase 2.1).
+          btn.hidden = true;
+          hideProgress();
+          hideCredentials();
+          hideReuseChoice();
+          setStatus('Checking for existing credentials...', '');
+          return;
+        }
+
+        if (canCheckReuse && reuseOffer) {
+          renderReuseChoice(reuseOffer);
+          return;
+        }
+
         btn.hidden = false;
         btn.disabled = disabledByGate;
         btn.textContent = 'Provision Accounts';
         hideProgress();
         hideCredentials();
+        hideReuseChoice();
+        setStatus('', '');
         return;
       }
+
+      hideReuseChoice();
 
       const status = (attempt.status || '').toLowerCase();
 
@@ -503,10 +601,27 @@
         if (!looksEmail) { setStatus('Please enter a valid email address.', 'err'); return; }
         setCookieSimple('fortiemail', entered, 5);
         saveProfileEmail(entered);
+        resetReuseCheck(); // a different email may have a different reuse offer
         setStatus('Email updated to ' + entered, 'ok');
         render();
       });
     }
+
+    reuseBtn.addEventListener('click', function () {
+      if (!reuseOffer) return;
+      const creds = normalizeCredential(reuseOffer.credential);
+      writeCredentials(creds);
+      writeAttempt({ status: 'Completed', percent: 100, step: 'completed', error: null });
+      hideReuseChoice();
+      render();
+    });
+
+    provisionNewBtn.addEventListener('click', function () {
+      writeDeclinedReuse();
+      resetReuseCheck();
+      hideReuseChoice();
+      render();
+    });
 
     render();
     window.addEventListener('focus', render);

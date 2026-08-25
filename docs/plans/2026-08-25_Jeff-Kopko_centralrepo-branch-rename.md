@@ -174,10 +174,11 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       Follow-up.
 
 ### Phase 2 — UserRepo template (required, prevents future drift, low risk)
-- [ ] **2.1** PR into `UserRepo`: fix `content/01GettingStarted/6_CentralRepo/index.md` —
+- [x] **2.1** PR into `UserRepo`: fix `content/01GettingStarted/6_CentralRepo/index.md` —
       replace `prreviewJune23` references (branch name, `git pull prreviewJune23`, tree URL)
-      with `dev`.
-- [ ] **2.2** Leave `content/xx-GettingStarted-old/CentralRepo/index.md` and
+      with `dev`. [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79),
+      merged.
+- [x] **2.2** Left `content/xx-GettingStarted-old/CentralRepo/index.md` and
       `content/00ChangeLog/_index.md` untouched — the former is an archived/superseded page,
       the latter is dated changelog history; both are acceptable to leave stale (see Risks).
 
@@ -420,10 +421,38 @@ user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
   check this session) — up from an unknown-but-clearly-nonzero number of repos that had
   been silently broken before today, with no way to have known short of doing exactly
   this kind of forced-exit-code-check rollout.
-- Open: [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79) (Phase 2,
-  contribution docs) and [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80)
-  (FTNThugoFlow retirement) both need review/merge — `UserRepo`'s `main` is protected,
-  so these couldn't be direct-pushed like everything else this session.
+- **All 3 PRs merged, all verified live, nothing left open:**
+  [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79) (contribution docs)
+  and [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) (FTNThugoFlow
+  retirement) both merged via `gh-merge-verify --method rebase` (UserRepo forbids
+  squash/merge commits). [CentralRepo#98](https://github.com/FortinetCloudCSE/CentralRepo/pull/98)
+  (`dev` → `main` promotion) merged via `gh-merge-verify --allow-skip-token` with an
+  explicit `--subject`/`--body` override — two early plan commits (`75a6841a`, `fd620475`)
+  carried `[skip ci]`, which the tool's preflight correctly refused to let into a squash
+  commit message unmodified; an explicit subject/body override replaces the entire
+  message (GitHub does not auto-concatenate commit messages when one is supplied), which
+  neutralizes the risk, confirmed by the prod image build actually running and
+  `fortinet-hugo:latest@sha256:0f1a4352...` genuinely being pushed (read from the run log,
+  not inferred from a green checkmark).
+- **Self-inflicted git mishap during the PR #98 merge, caught and recovered before any
+  loss:** the merge revealed a real conflict — `main` had picked up an early, incomplete
+  snapshot of this plan/log file incidentally (via PR #97's merge, whose head was `dev`
+  back when it still only had the pre-Phase-1-execution version of these files) — while
+  `dev` had the fully-executed, closed-out version. Resolving it, `git reset --hard
+  origin/dev` was run without first confirming 5 already-made local commits (Phase 3,
+  Phase 4 pilot, Phase 4 bulk, the 6-bug fix batch, and the first closeout pass) had
+  actually been pushed — they hadn't. Caught immediately via `git reflog`, which still had
+  every commit; recovered with `git reset --hard 849bbab` (the real tip) and redid the
+  merge correctly from there. Lesson for next time: confirm `git log --oneline
+  origin/<branch>..HEAD` is empty before any `git reset --hard origin/<branch>`, not just
+  before a rebase.
+- **A second, unrelated Claude session (`linked-workshop-credentials`) was found actively
+  sharing this same primary checkout** (not a worktree) at close-out time, with
+  uncommitted local changes to `README.md` and `layouts/shortcodes/launchdemoform.html`
+  (a credential-reuse-across-workshops feature, unrelated to this plan). Confirmed via
+  timeline that no data was lost to the git-reset mishap above — that session's edits
+  postdate it. Left entirely untouched, per standing policy on concurrent-session files;
+  flagged to the user rather than resolved.
 
 ## Promotion
 - [x] `Decisions & Commentary` walked
