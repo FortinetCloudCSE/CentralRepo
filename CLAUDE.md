@@ -5,26 +5,26 @@
 
 ## Working Branch
 
-`main` builds the **prod** ECR image; `prreviewJune23` builds the **dev** image. Two routes into `main`
+`main` builds the **prod** ECR image; `dev` builds the **dev** image. Two routes into `main`
 are in use and they are not equivalent:
 
-1. **Dev-first (the documented route):** edit on `prreviewJune23` → push (dev image rebuilds) → PR
-   `prreviewJune23` → `main` → prod image rebuilds. Use this when the change needs proving in a real
+1. **Dev-first (the documented route):** edit on `dev` → push (dev image rebuilds) → PR
+   `dev` → `main` → prod image rebuilds. Use this when the change needs proving in a real
    workshop build before it reaches every consuming repo.
 2. **Feature branch → PR → `main`** — what the deployment-path work did (#72, #73, #74, #77). Fine for
-   a change already tested with the `LOCAL=true` dev image, but it leaves `prreviewJune23`
+   a change already tested with the `LOCAL=true` dev image, but it leaves `dev`
    content-behind, so **the dev image silently lacks the change**.
 
-**If you take route 2, push `main` → `prreviewJune23` in the same session.** Route 2 left the branches
+**If you take route 2, push `main` → `dev` in the same session.** Route 2 left the branches
 diverged for a week in August 2026 (17 files / ~1240 lines: the path gate, `scripts/static.yml`,
 `batch_repo_update.py`, the base-image pin), and the only symptom was dev-image test results that
 looked valid and were pre-gate. Resynced 2026-08-19; both refs are `e0d4a14f`. The resync is a
-fast-forward as long as nothing is committed to `prreviewJune23` directly:
-`git push origin origin/main:refs/heads/prreviewJune23`.
+fast-forward as long as nothing is committed to `dev` directly:
+`git push origin origin/main:refs/heads/dev`.
 
 Never push straight to `main` without a PR — it is protected, and a bypass is logged.
 
-**Route 2 incident, 2026-08-25 (real, not hypothetical):** a `launchdemoform` rebuild PR merged straight to `main` (route 2) without the required resync push — exactly the failure mode warned about above. Caught mid-flight: `image-build-push-prod.yaml`'s step 9 ("Build and push test image, **no latest tag**") had already completed, but step 13 ("Build and push multi-arch **latest** image, after tests pass") — the only step that actually touches the prod tag every workshop repo pulls — was still pending, so cancelling the run at that point left `fortinet-hugo:latest` completely untouched. **If a route-2 merge needs to be undone before the image finishes, `gh run view <id> --json jobs` to check whether the `latest`-tag push step has run yet — cancelling before it is fully safe, cancelling after it is not.** Redone correctly via route 1 (`prreviewJune23` first, confirmed its push-triggered CI green, then PR into `main`).
+**Route 2 incident, 2026-08-25 (real, not hypothetical):** a `launchdemoform` rebuild PR merged straight to `main` (route 2) without the required resync push — exactly the failure mode warned about above. Caught mid-flight: `image-build-push-prod.yaml`'s step 9 ("Build and push test image, **no latest tag**") had already completed, but step 13 ("Build and push multi-arch **latest** image, after tests pass") — the only step that actually touches the prod tag every workshop repo pulls — was still pending, so cancelling the run at that point left `fortinet-hugo:latest` completely untouched. **If a route-2 merge needs to be undone before the image finishes, `gh run view <id> --json jobs` to check whether the `latest`-tag push step has run yet — cancelling before it is fully safe, cancelling after it is not.** Redone correctly via route 1 (`dev` first, confirmed its push-triggered CI green, then PR into `main`).
 
 **FortiDevSec SAST stage: broken/deprecated org-wide as of 2026-08-25, only some repos have it disabled.** Every actively-maintained repo checked that day has `when { expression { false } }` guarding the `Running FortiDevSec scans...` Jenkinsfile stage; several stale sibling repos (`FortiCNAPPRoadshow`, `forticnapp-code-security-demo`, `MGMT-in-AWS`, `fortigate-automation-stitch-workshop`, `fortiweb-threat-protection`, and `fortinet-on-demand-labs-provisioning-and-tracking`) didn't and their `ci/jenkins/build-status` required check failed on completely trivial, unrelated content PRs. If that check fails on an unrelated change anywhere in this org, check the Jenkinsfile for this exact pattern before assuming the PR's content is at fault.
 
@@ -104,7 +104,7 @@ scripts/
 pipeline/webhosting/              — AWS CloudFormation (CloudFront + S3 + CodeBuild)
 themes/hugo-theme-relearn/        — Relearn theme (git submodule)
 
-Dockerfile                        — Multi-stage: dev (prreviewJune23 branch) / prod (main branch)
+Dockerfile                        — Multi-stage: dev (dev branch) / prod (main branch)
 fdevsec.yaml                      — FortiDevSec scanner config
 ```
 
@@ -147,13 +147,17 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 - **Shortcode cookie deps:** `launchdemoform` and `quizframe` require `fortiuser`/`fortiemail` cookies — fail silently without them.
 - **CORS:** TEC Analytics `/checkin/silent` endpoint needs CORS config for dev origins (`CORS_ALLOW_ALL_DEV=1` on the API).
 - **Relearn theme compiles CSS variants:** All `theme-*.css` variants are compiled into `css/format-html.css` via CSS nesting + `data-r-theme-variant`. The `static/css/theme-CloudCSEMovie.css` is a static fallback, not the active file.
-- **ContainerFlow/FTNThugoFlow/fortihugorunner shortcodes** currently include full `<!DOCTYPE html>` wrappers — this is invalid HTML when embedded in a Hugo page and causes rendering bugs.
+- **ContainerFlow/fortihugorunner shortcodes** currently include full `<!DOCTYPE html>` wrappers — this is invalid HTML when embedded in a Hugo page and causes rendering bugs. (`FTNThugoFlow` had the same problem and was retired org-wide 2026-08-25 — see below.)
 - **`hugo.toml` is gitignored** — generated at container startup by `generate_toml.sh`. Do not commit it.
 - **This file is tracked. Do not re-add `CLAUDE.md` to `.gitignore`.** It was ignored from `7dc90e1` (2026-05-28) until 2026-08-19, which meant every session in this repo started blind and every durable fact learned here died with its terminal — including all of the path-gate reasoning below, which had to be reconstructed from the plan file in a *consuming* repo. Committing it costs nothing: root-level `*.md` is in both image workflows' `paths-ignore`, so a docs change does not rebuild or republish the image.
 - **Two-hop deploy path — an upstream edit is invisible until it reaches a workshop site.** Edit → merge to `main` → `image-build-push-prod.yaml` rebuilds and pushes the prod ECR image → each workshop repo picks it up on its *next* build. Nothing upstream is visible before that; don't debug a workshop site against an unbuilt CentralRepo commit.
 - **A floating tag hides two separate lies.** A green image-build run is not proof `fortinet-hugo:latest` moved — read the push step's log for the digest it reported. And `docker pull` on a tag you already hold locally can serve the *stale* manifest: `docker rmi -f` first, then pull, then confirm a file the change introduced actually exists inside the image. Skipping this produces a confident wrong conclusion that the merge didn't ship.
-- **`dev` means `prreviewJune23`, asserted in two places that must stay in agreement:** `.github/workflows/image-build-push-dev.yaml:6` (push trigger) and `Dockerfile` (`ADD …CentralRepo.git#prreviewJune23`). Change one without the other and the dev image builds a branch nothing pushes to. `prreviewJuly23` is a decoy — commits behind `main`, last commit 2026-06-11, referenced by no workflow and no Dockerfile stage. Never branch from it.
-- **Measure branch divergence with `git diff --quiet origin/prreviewJune23 origin/main`, not `rev-list --left-right --count`.** A merge-back workflow routinely leaves the dev branch *history*-behind while the content is identical; that is not staleness. The counts answer the wrong question. The diff passed as of 2026-08-19 — re-run it, don't trust this line.
+- **The dev image build is tied to the `dev` branch by name, asserted in two places that must stay in agreement:** `.github/workflows/image-build-push-dev.yaml:6` (push trigger) and `Dockerfile` (`ADD …CentralRepo.git#dev`). Change one without the other and the dev image builds a branch nothing pushes to. **The Dockerfile's `prod` stage independently pins `#main`, not the dev branch** — this is why a future rename of `dev` itself can never break any downstream repo's `--target=prod` build (only a manual `--target dev` local build is exposed; confirmed across all 52 downstream repos during the 2026-08-25 `prreviewJune23`→`dev` rename). `prreviewJuly23` is a decoy — commits behind `main`, last commit 2026-06-11, referenced by no workflow and no Dockerfile stage. Never branch from it.
+- **A push-triggered workflow's `on.push.branches` filter is evaluated using the workflow YAML content in the commit being pushed, matched against the actual ref name** — not the filter that was live before the push. Editing a trigger's branch name in the same commit you push to the *old*-named branch means that commit's own new filter no longer matches, so nothing fires — not a failure, a structural fact discovered while renaming `prreviewJune23`→`dev`. There is no way to verify an old-name trigger still works once you've edited it; the only real verification is a push *after* the rename completes.
+- **`batch_repo_update.py` deleting a file from `FILES_TO_DELETE` is not the same as retiring it.** It has included `layouts/shortcodes/FTNThugoFlow.html` for years, correctly stripping the implementation from every repo it touches — but nothing ever updated the *content* that still called it (inherited from `UserRepo`'s own default `content/_index.md`), so repos silently accumulated a hard Hugo build failure with no warning. Before adding any file to `FILES_TO_DELETE`, grep the org for content that still references it (shortcode calls, not just file copies) and fix that too, or the same bug recurs with a different shortcode. `FTNThugoFlow` retired org-wide 2026-08-25 (`docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md`).
+- **`UserRepo` is a real GitHub template repo (`is_template: true`) with a protected `main`** (PR required, same posture as CentralRepo's own) — any automation touching it needs a PR flow, not a direct push. It is also the single propagation point for both fixes *and* breakage into every future new workshop repo: its own default content and shortcodes get cloned verbatim into everything built from it.
+- **A green "Deploy static content to Pages" checkmark from before 2026-08-25 is not proof a site actually built.** Every downstream repo's `static.yml` used `docker wait "$CONT_ID"` with no exit-code capture until that date, so a failed Hugo build inside the container was reported as CI success. Fixed org-wide; doing so surfaced 8 previously-invisible broken deploys across 7 repos + `UserRepo` (a shortcode removed from CentralRepo in 2023 with content never updated, a malformed-quotes markdown link, a duplicate YAML key, a misplaced shortcode file, a deprecated `quizdown` reference, and one repo with GitHub Pages never enabled at all). Don't trust an old green run as evidence a site is currently healthy.
+- **Measure branch divergence with `git diff --quiet origin/dev origin/main`, not `rev-list --left-right --count`.** A merge-back workflow routinely leaves the dev branch *history*-behind while the content is identical; that is not staleness. The counts answer the wrong question. The diff passed as of 2026-08-19 — re-run it, don't trust this line.
 - **Repo-local files shadow CentralRepo's, silently.** `scripts/local_copy.sh:3-4` runs a non-recursive `cp` of `../UserRepo/layouts/shortcodes/*` and `../UserRepo/layouts/partials/*` over CentralRepo's, so a same-named workshop file wins with no warning and an upstream fix to it does nothing in that repo. A repo-local `custom-header.html` is worse — the copy is whole-file, so it replaces CentralRepo's outright, losing every Fortinet colour token, the support widget, **and the entire deployment-path gate**. Adding a new, differently-named partial or shortcode is safe. Full detail in `README.md` → "Notes & gotchas" → UserRepo shadowing.
 - **A shortcode's `.Page.Store` guard is per page, NOT per output format.** Hugo renders page content once per output format while the Store is shared across them, so a `once per page` asset block lands in whichever format builds first and is silently absent from the rest — including `layouts/_default/allpages.html`'s whole-site PRINT page, which inlines every page's content, and any page carrying `outputs: ["html", "print"]` (the `ai-101` handouts do). Guard the bulky assets; emit anything whose absence changes rendering — a print-hiding rule, say — unguarded per block. `pathtabs.html` does exactly this split.
 - **Test a CentralRepo edit before merging with `docker build --build-arg LOCAL=true --target dev -t hugotester-local .`.** Both the normal dev and prod stages `ADD` the repo from GitHub, so they cannot see your working tree; `LOCAL=true` swaps in `COPY . /home/CentralRepo`. Mount the workshop repo read-only, which is safe because `local_copy.sh` only copies *out* of the mount and Hugo writes to `/home/CentralRepo/public`. Mount a host dir there too if you need the HTML.
@@ -211,7 +215,7 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `image-build-push-dev.yaml` | Push to `prreviewJune23`, minus `paths-ignore` | Build & push dev Docker image |
+| `image-build-push-dev.yaml` | Push to `dev`, minus `paths-ignore` | Build & push dev Docker image |
 | `image-build-push-prod.yaml` | Push to `main`, minus `paths-ignore` | Build & push prod Docker image (`fortinet-hugo:latest`) |
 | `versioning.yml` | — | Version management |
 | `.github/workflows/static.yml` | Push to `main` | CentralRepo's own site build + GitHub Pages deploy (`docker build --target=prod`) |
@@ -245,11 +249,11 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 
 **Debug check-in issues:** Check browser cookies (`fortiuser`, `fortiemail`), verify CORS config on TEC Analytics API, check browser console for silent check-in errors.
 
-**Promote dev → prod:** Merge `prreviewJune23` → `main`; prod image build triggers automatically via `image-build-push-prod.yaml`.
+**Promote dev → prod:** Merge `dev` → `main`; prod image build triggers automatically via `image-build-push-prod.yaml`.
 
 ## Testing
 
-Tests live in `scripts/test/`. CI runs on push to `prreviewJune23` and on PRs to `main`.
+Tests live in `scripts/test/`. CI runs on push to `dev` and on PRs to `main`.
 
 | Layer | Tool | What it catches |
 |-------|------|----------------|

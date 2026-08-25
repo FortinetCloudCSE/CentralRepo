@@ -26,7 +26,7 @@ COPY . /home/CentralRepo
 
 # Remote source: fetched from GitHub for CI (default)
 FROM base as dev-src-local-false
-ADD https://github.com/FortinetCloudCSE/CentralRepo.git#prreviewJune23 /home/CentralRepo
+ADD https://github.com/FortinetCloudCSE/CentralRepo.git#dev /home/CentralRepo
 
 ############################
 # DEV STAGE — unified entry point

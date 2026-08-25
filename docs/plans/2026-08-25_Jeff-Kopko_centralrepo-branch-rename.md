@@ -2,7 +2,7 @@
 Date: 2026-08-25
 Owner: Jeff Kopko
 Slug: centralrepo-branch-rename
-Status: Approved
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md
@@ -121,7 +121,7 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 ## Plan
 
 ### Phase 1 — CentralRepo itself (required, blocking, no external dependency)
-- [ ] **1.1** On `prreviewJune23`, in one commit, update every in-repo reference from
+- [x] **1.1** On `prreviewJune23`, in one commit, update every in-repo reference from
       `prreviewJune23` to `dev`:
   - `.github/workflows/ci.yml:5` — `branches: [prreviewJune23]` → `[dev]`
   - `.github/workflows/image-build-push-dev.yaml:6` — `branches: ["prreviewJune23"]` → `["dev"]`
@@ -132,23 +132,46 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
   - `CLAUDE.md` — every occurrence (lines 8,11,12,15,18,22,23,27,107,155,156,214,248,252 as
     of this audit); this is a genuine rewrite of the "Working Branch" section and several
     gotchas, not a find/replace — the prose logic stays the same, only the name changes.
-- [ ] **1.2** Push. This still triggers under the *old* branch name (expected — branch
-      hasn't been renamed yet) — confirm both `ci.yml` and `image-build-push-dev.yaml` run
-      green on this commit before proceeding.
-- [ ] **1.3** Rename the branch via the GitHub API (preserves history):
+- [x] **1.2** Push. Confirmed structurally unsatisfiable pre-rename (see log,
+      "Phase 1 execution notes"): the trigger-rename edit in the same commit means the
+      pushed commit's `branches: [dev]` filter no longer matches the still-`prreviewJune23`
+      ref, so neither workflow fired — zero runs, not a failure. 1.6 is the real
+      verification.
+- [x] **1.3** Rename the branch via the GitHub API (preserves history):
       `gh api -X POST repos/FortinetCloudCSE/CentralRepo/branches/prreviewJune23/rename -f new_name=dev`
-- [ ] **1.4** Update local git state: `git fetch origin`, `git branch -m prreviewJune23 dev`,
-      `git branch --set-upstream-to=origin/dev dev`.
-- [ ] **1.5** Empirically verify: does `git fetch origin prreviewJune23` (old name) still
+- [x] **1.4** Update local git state: `git fetch origin`, `git branch -m prreviewJune23 dev`,
+      `git branch --set-upstream-to=origin/dev dev`. Hit a naming collision doing this in
+      both places (see log): a local branch name is unique per repo, shared across all
+      worktrees, so the worktree and the primary checkout couldn't both hold a local branch
+      literally named `dev` at once. Resolved by keeping `dev` in the primary checkout
+      (canonical) and renaming the worktree's local branch back to `phase1-rename-work`
+      (still tracking `origin/dev`).
+- [x] **1.5** Empirically verify: does `git fetch origin prreviewJune23` (old name) still
       resolve post-rename, or fail cleanly? Document the actual behavior in the log file —
-      don't assume.
-- [ ] **1.6** Push a trivial follow-up commit (or the next real change) to `dev` and confirm
+      don't assume. **Fails cleanly, immediately, no redirect** — `git fetch origin
+      prreviewJune23` → `fatal: couldn't find remote ref prreviewJune23` (exit 128); see log
+      for full detail, including the `ls-remote` comparison.
+- [x] **1.6** Push a trivial follow-up commit (or the next real change) to `dev` and confirm
       `image-build-push-dev.yaml` fires and completes, proving the workflow trigger survived
-      the rename correctly.
-- [ ] **1.7** Smoke-test `fortihugorunner`: `fortihugorunner build-image --env admin-dev`
+      the rename correctly. Confirmed twice over (see log): the rename operation itself
+      synthesized a push-equivalent event that fired both workflows successfully on `d66d27b`
+      before any deliberate follow-up push; then the deliberate 1.6 push (`a08c75f`,
+      docs-only checkbox commit) fired `ci.yml` (success) — `image-build-push-dev.yaml`
+      correctly sat out that one under its own `paths-ignore: docs/**`.
+- [x] **1.7** Smoke-test `fortihugorunner`: `fortihugorunner build-image --env admin-dev`
       against the renamed Dockerfile (or equivalent), confirm it reports
       `Image built with CentralRepo branch: dev` — proves the dynamic branch-detection
-      logic needs no code change, as predicted.
+      logic needs no code change, as predicted. **Did not confirm this cleanly — found a
+      real, pre-existing, rename-unrelated bug instead (see log for full detail).** Binary
+      was on `PATH`, so tried the live command first: it failed with `Branch not found: no
+      branch found in Dockerfile`. Root-caused via code inspection: `extractBranchByStage`
+      only matches a literal `FROM base as dev` header, but CentralRepo's `dev` stage has
+      been `FROM dev-src-local-${LOCAL} as dev` since 2026-05-28 (`abd0058e`) — three
+      months before this plan, so this would have failed identically pre-rename. Isolated
+      by confirming `--env author-dev` (`prod` stage, literally `FROM base as prod`) hits
+      the intended code path. No hardcoded branch name anywhere (that part of the plan's
+      Constraints claim holds) — but "needs no code change" does not; filed as a
+      Follow-up.
 
 ### Phase 2 — UserRepo template (required, prevents future drift, low risk)
 - [ ] **2.1** PR into `UserRepo`: fix `content/01GettingStarted/6_CentralRepo/index.md` —
@@ -159,27 +182,40 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       the latter is dated changelog history; both are acceptable to leave stale (see Risks).
 
 ### Phase 3 — Modernize the 33 repos already on the ECR-pull pattern (bulk, direct-push, single confirmation gate)
-- [ ] **3.1** Extend `batch_repo_update.py` (or a copy of it) with:
-      `REPOS` = the 33-repo list (see log file), `FILES_TO_COPY` unchanged except drop the
-      `Dockerfile` copy line, `FILES_TO_DELETE` += `["Dockerfile"]` (+ `"Dockerfile-dev"`
-      for `fortigate-automation-stitch-workshop`, the only repo in this group carrying one).
-      `scripts/static.yml` copy already happens — since CentralRepo's own template already
-      has the exit-code-capture fix, this single copy resolves that bug in all 33 repos too.
-- [ ] **3.2** Dry-run: print the diff the script *would* make per repo without pushing
-      (add a `DRY_RUN` guard if the script doesn't have one) — review before executing.
-- [ ] **3.3** **Explicit go/no-go checkpoint before running** — this bulk-pushes directly to
-      `main` on 33 repos with no PR, each triggering that repo's live Pages deploy
-      immediately. Get a fresh confirmation at this step even though the plan itself is
-      approved; do not treat plan approval as authorization to fire this script.
-- [ ] **3.4** Run it. Spot-check 3-5 resulting Actions runs for a clean deploy before
-      considering the phase done.
+- [x] **3.1** Wrote a purpose-built script (not an extended `batch_repo_update.py` — that
+      script also rewrites each repo's `README.md` and sets custom properties, side effects
+      out of scope here) at
+      `/tmp/claude-1000/.../scratchpad/phase3_modernize.py`: for each of the 33 repos,
+      replace `.github/workflows/static.yml` with CentralRepo's current canonical
+      `scripts/static.yml` (picks up the exit-code-capture fix for free) and delete the dead
+      `Dockerfile`.
+- [x] **3.2** Dry-run caught a real gap in the original audit: `FortiGate-AWS-CNF-TEC-Workshop`
+      has a `Dockerfile-dev` the original 52-repo search hadn't flagged for this group (only
+      `fortigate-automation-stitch-workshop` was recorded). Verified live — same stale
+      `#prreviewJune23` pattern, even an ancient `klakegg/hugo:0.107.0` base image — and this
+      repo's `static.yml` already pulls ECR, so same dead-weight reasoning applies. Added to
+      the script's delete list before going live. Re-ran dry-run clean, 33/33.
+- [x] **3.3** **Explicit go/no-go checkpoint before running** — asked and got explicit
+      confirmation before the live push, per plan.
+- [x] **3.4** Ran it live: 33/33 pushes succeeded. Spot-checked Actions outcomes across all
+      33 (not just 3-5, since it was cheap): **32/33 succeeded, 1 failure**
+      (`MGMT-in-AWS`) — root-caused as a genuine PRE-EXISTING content bug, not caused by this
+      push: its content references the `FTNThugoFlow` shortcode, which was removed from
+      CentralRepo's tracked layouts at some earlier commit (`9bd2d1f`, "remove shortcodes &
+      add script for layouts copy from UserRepo") and confirmed absent from the live
+      `fortinet-hugo:latest` image; `MGMT-in-AWS` never got its own local copy. Its build has
+      silently failed and served stale Pages output for a while — masked because the *old*
+      `static.yml` (pre-modernization) never captured the container's exit code, so a failed
+      Hugo build was always reported as CI success. This fix is the first thing to actually
+      surface it. Not fixed here — out of scope (content bug, not branch-rename/CI tooling) —
+      flagged to the user and logged as a Follow-up.
 
 ### Phase 4 — migrate the 19 repos still building locally (staged, in scope)
-- [ ] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
+- [x] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
       (local `docker build --target=prod` inside `static.yml` → pulling the prebuilt ECR
       image), not dead-code cleanup, so it gets its own pilot/verify/gate sequence rather
       than sharing Phase 3's single confirmation.
-- [ ] **4.2** Pilot on 3 repos chosen for structural diversity, not convenience — each
+- [x] **4.2** Pilot on 3 repos chosen for structural diversity, not convenience — each
       covers a different divergent shape found in the audit, so a template mismatch surfaces
       on 3 repos instead of on repo #14 of a 19-repo bulk push:
       - `cFOS-GKE-Workshop` — oldest/most divergent overall (`checkout@v3`,
@@ -195,22 +231,92 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       For each pilot: replace `.github/workflows/static.yml` with CentralRepo's current
       canonical `scripts/static.yml`, delete the local `Dockerfile` (and `Dockerfile-dev`
       for `cFOS-GKE-Workshop`), push, and watch the resulting Actions run to completion.
-- [ ] **4.3** Verify: each of the 3 pilots' GitHub Pages deploy actually succeeds and serves
-      the same content as before (spot-check the live site, not just a green checkmark —
-      a workflow can report success while deploying stale or empty `docs/`).
-- [ ] **4.4** **Explicit go/no-go checkpoint** before touching the remaining ~16 — if any
-      pilot's deploy broke or behaved differently, stop and diagnose before scaling out; do
-      not treat 2-of-3 pilots succeeding as good enough to proceed.
-- [ ] **4.5** Bulk-push the same `static.yml` replacement + Dockerfile deletion to the
-      remaining 16 repos (`api-and-websvc-fundamentals`, `cloud-architectures`,
-      `forticnapp-code-security-demo`, `fortiweb-threat-protection`,
-      `getting-started-general` [+ its `Dockerfile-dev`], `k8s-201-workshop`,
-      `k8s-202-workshop`, `technical-recipe-azure-fweb-ztna-fortisoar`,
-      `Code-Security-Workshop`, `Forti-ProductXYZ`, `FortiCNAPPRoadshow`, `FortiCNF`,
-      `FortiDevOps-v2025`, `FortiDevSec-Workshop`, `FortiSASE`,
-      `FortiWeb-Azure-ZTNA-FortiSoar`).
-- [ ] **4.6** Spot-check 4-5 of the resulting Actions runs for a clean deploy, same as
-      Phase 3.3.
+- [x] **4.3** Verify: **1 of 3 pilots (`FortiADCIntro`) succeeded cleanly** — real deploy,
+      not just a green checkmark. **2 of 3 failed, both root-caused to genuine,
+      migration-unrelated issues:**
+      - `fortigate-azure-sdwan-networking-workshop`: identical `FTNThugoFlow` shortcode
+        error to `MGMT-in-AWS` in Phase 3 (see that entry) — pre-existing, masked by the old
+        static.yml's missing exit-code capture, not caused by this migration.
+      - `cFOS-GKE-Workshop`: found a real gap in the Phase 4 script — this repo had no
+        `scripts/repoConfig.json`, only the legacy `config.toml`, and the current
+        `generate_toml.py` has no fallback for that. Fixed by converting `config.toml` →
+        `repoConfig.json` using the exact same field mapping `batch_repo_update.py`'s
+        `run_toml_to_json()` already uses for this scenario (pushed as a follow-up commit,
+        `90c7d6df`). That got past the original error, but surfaced a **second, unrelated**
+        pre-existing bug: malformed YAML front matter in this repo's own
+        `content/01Chapter1/_index.md` (`weight` key defined twice, lines 2 and 3) — a
+        genuine content-authoring error, not a CI/tooling issue. Confirmed via
+        `gh run list` that this repo has exactly one run in its entire Actions history (this
+        migration's) — no prior baseline exists, so it can't be confirmed whether this repo
+        ever successfully deployed before.
+      **Conclusion: the migration mechanism itself is sound.** Every failure traces to an
+      independent, pre-existing content or config issue that the exit-code-capture fix is
+      surfacing for the first time (same pattern as `MGMT-in-AWS` in Phase 3) — not a defect
+      in replacing `static.yml` or removing the local `Dockerfile`. `repoConfig.json`
+      presence was re-checked across all remaining 16 bulk-target repos before proceeding —
+      confirmed present in every one, so `cFOS-GKE-Workshop`'s gap does not recur there.
+- [x] **4.4** **Explicit go/no-go checkpoint** — asked before touching the remaining 16,
+      with the full pilot diagnosis above laid out. Got explicit go-ahead.
+- [x] **4.5** Bulk-pushed to the remaining 16 — 16/16 pushes succeeded.
+- [x] **4.6** Checked all 16 Actions outcomes (not just a sample): **11/16 succeeded, 5
+      failed** — `technical-recipe-azure-fweb-ztna-fortisoar` and `forticnapp-code-security-demo`
+      hit the same `FTNThugoFlow` bug (see the org-wide fix below); `FortiCNAPPRoadshow`
+      hit the sibling case — `template for shortcode "quizdown" not found` (`quizdown.html`
+      is already documented in this repo's own `CLAUDE.md` as "slated for deletion,
+      replaced by CTF quiz app via quizframe" — same bug class, different deprecated
+      shortcode, not fixed here, out of scope, logged as a Follow-up);
+      `fortiweb-threat-protection` hit an unrelated, pre-existing content-organization bug
+      (a stray copy of `launchdemoform.html` sitting under `content/images/layouts/
+      shortcodes/` trips Hugo's `security.allowContent` policy — not a shortcode issue at
+      all, logged as a Follow-up); `FortiSASE` hit `FTNThugoFlow` too (see below).
+
+## FTNThugoFlow org-wide fix (2026-08-25, user-requested mid-Phase-4)
+
+By this point `FTNThugoFlow` had broken 5 repos across Phase 3 + Phase 4
+(`MGMT-in-AWS`, `fortigate-azure-sdwan-networking-workshop`,
+`technical-recipe-azure-fweb-ztna-fortisoar`, `forticnapp-code-security-demo`,
+`FortiSASE`). User asked to fix the root cause: remove the shortcode from all repos
+except `UserRepo`, and stop it being cloned into new ones.
+
+**Root cause traced org-wide, not just the 5 failing repos:** `UserRepo`'s own default
+`content/_index.md` (and its shortcode-documentation page) call `{{< FTNThugoFlow >}}` —
+this is what actually propagates into every new workshop repo at clone time.
+`batch_repo_update.py` has had `layouts/shortcodes/FTNThugoFlow.html` in its
+`FILES_TO_DELETE` list all along (removing the *implementation*), but nothing ever
+touched the *content* still calling it — that mismatch is the real bug. Org-wide code
+search found 13 repos total: `UserRepo` + 12 downstream (5 already broken, 6 still
+carrying a working local copy of the file that would have broken the same way on their
+next `batch_repo_update.py` run, 1 — `FortiCNAPPRoadshow` — with only a stale doc-page
+mention, no live call).
+
+**"Keep in UserRepo but don't let it get cloned" isn't technically achievable** — `UserRepo`
+is a genuine GitHub template repo (`is_template: true`), and template generation copies
+the whole tree with no per-file exclusion mechanism. Full removal (including from
+`UserRepo`) is the only way to guarantee new repos stop inheriting it — flagged to the
+user as the alternate fix taken, per their "I'm open to alternate fixes."
+
+**Fix applied:** removed the `{{< FTNThugoFlow >}}` call block from `content/_index.md`,
+removed the stale doc-page reference, and deleted the shortcode file wherever present, in
+all 13 repos. 12 downstream repos: direct push to `main` (12/13 succeeded — see log for the
+one push that needed a second template-variant fix). `UserRepo`'s `main` is protected
+(PR required, same as CentralRepo's own) — opened
+[UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) instead, left open for
+review, not merged.
+
+**Verification — re-checked all 5 previously-broken repos:** 2/5 now fully succeed
+(`MGMT-in-AWS`, `forticnapp-code-security-demo`). **3/5 still fail**
+(`technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+`FortiSASE`) — confirmed the `FTNThugoFlow` error is gone in all three; a **new, different,
+pre-existing bug** is now exposed underneath: malformed markdown links with the URL
+wrapped in literal quotes (`[Hugo Web Framework]("https://gohugo.io/")` instead of
+`[Hugo Web Framework](https://gohugo.io/)`), which crashes Hugo's `render-link.html`
+partial. This was always broken in these 3 repos' content — previously masked because
+the `FTNThugoFlow` failure happened earlier in the page-assembly phase, before rendering
+ever reached this line. `UserRepo`'s *current* template content does **not** have this
+bug (`content/_index.md:17` uses correct syntax) — it was fixed there at some point after
+these 3 repos were cloned, but that fix never propagated back, same "propagation gap"
+shape as `FTNThugoFlow` itself. Not fixed here — flagged as a Follow-up, offered to the
+user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
 
 ## Plan Changes
 - **2026-08-25, still Proposed:** initial draft deferred the 19 "still builds locally"
@@ -251,21 +357,132 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
   follow-up rather than silently dropped.
 
 ## Files Changed
-- (fill in during Phase 1 execution)
+- **Phase 1 (`prreviewJune23` → `dev`):**
+  - `.github/workflows/ci.yml` — push trigger `branches: [dev]`
+  - `.github/workflows/image-build-push-dev.yaml` — push trigger `branches: ["dev"]`
+  - `Dockerfile` — `dev` stage `ADD ...CentralRepo.git#dev`
+  - `scripts/docker_build_latest.sh`, `scripts/docker_run_latest.sh` — raw URL path `/dev/`
+  - `README.md` — Testing section prose
+  - `CLAUDE.md` — Working Branch section, file-map line, two gotcha bullets, CI/CD table
+    row, "Promote dev → prod", Testing line
+  - `docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md` / `.log.md` — this
+    plan and log, checkbox ticks and execution notes
+  - GitHub: branch `prreviewJune23` renamed to `dev` via API
+    (`POST /repos/FortinetCloudCSE/CentralRepo/branches/prreviewJune23/rename`)
+  - Local git state: worktree branch renamed `phase1-rename-work` → tracks `origin/dev`;
+    primary checkout (`/home/ubuntu/pythonProjects/CentralRepo`) local branch renamed
+    `prreviewJune23` → `dev`, tracking `origin/dev`, fast-forwarded clean
+- **Phase 2 (UserRepo docs):** [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79)
+  — `content/01GettingStarted/6_CentralRepo/index.md`, open for review.
+- **Phase 3 (33 repos):** each repo's `.github/workflows/static.yml` replaced,
+  `Dockerfile` (+`Dockerfile-dev` for 2 repos) deleted. Full per-repo commit SHAs in the
+  log file's "Phase 3 execution notes".
+- **Phase 4 (19 repos):** same file changes as Phase 3, applied via pilot-3 then bulk-16.
+  Full per-repo commit SHAs in the log file's "Phase 4 pilot/bulk execution notes".
+- **FTNThugoFlow retirement (13 repos):** `content/_index.md`, the shortcode-doc page
+  (`content/02Hugo/5_shortcodes/index.md` or `content/02Hugo/shortcodes.md` depending on
+  repo), and `layouts/shortcodes/FTNThugoFlow.html` deleted where present. 12 direct-pushed;
+  [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) open for review.
+- **Final 6-repo fix batch:**
+  - `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+    `FortiSASE` — `content/_index.md`, stripped stray quotes around 2 markdown link URLs
+  - `cFOS-GKE-Workshop` — `content/01Chapter1/_index.md` (removed duplicate `weight: 1`),
+    plus GitHub Pages enabled via `POST /repos/.../pages` (`build_type=workflow`) — not a
+    file change, a repo-settings change
+  - `FortiCNAPPRoadshow` — `content/01Introduction/01cert.md`, removed `{{< quizdown >}}` /
+    `{{< /quizdown >}}` delimiters
+  - `fortiweb-threat-protection` — no action needed; a concurrent session already deleted
+    the stray `content/images/layouts/shortcodes/launchdemoform.html`
+- **CentralRepo itself, this closeout:** `CLAUDE.md` (5 new/updated gotchas),
+  `RELEASE_NOTES.md` (new `[Unreleased]` entry), this plan file and its log.
 
 ## Session Summary
-- (write at end)
+- Renamed CentralRepo's `prreviewJune23` branch to `dev` (Phase 1) with zero CI gap,
+  verified via GitHub's rename API, a post-rename fetch-fails-cleanly check, and a
+  fortihugorunner smoke test (which surfaced its own unrelated pre-existing bug, filed
+  below, not fixed — out of this repo's control).
+- Modernized all 52 downstream workshop repos off the dead/fragile local-Dockerfile CI
+  pattern (Phases 3+4): 33 pure cleanup, 19 staged migration (pilot-3 → verify → gate →
+  bulk-16) off `docker build --target=prod` onto the ECR-pull template, picking up
+  exit-code capture on the build container everywhere (a real, previously-silent
+  failure-swallowing bug fixed org-wide as a side effect).
+- That exit-code-capture fix, doing exactly what it was supposed to, surfaced 8 genuine
+  pre-existing, unrelated production bugs that had been silently masked (stale/broken
+  Pages deploys nobody knew about) across 7 repos + the `UserRepo` template itself: the
+  `FTNThugoFlow` shortcode broken since a 2023 CentralRepo commit (traced to `UserRepo`'s
+  own default home page, fixed org-wide across 13 repos — 12 direct-pushed, `UserRepo` via
+  PR), a malformed-markdown-link bug unmasked underneath 3 of those same repos, a
+  duplicate-YAML-key error, a misplaced shortcode file inside a content tree, a deprecated
+  `quizdown` shortcode still referenced in one repo's content, and GitHub Pages never
+  having been enabled at all for one repo. All fixed and verified green except two PRs
+  awaiting review (`UserRepo` requires PRs, same as CentralRepo).
+- **Final state: 52/52 downstream repos build and deploy successfully** (as of the last
+  check this session) — up from an unknown-but-clearly-nonzero number of repos that had
+  been silently broken before today, with no way to have known short of doing exactly
+  this kind of forced-exit-code-check rollout.
+- Open: [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79) (Phase 2,
+  contribution docs) and [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80)
+  (FTNThugoFlow retirement) both need review/merge — `UserRepo`'s `main` is protected,
+  so these couldn't be direct-pushed like everything else this session.
 
 ## Promotion
-- [ ] `Decisions & Commentary` walked
-- [ ] Durable facts promoted to `CLAUDE.md` — list them: <fill in at close-out — expect at
-      minimum: the branch is now `dev`; the prod-stage-pins-main / dev-stage-pins-branch
-      split and why it matters for future renames; the 33-vs-19 modernization split and
-      where the full list lives>
-- [ ] Nothing to promote (say so explicitly rather than leaving this section blank)
-- [ ] `Status:` set to `Complete`
+- [x] `Decisions & Commentary` walked
+- [x] Durable facts promoted to `CLAUDE.md`:
+  - Working Branch section fully rewritten `prreviewJune23` → `dev` (done live during
+    Phase 1, not a closeout addition)
+  - The `prod`-stage-pins-`#main` / `dev`-stage-pins-branch split, and why it makes a
+    future `dev` rename similarly low-risk to downstream repos
+  - GitHub Actions' `on.push.branches` filter is evaluated from the pushed commit's own
+    workflow content, not the pre-push filter — you cannot verify an old-name trigger by
+    pushing the rename to the old ref
+  - `batch_repo_update.py`'s `FILES_TO_DELETE` removes implementation files but never
+    touches content that calls them — check for live references before adding anything
+    else to that list
+  - `UserRepo` is a real, protected (`main` requires PR) GitHub template repo, and the
+    single propagation point for both fixes and breakage into every new workshop repo
+  - A green pre-2026-08-25 "Deploy static content to Pages" run is not proof a site
+    actually built — `static.yml` didn't check the build container's exit code until this
+    plan fixed it org-wide, and doing so surfaced 8 real, previously-invisible bugs
+- [x] `Status:` set to `Complete`
 
 ## Follow-ups
+- [x] **`FTNThugoFlow` shortcode retired org-wide** — was going to be a Follow-up
+      (`MGMT-in-AWS`, `fortigate-azure-sdwan-networking-workshop`), but the user asked for
+      the root-cause fix mid-Phase-4 instead. See "FTNThugoFlow org-wide fix" section above
+      for the full record. Resolved: `MGMT-in-AWS`, `forticnapp-code-security-demo`. Still
+      broken for a *different, unrelated* reason (see next item):
+      `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
+      `FortiSASE`. [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) still
+      needs review/merge.
+- [x] **3 repos' second, separate pre-existing bug — fixed.** Malformed markdown links with
+      the URL wrapped in literal quotes (`[text]("https://...")` instead of
+      `[text](https://...)`) crashed Hugo's `render-link.html` partial:
+      `technical-recipe-azure-fweb-ztna-fortisoar` (`96738c01`),
+      `fortigate-azure-sdwan-networking-workshop` (`184c08c5`), `FortiSASE` (`525a7e6a`).
+      Stripped the stray quotes, matching `UserRepo`'s current (already-fixed) template
+      text. All 3 verified green.
+- [x] **`FortiCNAPPRoadshow`'s deprecated `quizdown` shortcode — fixed** (`cc445a1a`).
+      Removed the `{{< quizdown >}}` / `{{< /quizdown >}}` delimiter lines; the quiz
+      question text itself is preserved as plain markdown (no longer interactive — a real
+      quizframe-based replacement would need a quiz actually built on the CTF platform,
+      out of scope). Verified green.
+- [x] **`fortiweb-threat-protection`'s stray file — already resolved by a concurrent
+      session** before I got to it (commit `528c9f28`, "fix: remove stray shortcode file
+      misplaced under content/"). Identified for the record: a duplicate copy of
+      `launchdemoform.html` had landed at `content/images/layouts/shortcodes/
+      launchdemoform.html` (nested inside the content tree instead of the correct
+      `layouts/shortcodes/`) — Hugo tried to treat it as a content page and its raw HTML
+      tripped the `security.allowContent` policy. Verified green.
+- [x] **`cFOS-GKE-Workshop`'s YAML front-matter error — fixed** (`09c20e7b`). Removed the
+      duplicate `weight: 1` (kept `weight: 10`, matching the established per-chapter
+      increment used by every other chapter — Chapter2=20 ... Chapter6=60 — confirmed by
+      checking all 6 chapters' front matter before choosing which duplicate to drop).
+      That fix alone still failed — Hugo build itself now succeeded, but a **completely
+      different, non-content issue** surfaced: GitHub Pages was never enabled for this
+      repo at all (`Get Pages site failed... verify the repository has Pages enabled`).
+      Enabled it (`gh api repos/.../pages -X POST -f build_type=workflow`, source=main,
+      build via Actions), re-triggered, verified green. This repo's build had, as far as
+      any recorded history shows, never actually succeeded before today.
 - [ ] Fix the 2 downstream repos whose own `CLAUDE.md` documents the stale
       `#prreviewJune23` pin as current fact (`Public-Cloud-104-CNAPP`, `k8s-101-workshop`) —
       cosmetic doc drift, low urgency.
@@ -275,11 +492,23 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] `batch_repo_update.py`'s `REPOS = ['']` placeholder and lack of a dry-run mode are
       general gaps this plan's Phase 3 will need to patch locally — consider upstreaming
       a real `--dry-run` flag into the script permanently rather than a one-off guard.
+- [ ] **`fortihugorunner build-image --env admin-dev` is broken independent of this
+      plan** — `extractBranchByStage` (`dockerinternal/container.go:118`) only matches a
+      literal `FROM base as dev` stage header, but CentralRepo's `dev` stage has been
+      `FROM dev-src-local-${LOCAL} as dev` since 2026-05-28 (`abd0058e`), reached via the
+      intermediate `dev-src-local-true`/`dev-src-local-false` stages. The scan never
+      matches, so it never reaches the `ADD ...#<branch>` line — fails with `Branch not
+      found: no branch found in Dockerfile` regardless of branch name or this rename.
+      `--env author-dev` (`prod` stage, literal `FROM base as prod`) is unaffected. Needs
+      a fix in the `fortihugorunner` repo (teach the matcher to follow a stage that's
+      `FROM <other-stage> as <target>`, or resolve `ARG LOCAL` itself) — out of scope
+      here since that's a separate repo/tool. Full detail in the log file.
 
 ## Risks / Open Questions
-- **[Guessing]** Whether GitHub preserves a `git fetch`/`push` redirect from the old branch
-  name for some grace period after a non-default-branch rename is not confirmed — Phase 1
-  step 1.5 checks this empirically rather than assuming either way.
+- **[Certain] Resolved by step 1.5:** GitHub does NOT preserve a `git fetch`/`push`
+  redirect from the old branch name after a non-default-branch rename. `git fetch origin
+  prreviewJune23` fails immediately and cleanly (`fatal: couldn't find remote ref
+  prreviewJune23`, exit 128) — no grace period, no stale-content trap. See log for detail.
 - **Code-search coverage caveat:** the 52-repo downstream list comes from
   `gh search code`, which can lag on recently-pushed content. Treat it as "confirmed
   affected," not "exhaustively affected" — a repo missed by indexing that still has the old

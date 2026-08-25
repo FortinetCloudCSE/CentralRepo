@@ -4,6 +4,47 @@
 
 ## [Unreleased]
 
+### chore(branch): rename `prreviewJune23` → `dev`, modernize all 52 downstream repos' CI
+
+CentralRepo's dev-image branch is now `dev`, not `prreviewJune23` — renamed via GitHub's
+branch-rename API (history preserved), with `ci.yml`, `image-build-push-dev.yaml`,
+`Dockerfile`, both `docker_*_latest.sh` scripts, `README.md`, and `CLAUDE.md` updated in
+lockstep so CI never had a gap.
+
+All 52 downstream workshop repos had their dead/fragile local `Dockerfile` removed and
+`.github/workflows/static.yml` replaced with the current canonical ECR-pull template — 33
+were pure cleanup (their CI already pulled the prebuilt image), 19 were a real behavior
+change (`docker build --target=prod` locally → pulling `fortinet-hugo:latest`), migrated
+via a pilot-3/verify/gate/bulk-16 rollout rather than one flat push. Every repo also picks
+up exit-code capture on the build container for the first time — previously
+`docker wait "$CONT_ID"` with no `STATUS=` check meant a failed Hugo build inside the
+container was silently reported as CI success.
+
+That fix, doing exactly what it was designed to, surfaced 8 real production bugs across 7
+repos plus `UserRepo` that had been invisibly broken, in some cases for years: the
+`FTNThugoFlow` shortcode (removed from CentralRepo's shared layouts in 2023, but still
+called from `UserRepo`'s own default home page — the actual propagation point for every
+new workshop repo — traced and retired org-wide across 13 repos), a malformed
+quote-wrapped markdown link unmasked underneath 3 of those, a duplicate YAML `weight` key,
+a shortcode file misplaced inside a content tree, a deprecated `quizdown` reference, and
+one repo where GitHub Pages had never been enabled at all. All fixed and verified.
+`UserRepo`'s `main` is protected (PR required) — [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79)
+and [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) are open for review.
+
+See `docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md` (Status: Complete) for
+the full record, including the per-repo audit table in the companion `.log.md`.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `.github/workflows/ci.yml`, `.github/workflows/image-build-push-dev.yaml` | Push trigger `prreviewJune23` → `dev` |
+| `Dockerfile` | `dev` stage `ADD ...#prreviewJune23` → `#dev` |
+| `scripts/docker_build_latest.sh`, `scripts/docker_run_latest.sh` | URL path `/prreviewJune23/...` → `/dev/...` |
+| `README.md`, `CLAUDE.md` | Every branch-name reference updated; new gotchas on the `FILES_TO_DELETE`-without-content-cleanup pattern and the exit-code-capture fix |
+| 52 downstream repos (org-wide) | `.github/workflows/static.yml` replaced with the canonical template; dead `Dockerfile`(`-dev`) removed |
+| 13 repos (org-wide) | `FTNThugoFlow` shortcode call + doc reference + implementation file removed |
+| 6 repos (org-wide) | One-off content fixes: malformed links (3), duplicate YAML key (1), deprecated `quizdown` reference (1), GitHub Pages enablement (1) |
+
 ### feat(shortcodes): launchdemoform — real progress, on-page credentials, single-attempt lock
 
 `launchdemoform` no longer POSTs `mode:'no-cors'` to the raw Azure Automation webhook and waits for an email that may not arrive in time. It now calls the new `fortinet-on-demand-labs-provisioning-and-tracking` Durable Function API with a normal, readable `fetch`, polls a status endpoint every 4-20s (backing off on repeated identical status), and renders a progress bar + step label while provisioning runs. On success it renders a credential card (username, sign-in info, resource group, expiry, Azure portal link) directly on the page instead of relying on email as the only delivery path.

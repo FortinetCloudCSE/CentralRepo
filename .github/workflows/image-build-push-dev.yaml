@@ -3,7 +3,7 @@ name: Build Fortinet Hugo workshop development images.
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["prreviewJune23"]
+    branches: ["dev"]
     # Same reasoning as image-build-push-prod.yaml — see the comment there before
     # adding anything to this list.
     paths-ignore:
