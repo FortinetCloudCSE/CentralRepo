@@ -88,6 +88,27 @@ CI; only the (separate) modernization would touch them.
 
 33 + 19 = 52, matches the full downstream count from the code search.
 
+## Phase 1 execution notes
+
+- **Step 1.2's pre-rename CI-green check is structurally unsatisfiable, and this is
+  a design fact about GitHub Actions, not a fluke of this push.** GitHub evaluates a
+  push-triggered workflow's `on.push.branches` filter using the workflow YAML content
+  *as it exists in the commit being pushed*, matched against the actual ref name being
+  pushed to. Step 1.1's commit changed `branches: [prreviewJune23]` → `branches: [dev]`
+  in both `ci.yml` and `image-build-push-dev.yaml`, in the same commit then pushed to
+  the still-named `prreviewJune23` ref (`git push origin HEAD:prreviewJune23`,
+  landing as `145c42c`). The trigger condition *in that pushed commit* requires a ref
+  literally named `dev`, which `prreviewJune23` isn't yet — so the push doesn't match
+  its own new trigger and nothing fires. Confirmed via `gh api
+  repos/FortinetCloudCSE/CentralRepo/commits/145c42c/check-runs` and `gh run list`:
+  zero check-runs, zero workflow runs registered for that commit, from two independent
+  checks. **You cannot verify a CI-trigger rename by pushing the edited trigger to the
+  OLD ref name** — editing the trigger in that same commit makes the old name stop
+  matching, by construction. Real verification only becomes possible post-rename, which
+  is exactly what step 1.6 already does — so **1.6 was always the load-bearing
+  verification, not 1.2.** Neither workflow has a `workflow_dispatch` fallback that
+  could have manually exercised the pre-rename trigger content either.
+
 ## Rejected / considered options
 
 - **Delete + recreate the branch instead of GitHub's rename API** — rejected. Rename

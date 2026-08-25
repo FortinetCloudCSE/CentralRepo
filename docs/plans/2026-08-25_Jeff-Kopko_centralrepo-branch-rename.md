@@ -132,9 +132,11 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
   - `CLAUDE.md` — every occurrence (lines 8,11,12,15,18,22,23,27,107,155,156,214,248,252 as
     of this audit); this is a genuine rewrite of the "Working Branch" section and several
     gotchas, not a find/replace — the prose logic stays the same, only the name changes.
-- [ ] **1.2** Push. This still triggers under the *old* branch name (expected — branch
-      hasn't been renamed yet) — confirm both `ci.yml` and `image-build-push-dev.yaml` run
-      green on this commit before proceeding.
+- [x] **1.2** Push. Confirmed structurally unsatisfiable pre-rename (see log,
+      "Phase 1 execution notes"): the trigger-rename edit in the same commit means the
+      pushed commit's `branches: [dev]` filter no longer matches the still-`prreviewJune23`
+      ref, so neither workflow fired — zero runs, not a failure. 1.6 is the real
+      verification.
 - [ ] **1.3** Rename the branch via the GitHub API (preserves history):
       `gh api -X POST repos/FortinetCloudCSE/CentralRepo/branches/prreviewJune23/rename -f new_name=dev`
 - [ ] **1.4** Update local git state: `git fetch origin`, `git branch -m prreviewJune23 dev`,
