@@ -103,6 +103,16 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
   some period after rename on a *non-default* branch (well-documented for default-branch
   renames, not confirmed here) — Phase 1 includes an empirical check, not an assumption.
 
+## Implementation Method
+- **Phase 1 (CentralRepo):** tmux (sequential) in a dedicated worktree — sequential
+  dependencies (edit → push → confirm CI green → rename → verify) and real blast radius
+  (a live branch rename + two workflow triggers).
+- **Phase 2 (UserRepo):** direct in-conversation — single file, one small PR.
+- **Phase 3 (33-repo batch):** direct in-conversation, scripted — a single deterministic
+  script execution (extended `batch_repo_update.py`) with a dry-run pass and an explicit
+  go/no-go confirmation immediately before the live run, not a multi-agent fan-out.
+- **Phase 4:** explicitly deferred — no method chosen yet, own future plan.
+
 ## Plan
 
 ### Phase 1 — CentralRepo itself (required, blocking, no external dependency)
