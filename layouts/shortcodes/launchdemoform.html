@@ -7,7 +7,9 @@
   - POSTs JSON to the Azure Durable Function's /api/provision/start, then polls
     /api/provision/status/{token} for real progress and, on success, credentials.
   - Attempt state (status/token/credentials) is persisted per Hugo site + lab in
-    sessionStorage, keyed under window.relearn.absBaseUri the same way the
+    localStorage (survives tab/browser closure — credentials are only valid for the
+    lab's own duration anyway, so there's no meaningful security benefit to
+    session-only storage), keyed under window.relearn.absBaseUri the same way the
     deployment-path gate in custom-header.html scopes its own storage key.
 */}}
 
@@ -57,6 +59,7 @@
   .launchdemoform__credentials dt { font-weight: 600; color: #333; }
   .launchdemoform__credentials dd { margin: 0; color: #222; word-break: break-word; }
   .launchdemoform__credentials a { color: #0065ff; }
+  .launchdemoform__credentials-expired { color: #8a5a00; background: #fff6e0; border: 1px solid #f0d78c; border-radius: 4px; padding: .5rem .6rem; font-weight: 600; }
 </style>
 
 {{ partial "prefill-useremail.html" . }}
@@ -103,25 +106,27 @@
     const credsEl = root.querySelector('.launchdemoform__credentials');
 
     // --- Storage helpers -----------------------------------------------
-    // sessionStorage, prefixed with window.relearn.absBaseUri + the lab id, so
-    // (a) credentials/lock don't leak across the ~65 workshop sites sharing one
-    // GitHub Pages origin, and (b) two different-lab buttons on the same page
-    // don't share a lock. Matches the pathgate key convention in
-    // custom-header.html. Every call is try/catch-wrapped for private
-    // browsing / storage-disabled, matching saveProfileEmail's convention below.
+    // localStorage (survives tab/browser closure — see the file header comment for
+    // why session-only storage bought nothing given these credentials' own short
+    // validity), prefixed with window.relearn.absBaseUri + the lab id, so (a)
+    // credentials/lock don't leak across the ~65 workshop sites sharing one GitHub
+    // Pages origin, and (b) two different-lab buttons on the same page don't share
+    // a lock. Matches the pathgate key convention in custom-header.html. Every call
+    // is try/catch-wrapped for private browsing / storage-disabled, matching
+    // saveProfileEmail's convention below.
     const storageBase = ((window.relearn && window.relearn.absBaseUri) || '') + '/launchdemoform/' + encodeURIComponent(labdefinition);
     const KEY_ATTEMPT = storageBase + '/attempt';
     const KEY_TOKEN = storageBase + '/token';
     const KEY_CREDENTIALS = storageBase + '/credentials';
 
     function storageGet(key) {
-      try { return window.relearn.getItem(window.sessionStorage, key); } catch (e) { return null; }
+      try { return window.relearn.getItem(window.localStorage, key); } catch (e) { return null; }
     }
     function storageSet(key, value) {
-      try { window.relearn.setItem(window.sessionStorage, key, value); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageSet failed', e); }
+      try { window.relearn.setItem(window.localStorage, key, value); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageSet failed', e); }
     }
     function storageRemove(key) {
-      try { window.relearn.removeItem(window.sessionStorage, key); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageRemove failed', e); }
+      try { window.relearn.removeItem(window.localStorage, key); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageRemove failed', e); }
     }
     function readJSON(key) {
       const raw = storageGet(key);
@@ -180,8 +185,14 @@
       raw = raw || {};
       const days = raw.labDurationDays;
       let duration = '';
+      let expiresAt = null;
       if (typeof days === 'number') {
         duration = days < 1 ? Math.round(days * 24) + ' hours' : days + ' day' + (days === 1 ? '' : 's');
+        // Credentials now persist in localStorage across tab/browser closure, so an
+        // absolute expiry (not just the display string above) lets render() warn once
+        // a card is stale rather than showing a long-dead credential as still good —
+        // the lab's own cleanup job actually deletes these resources on this schedule.
+        expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
       }
       return {
         username: raw.userPrincipalName || '',
@@ -190,6 +201,7 @@
           : '',
         resourceGroup: Array.isArray(raw.resourceGroups) ? raw.resourceGroups.join(', ') : (raw.resourceGroups || ''),
         expiry: duration,
+        expiresAt: expiresAt,
         portalUrl: 'https://portal.azure.com'
       };
     }
@@ -265,8 +277,18 @@
     }
     function hideProgress() { progressEl.hidden = true; }
 
+    function credentialsExpired(creds) {
+      return typeof creds.expiresAt === 'number' && Date.now() > creds.expiresAt;
+    }
+
     function renderCredentialCard(creds) {
       credsEl.innerHTML = '';
+      if (credentialsExpired(creds)) {
+        const warn = document.createElement('div');
+        warn.className = 'launchdemoform__credentials-expired';
+        warn.textContent = 'This lab’s access window has ended — these credentials no longer work.';
+        credsEl.appendChild(warn);
+      }
       const dl = document.createElement('dl');
       const rows = [
         ['Username', creds.username],
@@ -416,7 +438,8 @@
         hideProgress();
         if (creds) {
           renderCredentialCard(creds);
-          setStatus('Your accounts are ready.', 'ok');
+          const expired = credentialsExpired(creds);
+          setStatus(expired ? 'This lab has ended.' : 'Your accounts are ready.', expired ? '' : 'ok');
         } else {
           setStatus('Provisioning complete.', 'ok');
         }
