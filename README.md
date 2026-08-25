@@ -52,19 +52,29 @@ Key behaviors:
 ## Shortcodes and usage
 
 ### launchdemoform
-Provision lab accounts via an automation webhook with built-in UX and cookie/profile integration.
+Provisions Azure lab accounts via the `fortinet-on-demand-labs-provisioning-and-tracking` Durable Function API, with real progress, on-page credentials, and a single-attempt lock.
 
 Usage:
 ```
 {{< launchdemoform lab="My-Lab-Definition" >}}
 ```
 Parameters:
-- `lab` or `labdefinition`: Required lab definition sent as `odlconfigname`.
+- `lab` or `labdefinition`: Required lab definition name (matches a file under that repo's `lab-definitions/`, minus `.json`).
 - `debug`: Optional `true|false` to show console diagnostics.
+- `customer`: Optional customer identifier passed through to the backend.
+- `smartticket`: Optional SmartTicket reference passed through to the backend.
+
+Site param: `provisionApiBaseUrl` (see [Site params referenced](#site-params-referenced)). Unset means the shortcode renders normally but shows a "not configured" message on click instead of calling a nonexistent endpoint.
 
 Behavior:
-- Reads `fortiuser` and `fortiemail` (or local profile) to populate request.
-- Disables action until both are present; provides inline status updates.
+- Reads `fortiuser` and `fortiemail` (or local profile) to populate the request; button stays disabled until both are present, same as before.
+- `POST {provisionApiBaseUrl}/api/provision/start` (JSON, normal `fetch` — this replaced the old `mode:'no-cors'` webhook POST) starts or resumes an attempt; a same-participant duplicate is treated as a normal resume, not an error.
+- Polls `GET {provisionApiBaseUrl}/api/provision/status/{token}` every 4-20s (backs off on repeated identical status) and renders a progress bar + step label.
+- On terminal success, renders a credential card (username, sign-in info, resource group, expiry, Azure portal link) in place of the button.
+- Attempt status, poll token, and credentials persist in `sessionStorage`, scoped per site (`window.relearn.absBaseUri`-prefixed) and per `lab` value, so a reload resumes cleanly and two different labs on one site don't share a lock. The button disables permanently once any attempt exists for that site+lab; only a stored `Failed` status re-enables a "Retry Provisioning" button, showing the prior failure reason.
+- The client-side lock is a UX convenience layered on the backend's own idempotency guarantee, not a substitute for it.
+
+See the UserRepo docs page (`content/02Hugo/8_azure_lab_provisioning/`) for the participant-facing walkthrough and gotchas.
 
 ### figure
 Responsive image with optional zoom source and caption.
@@ -321,6 +331,7 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 - `marketingCode`: Optional event code sent with check-ins.
 - `cookieDomain`: Optional cookie domain override for broader cookie scope.
 - `quizUrl`: Base URL for `quizframe`.
+- `provisionApiBaseUrl`: Optional base URL for the Azure Durable Function `launchdemoform` calls (`{base}/api/provision/start`, `{base}/api/provision/status/{token}`). Omitted or empty means the shortcode never attempts a network call — it renders normally and shows a "not configured" message on click instead. Unlike the retired `webhookUrl` param it replaces, this one is actually wired through `repoConfig.schema.json` and `scripts/templates/hugo.jinja` into `hugo.toml` — `webhookUrl` never was, so every prior build silently used the hardcoded webhook default regardless of what a repo set.
 - `videoHeaderSrc`: Path to the sidebar header background MP4 (`CloudCSEMovie` theme only).
 - `videoHeaderInterval`: Seconds between video play cycles (`CloudCSEMovie` theme only, default `60`).
 - `deploymentPaths`: Optional list of `{ "key": …, "title": … }` declaring a workshop's mutually exclusive deployment paths. Required by `pathtabs`/`pathtab`/`pathonly` (or the same list in the page's own front matter, which gates that page alone and cannot coexist with this param) and by any page carrying a `deploymentPath` front-matter param, which needs this site-level form; omitting it leaves every one of those features inert. `key` must start with a letter and contain only letters, digits, hyphens and underscores, because it is interpolated into CSS class names as well as attribute values. **Order is load-bearing** — the first entry is the JavaScript-off default and the server-side active tab. **Renaming a `title` silently resets every returning reader's stored choice** (the selection is keyed on the title text); renaming a `key` fails the build instead, which is the safer failure.
