@@ -131,6 +131,49 @@ CI; only the (separate) modernization would touch them.
   (a branch can't be checked out in two worktrees at once) — just tripped from the
   opposite direction, on branch *creation* rather than *checkout*.
 
+- **The branch-rename API call itself synthesized a push-equivalent event for the new
+  `dev` ref, firing both workflows immediately — before any deliberate follow-up push.**
+  `image-build-push-dev.yaml` (run 32884312203) and `ci.yml` (run 32884311978) both ran
+  and completed `success` against commit `d66d27b` — the commit that was HEAD at the
+  moment of rename — with no separate push from this session. This is the flip side of
+  the 1.2 finding: a push-triggered workflow's `branches:` filter is evaluated against
+  the ref name, and a rename operation apparently produces a ref-update GitHub treats as
+  push-trigger-eligible for the *new* name, even though no `git push` occurred under
+  that name. Step 1.6's own deliberate follow-up push (`a08c75f`, docs-only, matched
+  `image-build-push-dev.yaml`'s `paths-ignore: docs/**` so only `ci.yml` ran on it) is
+  therefore not the *first* proof the rename didn't leave a gap — the rename's own
+  synthesized event already was. Both pieces of evidence are recorded for completeness.
+
+- **`fortihugorunner build-image --env admin-dev` fails, but for a reason entirely
+  unrelated to today's rename — a pre-existing structural mismatch between
+  `extractBranchByStage` (`dockerinternal/container.go:118`) and CentralRepo's actual
+  Dockerfile shape.** Live command attempted first (binary present on `PATH`):
+  `Error building Docker image: Branch not found: no branch found in Dockerfile`. Code
+  inspection found why: `extractBranchByStage` only enters "in target stage" when it
+  sees a line exactly matching `FROM base as <target>` (case-insensitive); for
+  `--env admin-dev`, `target = "dev"`, so it looks for `FROM base as dev`. CentralRepo's
+  Dockerfile has never had that literal line — the `dev` stage is
+  `FROM dev-src-local-${LOCAL} as dev` (`Dockerfile:34`, unchanged since `abd0058e`,
+  2026-05-28 — three months before this plan), reached indirectly through
+  `dev-src-local-true`/`dev-src-local-false` (`Dockerfile:24,28`), neither of which is
+  named `dev`. The scan for `FROM base as dev` never matches anything, so the function
+  never reaches the `ADD ...#dev` line at all — it would have failed exactly the same
+  way before the rename, looking for a nonexistent `FROM base as dev` with
+  `#prreviewJune23` behind it. **Isolated, not just inferred:** the `prod` stage's header
+  is literally `FROM base as prod` (`Dockerfile:60`) — an exact match — with its `ADD
+  ...CentralRepo.git#main` line directly inside that same stage, so
+  `fortihugorunner build-image --env author-dev` (`target = "prod"`) hits the intended
+  code path correctly; only the `dev` env is broken by this stage-indirection mismatch.
+  **The plan's own Constraints claim — "no fortihugorunner code changes are
+  required" — is correct as far as it goes (no hardcoded branch name anywhere in
+  `extractBranchByStage`, confirmed) but incomplete: it didn't anticipate this
+  stage-header mismatch, which is a real, independent, pre-existing bug, not introduced
+  by and not fixable by anything in this plan's scope.** Filed as a Follow-up on the
+  plan file rather than fixed here — fortihugorunner is a separate repo/tool, and fixing
+  its stage-header matcher (e.g. teach it to also match a stage that's `FROM
+  <other-stage> as <target>` and recurse, or track `ARG LOCAL` resolution) is real
+  design work outside Phase 1's scope.
+
 ## Rejected / considered options
 
 - **Delete + recreate the branch instead of GitHub's rename API** — rejected. Rename

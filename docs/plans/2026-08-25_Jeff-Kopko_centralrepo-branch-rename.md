@@ -151,13 +151,27 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
       don't assume. **Fails cleanly, immediately, no redirect** — `git fetch origin
       prreviewJune23` → `fatal: couldn't find remote ref prreviewJune23` (exit 128); see log
       for full detail, including the `ls-remote` comparison.
-- [ ] **1.6** Push a trivial follow-up commit (or the next real change) to `dev` and confirm
+- [x] **1.6** Push a trivial follow-up commit (or the next real change) to `dev` and confirm
       `image-build-push-dev.yaml` fires and completes, proving the workflow trigger survived
-      the rename correctly.
-- [ ] **1.7** Smoke-test `fortihugorunner`: `fortihugorunner build-image --env admin-dev`
+      the rename correctly. Confirmed twice over (see log): the rename operation itself
+      synthesized a push-equivalent event that fired both workflows successfully on `d66d27b`
+      before any deliberate follow-up push; then the deliberate 1.6 push (`a08c75f`,
+      docs-only checkbox commit) fired `ci.yml` (success) — `image-build-push-dev.yaml`
+      correctly sat out that one under its own `paths-ignore: docs/**`.
+- [x] **1.7** Smoke-test `fortihugorunner`: `fortihugorunner build-image --env admin-dev`
       against the renamed Dockerfile (or equivalent), confirm it reports
       `Image built with CentralRepo branch: dev` — proves the dynamic branch-detection
-      logic needs no code change, as predicted.
+      logic needs no code change, as predicted. **Did not confirm this cleanly — found a
+      real, pre-existing, rename-unrelated bug instead (see log for full detail).** Binary
+      was on `PATH`, so tried the live command first: it failed with `Branch not found: no
+      branch found in Dockerfile`. Root-caused via code inspection: `extractBranchByStage`
+      only matches a literal `FROM base as dev` header, but CentralRepo's `dev` stage has
+      been `FROM dev-src-local-${LOCAL} as dev` since 2026-05-28 (`abd0058e`) — three
+      months before this plan, so this would have failed identically pre-rename. Isolated
+      by confirming `--env author-dev` (`prod` stage, literally `FROM base as prod`) hits
+      the intended code path. No hardcoded branch name anywhere (that part of the plan's
+      Constraints claim holds) — but "needs no code change" does not; filed as a
+      Follow-up.
 
 ### Phase 2 — UserRepo template (required, prevents future drift, low risk)
 - [ ] **2.1** PR into `UserRepo`: fix `content/01GettingStarted/6_CentralRepo/index.md` —
@@ -260,7 +274,21 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
   follow-up rather than silently dropped.
 
 ## Files Changed
-- (fill in during Phase 1 execution)
+- **Phase 1 (`prreviewJune23` → `dev`):**
+  - `.github/workflows/ci.yml` — push trigger `branches: [dev]`
+  - `.github/workflows/image-build-push-dev.yaml` — push trigger `branches: ["dev"]`
+  - `Dockerfile` — `dev` stage `ADD ...CentralRepo.git#dev`
+  - `scripts/docker_build_latest.sh`, `scripts/docker_run_latest.sh` — raw URL path `/dev/`
+  - `README.md` — Testing section prose
+  - `CLAUDE.md` — Working Branch section, file-map line, two gotcha bullets, CI/CD table
+    row, "Promote dev → prod", Testing line
+  - `docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md` / `.log.md` — this
+    plan and log, checkbox ticks and execution notes
+  - GitHub: branch `prreviewJune23` renamed to `dev` via API
+    (`POST /repos/FortinetCloudCSE/CentralRepo/branches/prreviewJune23/rename`)
+  - Local git state: worktree branch renamed `phase1-rename-work` → tracks `origin/dev`;
+    primary checkout (`/home/ubuntu/pythonProjects/CentralRepo`) local branch renamed
+    `prreviewJune23` → `dev`, tracking `origin/dev`, fast-forwarded clean
 
 ## Session Summary
 - (write at end)
@@ -284,11 +312,23 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] `batch_repo_update.py`'s `REPOS = ['']` placeholder and lack of a dry-run mode are
       general gaps this plan's Phase 3 will need to patch locally — consider upstreaming
       a real `--dry-run` flag into the script permanently rather than a one-off guard.
+- [ ] **`fortihugorunner build-image --env admin-dev` is broken independent of this
+      plan** — `extractBranchByStage` (`dockerinternal/container.go:118`) only matches a
+      literal `FROM base as dev` stage header, but CentralRepo's `dev` stage has been
+      `FROM dev-src-local-${LOCAL} as dev` since 2026-05-28 (`abd0058e`), reached via the
+      intermediate `dev-src-local-true`/`dev-src-local-false` stages. The scan never
+      matches, so it never reaches the `ADD ...#<branch>` line — fails with `Branch not
+      found: no branch found in Dockerfile` regardless of branch name or this rename.
+      `--env author-dev` (`prod` stage, literal `FROM base as prod`) is unaffected. Needs
+      a fix in the `fortihugorunner` repo (teach the matcher to follow a stage that's
+      `FROM <other-stage> as <target>`, or resolve `ARG LOCAL` itself) — out of scope
+      here since that's a separate repo/tool. Full detail in the log file.
 
 ## Risks / Open Questions
-- **[Guessing]** Whether GitHub preserves a `git fetch`/`push` redirect from the old branch
-  name for some grace period after a non-default-branch rename is not confirmed — Phase 1
-  step 1.5 checks this empirically rather than assuming either way.
+- **[Certain] Resolved by step 1.5:** GitHub does NOT preserve a `git fetch`/`push`
+  redirect from the old branch name after a non-default-branch rename. `git fetch origin
+  prreviewJune23` fails immediately and cleanly (`fatal: couldn't find remote ref
+  prreviewJune23`, exit 128) — no grace period, no stale-content trap. See log for detail.
 - **Code-search coverage caveat:** the 52-repo downstream list comes from
   `gh search code`, which can lag on recently-pushed content. Treat it as "confirmed
   affected," not "exhaustively affected" — a repo missed by indexing that still has the old
