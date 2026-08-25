@@ -374,7 +374,33 @@ user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
     `prreviewJune23` → `dev`, tracking `origin/dev`, fast-forwarded clean
 
 ## Session Summary
-- (write at end)
+- Renamed CentralRepo's `prreviewJune23` branch to `dev` (Phase 1) with zero CI gap,
+  verified via GitHub's rename API, a post-rename fetch-fails-cleanly check, and a
+  fortihugorunner smoke test (which surfaced its own unrelated pre-existing bug, filed
+  below, not fixed — out of this repo's control).
+- Modernized all 52 downstream workshop repos off the dead/fragile local-Dockerfile CI
+  pattern (Phases 3+4): 33 pure cleanup, 19 staged migration (pilot-3 → verify → gate →
+  bulk-16) off `docker build --target=prod` onto the ECR-pull template, picking up
+  exit-code capture on the build container everywhere (a real, previously-silent
+  failure-swallowing bug fixed org-wide as a side effect).
+- That exit-code-capture fix, doing exactly what it was supposed to, surfaced 8 genuine
+  pre-existing, unrelated production bugs that had been silently masked (stale/broken
+  Pages deploys nobody knew about) across 7 repos + the `UserRepo` template itself: the
+  `FTNThugoFlow` shortcode broken since a 2023 CentralRepo commit (traced to `UserRepo`'s
+  own default home page, fixed org-wide across 13 repos — 12 direct-pushed, `UserRepo` via
+  PR), a malformed-markdown-link bug unmasked underneath 3 of those same repos, a
+  duplicate-YAML-key error, a misplaced shortcode file inside a content tree, a deprecated
+  `quizdown` shortcode still referenced in one repo's content, and GitHub Pages never
+  having been enabled at all for one repo. All fixed and verified green except two PRs
+  awaiting review (`UserRepo` requires PRs, same as CentralRepo).
+- **Final state: 52/52 downstream repos build and deploy successfully** (as of the last
+  check this session) — up from an unknown-but-clearly-nonzero number of repos that had
+  been silently broken before today, with no way to have known short of doing exactly
+  this kind of forced-exit-code-check rollout.
+- Open: [UserRepo#79](https://github.com/FortinetCloudCSE/UserRepo/pull/79) (Phase 2,
+  contribution docs) and [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80)
+  (FTNThugoFlow retirement) both need review/merge — `UserRepo`'s `main` is protected,
+  so these couldn't be direct-pushed like everything else this session.
 
 ## Promotion
 - [ ] `Decisions & Commentary` walked
@@ -394,29 +420,35 @@ user as a fast, well-scoped, low-risk follow-on rather than assumed in scope.
       `technical-recipe-azure-fweb-ztna-fortisoar`, `fortigate-azure-sdwan-networking-workshop`,
       `FortiSASE`. [UserRepo#80](https://github.com/FortinetCloudCSE/UserRepo/pull/80) still
       needs review/merge.
-- [ ] **3 repos have a second, separate, pre-existing bug** unmasked by the `FTNThugoFlow`
-      fix — malformed markdown links with the URL wrapped in literal quotes
-      (`[text]("https://...")` instead of `[text](https://...)`) crash Hugo's
-      `render-link.html` partial: `technical-recipe-azure-fweb-ztna-fortisoar`,
-      `fortigate-azure-sdwan-networking-workshop`, `FortiSASE`. `UserRepo`'s current
-      template content does not have this bug (fixed there at some point, never
-      backported) — same "propagation gap" shape as `FTNThugoFlow`. Well-scoped, low-risk,
-      same fix pattern (strip the stray quotes) — offered to the user as a fast follow-on,
-      not assumed in scope, not attempted here.
-- [ ] **`FortiCNAPPRoadshow` calls the already-deprecated `quizdown` shortcode**
-      (`template for shortcode "quizdown" not found`) — same bug class as `FTNThugoFlow`
-      (a shortcode this org's own `CLAUDE.md` documents as intentionally retired, with
-      content never updated to match). Not fixed here.
-- [ ] **`fortiweb-threat-protection` has a stray file under `content/`** —
-      `content/images/layouts/shortcodes/launchdemoform.html` looks like a
-      content-organization mistake (a copy of the shortcode file landed inside the content
-      tree instead of `layouts/shortcodes/`), tripping Hugo's `security.allowContent`
-      policy. Unrelated to shortcode deprecation — a distinct content bug. Not fixed here.
-- [ ] **`cFOS-GKE-Workshop`'s content has a YAML front-matter error**
-      (`content/01Chapter1/_index.md`, duplicate `weight` key at lines 2-3) that fails the
-      Hugo build outright. This repo also has no confirmed history of ever deploying
-      successfully (only one Actions run exists, from this migration). Needs a content-owner
-      fix, not attempted here.
+- [x] **3 repos' second, separate pre-existing bug — fixed.** Malformed markdown links with
+      the URL wrapped in literal quotes (`[text]("https://...")` instead of
+      `[text](https://...)`) crashed Hugo's `render-link.html` partial:
+      `technical-recipe-azure-fweb-ztna-fortisoar` (`96738c01`),
+      `fortigate-azure-sdwan-networking-workshop` (`184c08c5`), `FortiSASE` (`525a7e6a`).
+      Stripped the stray quotes, matching `UserRepo`'s current (already-fixed) template
+      text. All 3 verified green.
+- [x] **`FortiCNAPPRoadshow`'s deprecated `quizdown` shortcode — fixed** (`cc445a1a`).
+      Removed the `{{< quizdown >}}` / `{{< /quizdown >}}` delimiter lines; the quiz
+      question text itself is preserved as plain markdown (no longer interactive — a real
+      quizframe-based replacement would need a quiz actually built on the CTF platform,
+      out of scope). Verified green.
+- [x] **`fortiweb-threat-protection`'s stray file — already resolved by a concurrent
+      session** before I got to it (commit `528c9f28`, "fix: remove stray shortcode file
+      misplaced under content/"). Identified for the record: a duplicate copy of
+      `launchdemoform.html` had landed at `content/images/layouts/shortcodes/
+      launchdemoform.html` (nested inside the content tree instead of the correct
+      `layouts/shortcodes/`) — Hugo tried to treat it as a content page and its raw HTML
+      tripped the `security.allowContent` policy. Verified green.
+- [x] **`cFOS-GKE-Workshop`'s YAML front-matter error — fixed** (`09c20e7b`). Removed the
+      duplicate `weight: 1` (kept `weight: 10`, matching the established per-chapter
+      increment used by every other chapter — Chapter2=20 ... Chapter6=60 — confirmed by
+      checking all 6 chapters' front matter before choosing which duplicate to drop).
+      That fix alone still failed — Hugo build itself now succeeded, but a **completely
+      different, non-content issue** surfaced: GitHub Pages was never enabled for this
+      repo at all (`Get Pages site failed... verify the repository has Pages enabled`).
+      Enabled it (`gh api repos/.../pages -X POST -f build_type=workflow`, source=main,
+      build via Actions), re-triggered, verified green. This repo's build had, as far as
+      any recorded history shows, never actually succeeded before today.
 - [ ] Fix the 2 downstream repos whose own `CLAUDE.md` documents the stale
       `#prreviewJune23` pin as current fact (`Public-Cloud-104-CNAPP`, `k8s-101-workshop`) —
       cosmetic doc drift, low urgency.
