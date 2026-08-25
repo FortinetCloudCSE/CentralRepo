@@ -2,7 +2,7 @@
 Date: 2026-08-25
 Owner: Jeff Kopko
 Slug: launchdemoform-migration
-Status: Approved
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-08-25_Jeff-Kopko_launchdemoform-migration.md
@@ -88,15 +88,15 @@ its 2026-08-26 beta.
 ## Promotion
 - [x] `Decisions & Commentary` walked
 - [x] Durable facts promoted to `CLAUDE.md` — the merge-process incident and the FortiDevSec/Jenkins gotcha went into CentralRepo's `CLAUDE.md` (done as part of closing out the companion `launchdemoform-rebuild` plan, since that's where the incident actually happened). The `OrchestrationRuntimeStatus.value` gotcha and the Key Vault resource-lock finding went into the backend repo's `CLAUDE.md`. Nothing further specific to this migration plan itself needs its own CLAUDE.md entry — it's a tracking/execution plan, not a repo with durable architectural decisions of its own.
-- [ ] Nothing to promote — N/A, see above
-- [ ] `Status:` set to `Complete` — **not set.** Real open items remain: `FortiWeb-Azure-ZTNA-FortiSoar` PR #11 needs Jeff's review before merging, and 8 of 10 real lab definitions are still unverified against the new backend. `Status` stays `Approved`.
+- [x] Nothing further to promote — the remaining follow-up items below closed out via normal repo work (PR merges, live verification), not via a durable decision that changes future behavior.
+- [x] `Status:` set to `Complete` — **2026-08-25, later same day. All blocking items resolved**: `FortiWeb-Azure-ZTNA-FortiSoar` PR #11 reviewed, corrected (re-pointed at the real `fwebztna-lab` definition instead of deleted), and merged. Backend PR #1 and UserRepo PR #77 both merged. All 10 of 10 real lab definitions now verified end-to-end live (was 2) — see the backend repo's own plan `0001_2026-08-24_Jeff-Kopko_azure-function-rebuild.md`, also closed to `Complete`, for the full verification record and the correction to this plan's own "10 of 11 use Bastion+VM" assumption (wrong — 0 of 10 real lab definitions use Bastion+VM today).
 
 ## Follow-ups
-- [ ] Re-run the `gh search code` discovery periodically — new repos keep adopting `launchdemoform` faster than this plan can track by hand (this session's count was already larger than the prior session's local-checkout-based estimate).
-- [ ] Once this migration completes, revisit whether `local_copy.sh`'s shadow-copy mechanism itself should change (e.g. a lint/warning when a repo's local shortcode override drifts from CentralRepo's for N+ months) — out of scope here, but the root cause of Phase 3 existing at all.
-- [ ] **Review `FortiWeb-Azure-ZTNA-FortiSoar` PR #11** — the one genuinely ambiguous case in this pass, flagged in the PR itself for a second look before merging.
-- [ ] **Review and merge backend PR #1 and UserRepo PR #77** — both real, tested work sitting unmerged; opened today after discovering neither had ever had a PR against its repo's `main`.
-- [ ] **Verify the remaining 8 real lab definitions** (`appsec-102`, `azure-fgt-autostitch`, `azure-k8s-seintro-110`, `azure-sdwan-lab`, `flex-105`, `fwebthreatpro-lab`, `fwebztna-lab`, `web-101`) end-to-end against the new backend — only `azure-102-odl` and `fweb-mcp-110` have been proven so far. The Bastion+VM path in particular (10 of 11 real lab definitions use it) has never been exercised for real by any test this session.
+- [x] ~~Re-run the `gh search code` discovery periodically~~ — superseded: this session's later "fix all open items" pass re-confirmed the full active-repo list directly via each repo's contents API rather than search-index (which had gone stale on 3 of the confirmed-active repos). No further periodic re-check scheduled; treat any future launchdemoform work as needing a fresh discovery pass regardless of what this plan once counted.
+- [ ] Once this migration completes, revisit whether `local_copy.sh`'s shadow-copy mechanism itself should change (e.g. a lint/warning when a repo's local shortcode override drifts from CentralRepo's for N+ months) — out of scope here, but the root cause of Phase 3 existing at all. Still genuinely open, not addressed this session.
+- [x] **`FortiWeb-Azure-ZTNA-FortiSoar` PR #11 reviewed and merged** — corrected from "delete" to "re-point at the real `fwebztna-lab` definition," confirmed via matching resource-share names and username prefixes in the workshop's own Terraform/content. Also fixed a stale Jenkinsfile blocking its CI (same org-wide FortiDevSec pattern as the other 6 repos).
+- [x] **Backend PR #1 and UserRepo PR #77 merged.** Backend PR #1's merge also surfaced and fixed a real bug: the first-ever CI/CD auto-deploy failed on an OIDC subject mismatch (`environment: production` with no matching federated credential) — fixed via a same-day follow-up PR.
+- [x] **All 10 real lab definitions verified end-to-end live** (`azure-102-odl`, `fweb-mcp-110` from the earlier session; `web-101`, `appsec-102`, `azure-fgt-autostitch`, `azure-sdwan-lab`, `flex-105`, `fwebthreatpro-lab`, `fwebztna-lab`, `azure-k8s-seintro-110` this pass) — real `POST /start` → poll → `Completed` with genuine credentials for every one, not just a 2xx. Correction: none of the 10 use the Bastion+VM path (the earlier "10 of 11" claim was wrong); that code path is real and unit-tested but currently dormant.
 - [ ] **Revoke the standing `Key Vault Secrets User` grant** on `internal-training-vault` (used for a one-time secret copy, meant to be temporary) — blocked by a resource lock on `Internal_Training_Automation` that isn't mine to remove. Needs whoever manages that lock, or a subscription Owner.
 
 ## Risks / Open Questions
