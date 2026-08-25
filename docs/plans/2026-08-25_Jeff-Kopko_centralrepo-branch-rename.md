@@ -2,7 +2,7 @@
 Date: 2026-08-25
 Owner: Jeff Kopko
 Slug: centralrepo-branch-rename
-Status: Proposed
+Status: Approved
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.md
