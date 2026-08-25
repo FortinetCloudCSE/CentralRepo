@@ -21,8 +21,10 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - Per user request, also verify the user's belief that "nobody builds the containers
   themselves anymore" (i.e. that the per-repo copy of CentralRepo's `Dockerfile`, planted
   into every workshop repo by `batch_repo_update.py`, is dead weight now that CI pulls a
-  prebuilt image from ECR) and, where true, modernize those repos: drop the local
-  `Dockerfile`, refresh `static.yml` to the current canonical template.
+  prebuilt image from ECR). True for 33 of 52 repos, false for 19 — modernize all 52:
+  drop the local `Dockerfile`, refresh `static.yml` to the current canonical template. The
+  33 are pure cleanup (Phase 3); the 19 require actually changing what their CI does
+  (Phase 4), staged with a pilot first.
 
 ## Context / Links
 - User's own framing (CLAUDE.md, this repo): `main` builds prod, `prreviewJune23` builds
@@ -111,7 +113,10 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - **Phase 3 (33-repo batch):** direct in-conversation, scripted — a single deterministic
   script execution (extended `batch_repo_update.py`) with a dry-run pass and an explicit
   go/no-go confirmation immediately before the live run, not a multi-agent fan-out.
-- **Phase 4:** explicitly deferred — no method chosen yet, own future plan.
+- **Phase 4 (19-repo migration):** direct in-conversation, scripted, staged — pilot 3 repos
+  first (chosen for structural diversity, not convenience), verify each pilot's Pages
+  deploy actually succeeds under the new template, explicit go/no-go gate, then bulk-push
+  the remaining ~16.
 
 ## Plan
 
@@ -169,16 +174,50 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] **3.4** Run it. Spot-check 3-5 resulting Actions runs for a clean deploy before
       considering the phase done.
 
-### Phase 4 — the 19 repos still building locally (deferred; not in this plan's execution scope)
-- [ ] **4.1** Do NOT bundle into Phase 3. These 19 need `static.yml` fully replaced with the
-      ECR-pull template — a genuine behavior change (local `docker build` → prebuilt image),
-      not cleanup, and deserves its own plan with its own pilot/rollout care (see
-      Follow-ups). Fixing their Dockerfile's stale `#prreviewJune23` dev-stage ADD line
-      (cosmetic, CI-inert per the Constraints section) can happen opportunistically without
-      waiting for the full static.yml migration, if desired.
+### Phase 4 — migrate the 19 repos still building locally (staged, in scope)
+- [ ] **4.1** Kept as a distinct phase from Phase 3 — this is a genuine behavior change
+      (local `docker build --target=prod` inside `static.yml` → pulling the prebuilt ECR
+      image), not dead-code cleanup, so it gets its own pilot/verify/gate sequence rather
+      than sharing Phase 3's single confirmation.
+- [ ] **4.2** Pilot on 3 repos chosen for structural diversity, not convenience — each
+      covers a different divergent shape found in the audit, so a template mismatch surfaces
+      on 3 repos instead of on repo #14 of a 19-repo bulk push:
+      - `cFOS-GKE-Workshop` — oldest/most divergent overall (`checkout@v3`,
+        `configure-pages@v3`, `deploy-pages@v2`; the only repo in this group with both
+        `Dockerfile` and `Dockerfile-dev`)
+      - `fortigate-azure-sdwan-networking-workshop` — most divergent workflow logic (no
+        retry-backoff loop, uses `sleep 5` instead of `docker wait`, no `image_variant`
+        dispatch input)
+      - `FortiADCIntro` — representative of the common 9-repo cluster
+        (`Code-Security-Workshop`, `Forti-ProductXYZ`, `FortiADCIntro`, `FortiCNAPPRoadshow`,
+        `FortiCNF`, `FortiDevOps-v2025`, `FortiDevSec-Workshop`, `FortiSASE`,
+        `FortiWeb-Azure-ZTNA-FortiSoar`) that all run byte-similar old pre-ECR templates
+      For each pilot: replace `.github/workflows/static.yml` with CentralRepo's current
+      canonical `scripts/static.yml`, delete the local `Dockerfile` (and `Dockerfile-dev`
+      for `cFOS-GKE-Workshop`), push, and watch the resulting Actions run to completion.
+- [ ] **4.3** Verify: each of the 3 pilots' GitHub Pages deploy actually succeeds and serves
+      the same content as before (spot-check the live site, not just a green checkmark —
+      a workflow can report success while deploying stale or empty `docs/`).
+- [ ] **4.4** **Explicit go/no-go checkpoint** before touching the remaining ~16 — if any
+      pilot's deploy broke or behaved differently, stop and diagnose before scaling out; do
+      not treat 2-of-3 pilots succeeding as good enough to proceed.
+- [ ] **4.5** Bulk-push the same `static.yml` replacement + Dockerfile deletion to the
+      remaining 16 repos (`api-and-websvc-fundamentals`, `cloud-architectures`,
+      `forticnapp-code-security-demo`, `fortiweb-threat-protection`,
+      `getting-started-general` [+ its `Dockerfile-dev`], `k8s-201-workshop`,
+      `k8s-202-workshop`, `technical-recipe-azure-fweb-ztna-fortisoar`,
+      `Code-Security-Workshop`, `Forti-ProductXYZ`, `FortiCNAPPRoadshow`, `FortiCNF`,
+      `FortiDevOps-v2025`, `FortiDevSec-Workshop`, `FortiSASE`,
+      `FortiWeb-Azure-ZTNA-FortiSoar`).
+- [ ] **4.6** Spot-check 4-5 of the resulting Actions runs for a clean deploy, same as
+      Phase 3.3.
 
 ## Plan Changes
-- (none yet)
+- **2026-08-25, still Proposed:** initial draft deferred the 19 "still builds locally"
+  repos to a separate future plan (Phase 4 was a stub). User asked for it folded into this
+  plan's execution scope instead, with the risk addressed via a staged
+  pilot-3/verify/gate/bulk-16 sequence rather than one flat 19-repo push. Phase 4 rewritten
+  accordingly; see Plan below and the now-removed "Phase 4 own plan" Follow-up.
 
 ## Decisions & Commentary
 - **Branch name: `dev`**, not `develop` — matches existing org convention
@@ -201,9 +240,11 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - **Split the modernization ask into "safe" (33 repos, Phase 3) vs "behavior-changing" (19
   repos, Phase 4) rather than treating all 52 uniformly** — the user's framing ("nobody
   builds locally anymore... if applicable modernize") anticipated the first group; the
-  second group's discovery changes the risk profile enough that bundling them into one
-  bulk direct-push felt wrong. Recommending Phase 4 be its own plan rather than silently
-  expanding this one's blast radius past what was approved.
+  second group's discovery changes the risk profile enough that it needed its own
+  pilot/verify/gate sequence rather than sharing Phase 3's single confirmation. Initially
+  proposed deferring Phase 4 to a separate future plan entirely; user asked for it folded
+  into this plan's scope instead — addressed by staging it (3 structurally-diverse pilots
+  → verify → gate → bulk the rest) rather than flattening it into one 19-repo push.
 - **Left already-instantiated workshop repos' stale docs (2 CLAUDE.md files, several
   `content/*.md` "Getting Started" pages) out of required scope** — cosmetic/documentation
   drift only, no functional breakage, high fan-out cost relative to value. Logged as a
@@ -225,8 +266,6 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 - [ ] `Status:` set to `Complete`
 
 ## Follow-ups
-- [ ] Phase 4 (19 repos still building locally from their own Dockerfile) — own plan,
-      pilot on 2-3 repos first, verify a clean Pages deploy before wider rollout.
 - [ ] Fix the 2 downstream repos whose own `CLAUDE.md` documents the stale
       `#prreviewJune23` pin as current fact (`Public-Cloud-104-CNAPP`, `k8s-101-workshop`) —
       cosmetic doc drift, low urgency.
