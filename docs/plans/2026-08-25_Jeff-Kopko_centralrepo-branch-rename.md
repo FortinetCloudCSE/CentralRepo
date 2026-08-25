@@ -121,7 +121,7 @@ Log File: docs/plans/2026-08-25_Jeff-Kopko_centralrepo-branch-rename.log.md
 ## Plan
 
 ### Phase 1 — CentralRepo itself (required, blocking, no external dependency)
-- [ ] **1.1** On `prreviewJune23`, in one commit, update every in-repo reference from
+- [x] **1.1** On `prreviewJune23`, in one commit, update every in-repo reference from
       `prreviewJune23` to `dev`:
   - `.github/workflows/ci.yml:5` — `branches: [prreviewJune23]` → `[dev]`
   - `.github/workflows/image-build-push-dev.yaml:6` — `branches: ["prreviewJune23"]` → `["dev"]`

@@ -368,7 +368,7 @@ The `CloudCSEMovie` variant replaces the static header image with a looping MP4 
 
 ## Testing
 
-Tests live in `scripts/test/`. CI runs automatically on push to `prreviewJune23` and on PRs to `main`.
+Tests live in `scripts/test/`. CI runs automatically on push to `dev` and on PRs to `main`.
 
 **Run locally:**
 ```bash
