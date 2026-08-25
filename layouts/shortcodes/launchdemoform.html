@@ -47,10 +47,12 @@
   .launchdemoform__status--ok { color: #0a7a2f; }
   .launchdemoform__status--err { color: #b00020; }
   .launchdemoform__progress { grid-column: 1 / -1; display: grid; gap: .3rem; }
+  .launchdemoform__progress[hidden] { display: none; }
   .launchdemoform__progress-track { width: 100%; height: .5rem; border-radius: 999px; background: #e3e8f5; overflow: hidden; }
   .launchdemoform__progress-fill { height: 100%; width: 0%; background: #0065ff; transition: width .3s ease; }
   .launchdemoform__progress-label { color: #444; font-size: .9em; }
   .launchdemoform__credentials { grid-column: 1 / -1; display: grid; gap: .35rem; padding: .75rem; border: 1px solid #c8e6c9; border-radius: 6px; background: #f3fbf3; font-size: .95em; }
+  .launchdemoform__credentials[hidden] { display: none; }
   .launchdemoform__credentials dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; margin: 0; }
   .launchdemoform__credentials dt { font-weight: 600; color: #333; }
   .launchdemoform__credentials dd { margin: 0; color: #222; word-break: break-word; }
