@@ -4,24 +4,6 @@
 
 ## [Unreleased]
 
-### feat(shortcodes): launchdemoform — real progress, on-page credentials, single-attempt lock
-
-`launchdemoform` no longer POSTs `mode:'no-cors'` to the raw Azure Automation webhook and waits for an email that may not arrive in time. It now calls the new `fortinet-on-demand-labs-provisioning-and-tracking` Durable Function API with a normal, readable `fetch`, polls a status endpoint every 4-20s (backing off on repeated identical status), and renders a progress bar + step label while provisioning runs. On success it renders a credential card (username, sign-in info, resource group, expiry, Azure portal link) directly on the page instead of relying on email as the only delivery path.
-
-Attempt state (status, poll token, credentials) persists in `sessionStorage`, keyed under `window.relearn.absBaseUri` plus the `lab` value — the same site-scoping convention the deployment-path gate uses — so a reload resumes an in-flight attempt or shows the stored credential card without a new network call, and two different labs never share a lock. The button disables permanently once any attempt exists for that site+lab; only a stored `Failed` terminal status re-enables a "Retry Provisioning" button showing the prior failure reason. This is a client-side convenience only — the backend's own idempotency key is the real guarantee against double-provisioning.
-
-New optional site param `provisionApiBaseUrl` supplies the Function's base URL. Unset, the shortcode still renders and gates on check-in as before, but shows a "not configured" message on click rather than calling a nonexistent endpoint. Wiring it through `repoConfig.schema.json` and `scripts/templates/hugo.jinja` also closes a latent bug in the param it replaces: the old `webhookUrl` site param was read in `launchdemoform.html` but never emitted by `hugo.jinja` into `hugo.toml`, so every real build silently used the hardcoded webhook default regardless of what a repo configured.
-
-The exact `/api/provision/start` and `/api/provision/status/{token}` JSON field names are a documented assumption (see `docs/plans/2026-08-24_Jeff-Kopko_launchdemoform-rebuild.md`, Decisions & Commentary) — the backend repo's HTTP endpoints (Phase 4 of its own plan) had not been implemented yet at the time this shipped. Field access is isolated in two normalizer functions in the shortcode so a contract mismatch is a one-function fix.
-
-**Files changed**
-| File | Change |
-|------|--------|
-| `layouts/shortcodes/launchdemoform.html` | Full rework: JSON `fetch` to the new API, poll loop with backoff, progress UI, credential card, sessionStorage-backed single-attempt lock and retry-after-failure |
-| `scripts/repoConfig.schema.json` | Add optional `provisionApiBaseUrl` |
-| `scripts/templates/hugo.jinja` | Emit `provisionApiBaseUrl` into `hugo.toml` when set |
-| `README.md` | Rewrite the `launchdemoform` section; document the new site param |
-
 ### ci(image): pin the Hugo base image and stop rebuilding on docs-only pushes
 
 Two independent ways a CentralRepo merge could hand all 65 workshop repos an unintended change are now closed.

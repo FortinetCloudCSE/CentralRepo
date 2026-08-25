@@ -20,7 +20,6 @@
     "marketingCode":        { "type": "string" },
     "analyticsBaseUrl":     { "type": "string" },
     "quizUrl":              { "type": "string" },
-    "provisionApiBaseUrl":  { "type": "string" },
     "videoHeaderSrc":       { "type": "string" },
     "videoHeaderInterval":  { "type": ["string", "number"] },
     "bannerLine1":          { "type": "string" },
