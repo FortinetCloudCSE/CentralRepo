@@ -1,24 +1,20 @@
 {{/*
-  Launch button shortcode
+  Improved launch button shortcode
   Usage in Markdown:
     {{< launchdemoform lab="My-Lab-Definition" >}}
   Notes:
-  - Reads user ID/email from cookies (`fortiuser`/`fortiemail`, set by analytics_checkin.html)
-  - POSTs JSON to the Azure Durable Function's /api/provision/start, then polls
-    /api/provision/status/{token} for real progress and, on success, credentials.
-  - Attempt state (status/token/credentials) is persisted per Hugo site + lab in
-    sessionStorage, keyed under window.relearn.absBaseUri the same way the
-    deployment-path gate in custom-header.html scopes its own storage key.
+  - Reads user ID from cookie `fortiuser` (set by analytics_checkin.html)
+  - Posts application/x-www-form-urlencoded with required fields
+  - Better UX: disabled state, progress indicator, inline success/error
 */}}
 
 {{ $lab := .Get "lab" | default (.Get "labdefinition") }}
 {{ $debug := .Get "debug" | default "false" }}
 {{ $customer := .Get "customer" | default "" }}
 {{ $smartticket := .Get "smartticket" | default "" }}
-{{ $apiBase := .Site.Params.provisionApiBaseUrl | default "" }}
-{{ $siteId := .Site.Params.repoName | default "" }}
+{{ $webhookUrl := .Site.Params.webhookUrl | default "https://f1dcf3d2-d4e7-45f4-ac93-5394986d1fb4.webhook.eus.azure-automation.net/webhooks?token=6P53UsBtue8SV1dzMVHc27oVmNgMxDIQJX42fUYwazE%3d" }}
 
-<div class="launchdemoform" data-labdefinition="{{ $lab }}" data-debug="{{ $debug }}" data-site-id="{{ $siteId }}" data-api-base="{{ $apiBase }}">
+<div class="launchdemoform" data-labdefinition="{{ $lab }}" data-debug="{{ $debug }}">
   <div class="launchdemoform__desc">
     <strong>Provision your Portal Accounts</strong>
     <div class="launchdemoform__sub">Required for hands-on portion of this workshop</div>
@@ -27,16 +23,11 @@
   <button type="button" class="launchdemoform__btn">Provision Accounts</button>
   <button type="button" class="launchdemoform__btn-alt" title="Update the email used for provisioning">Change Email</button>
   <span class="launchdemoform__status" aria-live="polite"></span>
-  <div class="launchdemoform__progress" hidden aria-live="polite">
-    <div class="launchdemoform__progress-track"><div class="launchdemoform__progress-fill"></div></div>
-    <div class="launchdemoform__progress-label"></div>
-  </div>
-  <div class="launchdemoform__credentials" hidden aria-live="polite"></div>
   <noscript><em>JavaScript is required to provision your lab.</em></noscript>
 </div>
 
 <style>
-  .launchdemoform { display: grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid #e3e3e3; border-radius: 8px; }
+  .launchdemoform { display: inline-grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid #e3e3e3; border-radius: 8px; }
   .launchdemoform__desc { grid-column: 1 / span 1; }
   .launchdemoform__sub { color: #666; font-size: .9em; }
   .launchdemoform__who { color: #444; font-size: .9em; margin-top: .25rem; }
@@ -46,15 +37,6 @@
   .launchdemoform__status { grid-column: 1 / -1; font-size: .95em; }
   .launchdemoform__status--ok { color: #0a7a2f; }
   .launchdemoform__status--err { color: #b00020; }
-  .launchdemoform__progress { grid-column: 1 / -1; display: grid; gap: .3rem; }
-  .launchdemoform__progress-track { width: 100%; height: .5rem; border-radius: 999px; background: #e3e8f5; overflow: hidden; }
-  .launchdemoform__progress-fill { height: 100%; width: 0%; background: #0065ff; transition: width .3s ease; }
-  .launchdemoform__progress-label { color: #444; font-size: .9em; }
-  .launchdemoform__credentials { grid-column: 1 / -1; display: grid; gap: .35rem; padding: .75rem; border: 1px solid #c8e6c9; border-radius: 6px; background: #f3fbf3; font-size: .95em; }
-  .launchdemoform__credentials dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; margin: 0; }
-  .launchdemoform__credentials dt { font-weight: 600; color: #333; }
-  .launchdemoform__credentials dd { margin: 0; color: #222; word-break: break-word; }
-  .launchdemoform__credentials a { color: #0065ff; }
 </style>
 
 {{ partial "prefill-useremail.html" . }}
@@ -77,122 +59,23 @@
       return;
     }
 
-    // Guards against this exact instance's script re-running (e.g. a second
-    // output format rendering the same page content) without preventing other
-    // launchdemoform instances on the same page (different lab) from working —
-    // a page-wide window flag would silently no-op every instance after the first.
-    if (root.dataset.launchdemoformInit === '1') return;
-    root.dataset.launchdemoformInit = '1';
-
+    const POST_URL = "{{ $webhookUrl }}";
     const labdefinition = root.getAttribute('data-labdefinition') || '';
     const DEBUG = (root.getAttribute('data-debug') || '').toString().toLowerCase() === 'true';
-    const SITE_ID = (root.getAttribute('data-site-id') || (location.pathname.split('/').filter(Boolean)[0] || '')).toLowerCase();
-    const API_BASE = (root.getAttribute('data-api-base') || '').replace(/\/+$/, '');
-    const CUSTOMER = {{ printf "%q" $customer }};
-    const SMARTTICKET = {{ printf "%q" $smartticket }};
 
     const btn = root.querySelector('.launchdemoform__btn');
     const statusEl = root.querySelector('.launchdemoform__status');
     const whoEl = root.querySelector('.launchdemoform__who');
     const changeBtn = root.querySelector('.launchdemoform__btn-alt');
-    const progressEl = root.querySelector('.launchdemoform__progress');
-    const progressFillEl = root.querySelector('.launchdemoform__progress-fill');
-    const progressLabelEl = root.querySelector('.launchdemoform__progress-label');
-    const credsEl = root.querySelector('.launchdemoform__credentials');
 
-    // --- Storage helpers -----------------------------------------------
-    // sessionStorage, prefixed with window.relearn.absBaseUri + the lab id, so
-    // (a) credentials/lock don't leak across the ~65 workshop sites sharing one
-    // GitHub Pages origin, and (b) two different-lab buttons on the same page
-    // don't share a lock. Matches the pathgate key convention in
-    // custom-header.html. Every call is try/catch-wrapped for private
-    // browsing / storage-disabled, matching saveProfileEmail's convention below.
-    const storageBase = ((window.relearn && window.relearn.absBaseUri) || '') + '/launchdemoform/' + encodeURIComponent(labdefinition);
-    const KEY_ATTEMPT = storageBase + '/attempt';
-    const KEY_TOKEN = storageBase + '/token';
-    const KEY_CREDENTIALS = storageBase + '/credentials';
-
-    function storageGet(key) {
-      try { return window.relearn.getItem(window.sessionStorage, key); } catch (e) { return null; }
-    }
-    function storageSet(key, value) {
-      try { window.relearn.setItem(window.sessionStorage, key, value); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageSet failed', e); }
-    }
-    function storageRemove(key) {
-      try { window.relearn.removeItem(window.sessionStorage, key); } catch (e) { if (DEBUG) console.warn('launchdemoform: storageRemove failed', e); }
-    }
-    function readJSON(key) {
-      const raw = storageGet(key);
-      if (!raw) return null;
-      try { return JSON.parse(raw); } catch (e) { return null; }
-    }
-    function writeJSON(key, value) {
-      try { storageSet(key, JSON.stringify(value)); } catch (e) { if (DEBUG) console.warn('launchdemoform: writeJSON failed', e); }
+    function setStatus(text, type) {
+      statusEl.textContent = text || '';
+      statusEl.classList.remove('launchdemoform__status--ok','launchdemoform__status--err');
+      if (type === 'ok') statusEl.classList.add('launchdemoform__status--ok');
+      if (type === 'err') statusEl.classList.add('launchdemoform__status--err');
+      if (DEBUG) console.debug('launchdemoform: status', { text, type });
     }
 
-    function readAttempt() { return readJSON(KEY_ATTEMPT); }
-    function writeAttempt(attempt) { writeJSON(KEY_ATTEMPT, attempt); }
-    function readCredentials() { return readJSON(KEY_CREDENTIALS); }
-    function writeCredentials(creds) { writeJSON(KEY_CREDENTIALS, creds); }
-    function readToken() { return storageGet(KEY_TOKEN); }
-    function writeToken(token) { storageSet(KEY_TOKEN, token); }
-    function clearAttempt() {
-      storageRemove(KEY_ATTEMPT);
-      storageRemove(KEY_TOKEN);
-      storageRemove(KEY_CREDENTIALS);
-    }
-
-    // --- Contract normalizers -------------------------------------------
-    // The backend (fortinet-on-demand-labs-provisioning-and-tracking) had not
-    // implemented its HTTP endpoints yet at the time this shortcode was
-    // written — only its spec/plan existed. Field names below are a
-    // documented, reasonable assumption (see this repo's plan file,
-    // Decisions & Commentary), isolated here so a later contract mismatch is
-    // a one-function fix rather than a scattered one.
-    function parseStartResponse(data) {
-      data = data || {};
-      return {
-        token: data.token || data.instanceToken || '',
-        status: data.status || 'Pending',
-        isDuplicate: !!data.isDuplicate
-      };
-    }
-    function parseStatusResponse(data) {
-      data = data || {};
-      return {
-        status: data.status || 'Pending',
-        percent: typeof data.percent === 'number' ? data.percent : 0,
-        step: data.step || data.currentStep || '',
-        error: data.error || null,
-        credentials: data.credential ? normalizeCredential(data.credential) : null,
-        retryAfterSeconds: typeof data.retryAfterSeconds === 'number' ? data.retryAfterSeconds : null
-      };
-    }
-
-    // Real backend shape confirmed live 2026-08-25 (see this repo's plan file, Plan
-    // Changes): a singular `credential` object with userPrincipalName/
-    // temporaryAccessPass/resourceGroups (an array, not one group)/labDurationDays —
-    // not the guessed username/signInInfo/resourceGroup/expiry shape. Mapped here so
-    // renderCredentialCard's display-side rows don't need to change.
-    function normalizeCredential(raw) {
-      raw = raw || {};
-      const days = raw.labDurationDays;
-      let duration = '';
-      if (typeof days === 'number') {
-        duration = days < 1 ? Math.round(days * 24) + ' hours' : days + ' day' + (days === 1 ? '' : 's');
-      }
-      return {
-        username: raw.userPrincipalName || '',
-        signInInfo: raw.temporaryAccessPass
-          ? 'Temporary Access Pass: ' + raw.temporaryAccessPass
-          : '',
-        resourceGroup: Array.isArray(raw.resourceGroups) ? raw.resourceGroups.join(', ') : (raw.resourceGroups || ''),
-        expiry: duration,
-        portalUrl: 'https://portal.azure.com'
-      };
-    }
-
-    // --- Cookie / profile helpers (unchanged from prior version) --------
     function getStoredEmail() {
       const emailCookie = (window.getCookieVal && getCookieVal('fortiemail')) || '';
       if (emailCookie) return emailCookie;
@@ -223,13 +106,7 @@
       } catch (e) { if (DEBUG) console.warn('launchdemoform: saveProfileEmail failed', e); }
     }
 
-    function gateDisabled() {
-      const email = getStoredEmail();
-      const uid = (window.getCookieVal && getCookieVal('fortiuser')) || '';
-      return !(email && uid);
-    }
-
-    function updateWhoText() {
+    function updateWho() {
       const email = getStoredEmail();
       const uid = (window.getCookieVal && getCookieVal('fortiuser')) || '';
       if (DEBUG) console.debug('launchdemoform: updateWho', { email, uid, labdefinition });
@@ -240,235 +117,50 @@
       } else {
         whoEl.textContent = 'Please check-in before provisioning.';
       }
-      btn.title = !(email && uid) ? 'Check-in required to capture your email' : '';
+      // Disable button until both session and email exist
+      btn.disabled = !(email && uid);
+      btn.title = btn.disabled ? 'Check-in required to capture your email' : '';
     }
 
-    function setStatus(text, type) {
-      statusEl.textContent = text || '';
-      statusEl.classList.remove('launchdemoform__status--ok','launchdemoform__status--err');
-      if (type === 'ok') statusEl.classList.add('launchdemoform__status--ok');
-      if (type === 'err') statusEl.classList.add('launchdemoform__status--err');
-      if (DEBUG) console.debug('launchdemoform: status', { text, type });
-    }
-
-    function setProgress(pct, label) {
-      const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      progressFillEl.style.width = clamped + '%';
-      progressLabelEl.textContent = (label ? label + ' — ' : '') + clamped + '%';
-    }
-
-    function showProgress(pct, label) {
-      progressEl.hidden = false;
-      setProgress(pct, label);
-    }
-    function hideProgress() { progressEl.hidden = true; }
-
-    function renderCredentialCard(creds) {
-      credsEl.innerHTML = '';
-      const dl = document.createElement('dl');
-      const rows = [
-        ['Username', creds.username],
-        ['Sign-in info', creds.signInInfo],
-        ['Resource group', creds.resourceGroup],
-        ['Lab duration', creds.expiry]
-      ];
-      rows.forEach(function (row) {
-        if (!row[1]) return;
-        const dt = document.createElement('dt'); dt.textContent = row[0];
-        const dd = document.createElement('dd'); dd.textContent = row[1];
-        dl.appendChild(dt); dl.appendChild(dd);
-      });
-      credsEl.appendChild(dl);
-      if (creds.portalUrl) {
-        const link = document.createElement('a');
-        link.href = creds.portalUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = 'Open Azure Portal';
-        credsEl.appendChild(link);
-      }
-      credsEl.hidden = false;
-    }
-    function hideCredentials() { credsEl.hidden = true; credsEl.innerHTML = ''; }
-
-    // --- Polling ----------------------------------------------------------
-    const poll = { timer: null, activeToken: null, delay: 4000, lastSignature: null };
-    const POLL_DELAY_MIN = 4000;
-    const POLL_DELAY_MAX = 20000;
-    const POLL_DELAY_STEP = 2000;
-
-    function statusUrlFor(token) {
-      return API_BASE + '/api/provision/status/' + encodeURIComponent(token);
-    }
-
-    function scheduleNextPoll(token) {
-      if (poll.timer) clearTimeout(poll.timer);
-      poll.timer = setTimeout(function () { pollStatus(token); }, poll.delay);
-    }
-
-    async function pollStatus(token) {
-      try {
-        const resp = await fetch(statusUrlFor(token));
-        if (!resp.ok) throw new Error('status endpoint returned ' + resp.status);
-        const parsed = parseStatusResponse(await resp.json());
-        const signature = parsed.status + '|' + parsed.percent + '|' + parsed.step;
-        if (signature === poll.lastSignature) {
-          poll.delay = Math.min(POLL_DELAY_MAX, poll.delay + POLL_DELAY_STEP);
-        } else {
-          poll.delay = POLL_DELAY_MIN;
-          poll.lastSignature = signature;
-        }
-        writeAttempt({ status: parsed.status, percent: parsed.percent, step: parsed.step, error: parsed.error, retryAfterSeconds: parsed.retryAfterSeconds });
-        if ((parsed.status || '').toLowerCase() === 'completed' && parsed.credentials) {
-          writeCredentials(parsed.credentials);
-        }
-        render();
-        // Completed/Failed are the two outcomes a participant retries from; Duplicate/
-        // RateLimited are also permanent (the underlying orchestration is done and will
-        // never change) — all four stop polling, or a poll would hit an unchanging
-        // response forever.
-        const statusLower = (parsed.status || '').toLowerCase();
-        if (['completed', 'failed', 'duplicate', 'ratelimited'].indexOf(statusLower) !== -1) {
-          poll.activeToken = null;
-          return;
-        }
-        scheduleNextPoll(token);
-      } catch (err) {
-        if (DEBUG) console.warn('launchdemoform: poll failed, retrying', err);
-        poll.delay = Math.min(POLL_DELAY_MAX, poll.delay + POLL_DELAY_STEP);
-        scheduleNextPoll(token);
-      }
-    }
-
-    function ensurePolling(token) {
-      if (!token || poll.activeToken === token) return;
-      poll.activeToken = token;
-      poll.delay = POLL_DELAY_MIN;
-      poll.lastSignature = null;
-      pollStatus(token);
-    }
-
-    // --- Start a new attempt ----------------------------------------------
-    async function startProvisioning() {
-      if (gateDisabled()) { render(); return; }
-      if (!API_BASE) {
-        writeAttempt({ status: 'Failed', percent: 0, step: '', error: 'Provisioning is not configured for this workshop yet.' });
-        render();
+    async function doPost() {
+      const uid = (window.getCookieVal && getCookieVal('fortiuser')) || '';
+      const email = getStoredEmail();
+      if (!email || !uid) {
+        updateWho();
+        setStatus(!email ? 'Email required. Please check-in to continue.' : 'Session not initialized. Refresh or re-check-in.', 'err');
         return;
       }
-      const email = getStoredEmail();
       setStatus('Starting provisioning...', '');
       btn.disabled = true; btn.setAttribute('aria-busy', 'true');
 
-      const payload = {
-        email: email,
-        labDefinition: labdefinition,
-        sourceSite: SITE_ID,
-        customer: CUSTOMER,
-        smartTicket: SMARTTICKET
-      };
-      if (DEBUG) console.info('launchdemoform: POST /api/provision/start', payload);
+      const body = new URLSearchParams({
+        customer: '{{ $customer }}',
+        smartticket: '{{ $smartticket }}',
+        useremail: email,
+        userop: 'Create',
+        odlconfigname: labdefinition
+      });
+      if (DEBUG) console.info('launchdemoform: POST', { url: POST_URL, body: body.toString() });
       try {
-        const resp = await fetch(API_BASE + '/api/provision/start', {
+        // Azure Automation webhooks don't return CORS headers, so use no-cors mode.
+        // The request is still sent; we just can't read the response (opaque).
+        await fetch(POST_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+          mode: 'no-cors'
         });
-        if (!resp.ok) throw new Error('start endpoint returned ' + resp.status);
-        const parsed = parseStartResponse(await resp.json());
-        if (!parsed.token) throw new Error('start endpoint returned no token');
-        writeToken(parsed.token);
-        writeAttempt({ status: parsed.status, percent: 0, step: parsed.isDuplicate ? 'Resuming existing attempt' : '', error: null });
-        render(); // pending/running branch starts polling via ensurePolling(readToken())
+        if (DEBUG) console.info('launchdemoform: request sent (no-cors, response opaque)');
+        setStatus('Provisioning request sent. Please wait for your lab to be prepared.', 'ok');
       } catch (err) {
-        if (DEBUG) console.error('launchdemoform: start failed', err);
-        writeAttempt({ status: 'Failed', percent: 0, step: '', error: 'Network error while starting provisioning: ' + (err && err.message ? err.message : err) });
-        render();
+        if (DEBUG) console.error('launchdemoform: network error', err);
+        setStatus('Network error while provisioning: ' + (err && err.message ? err.message : err), 'err');
       } finally {
-        btn.removeAttribute('aria-busy');
+        btn.disabled = false; btn.removeAttribute('aria-busy');
       }
     }
 
-    // --- Render: single source of truth for button/progress/credentials --
-    function render() {
-      updateWhoText();
-      const disabledByGate = gateDisabled();
-      const attempt = readAttempt();
-
-      if (!attempt) {
-        btn.hidden = false;
-        btn.disabled = disabledByGate;
-        btn.textContent = 'Provision Accounts';
-        hideProgress();
-        hideCredentials();
-        return;
-      }
-
-      const status = (attempt.status || '').toLowerCase();
-
-      if (status === 'completed') {
-        const creds = readCredentials();
-        btn.hidden = false;
-        btn.disabled = true;
-        btn.textContent = 'Already Provisioned';
-        hideProgress();
-        if (creds) {
-          renderCredentialCard(creds);
-          setStatus('Your accounts are ready.', 'ok');
-        } else {
-          setStatus('Provisioning complete.', 'ok');
-        }
-        return;
-      }
-
-      if (status === 'failed') {
-        btn.hidden = false;
-        btn.disabled = disabledByGate;
-        btn.textContent = 'Retry Provisioning';
-        hideProgress();
-        hideCredentials();
-        setStatus('Provisioning failed: ' + (attempt.error || 'unknown error'), 'err');
-        return;
-      }
-
-      if (status === 'ratelimited' || status === 'duplicate') {
-        // Both are permanent outcomes of *this* attempt (the underlying orchestration
-        // already finished) — without a retry affordance the participant would be
-        // stuck on this state forever, since nothing will poll it again.
-        btn.hidden = false;
-        btn.disabled = disabledByGate;
-        btn.textContent = 'Retry Provisioning';
-        hideProgress();
-        hideCredentials();
-        const wait = typeof attempt.retryAfterSeconds === 'number' ? Math.ceil(attempt.retryAfterSeconds) : null;
-        setStatus(
-          status === 'ratelimited'
-            ? ('Please wait' + (wait ? ' ~' + wait + 's' : ' a moment') + ' before trying again.')
-            : 'An attempt for this lab is already in progress or complete.',
-          'err'
-        );
-        return;
-      }
-
-      // Pending / Running — in-flight, resume polling if not already active.
-      btn.hidden = false;
-      btn.disabled = true;
-      btn.textContent = 'Provisioning...';
-      hideCredentials();
-      showProgress(attempt.percent || 0, attempt.step || 'Starting');
-      setStatus('', '');
-      const token = readToken();
-      if (token) ensurePolling(token);
-    }
-
-    btn.addEventListener('click', function () {
-      const attempt = readAttempt();
-      const status = attempt ? (attempt.status || '').toLowerCase() : '';
-      if (!attempt) { startProvisioning(); return; }
-      if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); }
-      // Any other state: button is disabled, click is a no-op.
-    });
-
+    btn.addEventListener('click', doPost);
     if (changeBtn) {
       changeBtn.addEventListener('click', function () {
         const current = getStoredEmail();
@@ -479,12 +171,12 @@
         setCookieSimple('fortiemail', entered, 5);
         saveProfileEmail(entered);
         setStatus('Email updated to ' + entered, 'ok');
-        render();
+        updateWho();
       });
     }
-
-    render();
-    window.addEventListener('focus', render);
-    if (DEBUG) console.debug('launchdemoform: initialized', { API_BASE, SITE_ID, labdefinition });
+    updateWho();
+    // Refresh state if cookies change between page focus cycles
+    window.addEventListener('focus', updateWho);
+    if (DEBUG) console.debug('launchdemoform: initialized');
   })();
 </script>
