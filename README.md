@@ -68,10 +68,11 @@ Site param: `provisionApiBaseUrl` (see [Site params referenced](#site-params-ref
 
 Behavior:
 - Reads `fortiuser` and `fortiemail` (or local profile) to populate the request; button stays disabled until both are present, same as before.
+- Before showing the plain button (only once an email is known and no local attempt exists yet), calls `GET {provisionApiBaseUrl}/api/provision/lookup?email=...&labDefinition=...` — if the participant already has a valid credential from an earlier workshop in the same series (or an identical lab-definition, e.g. K8s 101/201/202), shows a choice instead: **Reuse These Credentials** (renders the returned credential directly, no `/start` call) or **Provision New For This Workshop** (proceeds with the normal flow below). Declining reuse is remembered per site+lab only — it doesn't suppress the offer on a different page in the series.
 - `POST {provisionApiBaseUrl}/api/provision/start` (JSON, normal `fetch` — this replaced the old `mode:'no-cors'` webhook POST) starts or resumes an attempt; a same-participant duplicate is treated as a normal resume, not an error.
 - Polls `GET {provisionApiBaseUrl}/api/provision/status/{token}` every 4-20s (backs off on repeated identical status) and renders a progress bar + step label.
-- On terminal success, renders a credential card (username, sign-in info, resource group, expiry, Azure portal link) in place of the button.
-- Attempt status, poll token, and credentials persist in `sessionStorage`, scoped per site (`window.relearn.absBaseUri`-prefixed) and per `lab` value, so a reload resumes cleanly and two different labs on one site don't share a lock. The button disables permanently once any attempt exists for that site+lab; only a stored `Failed` status re-enables a "Retry Provisioning" button, showing the prior failure reason.
+- On terminal success, renders a credential card (username, sign-in info, resource group, expiry, "Reused from" when applicable, Azure portal link) in place of the button.
+- Attempt status, poll token, credentials, and the reuse-decline flag persist in `localStorage` (survives tab/browser closure), scoped per site (`window.relearn.absBaseUri`-prefixed) and per `lab` value, so a reload resumes cleanly and two different labs on one site don't share a lock. The button disables permanently once any attempt exists for that site+lab; only a stored `Failed` status re-enables a "Retry Provisioning" button, showing the prior failure reason.
 - The client-side lock is a UX convenience layered on the backend's own idempotency guarantee, not a substitute for it.
 
 See the UserRepo docs page (`content/02Hugo/8_azure_lab_provisioning/`) for the participant-facing walkthrough and gotchas.
