@@ -24,6 +24,10 @@ fast-forward as long as nothing is committed to `prreviewJune23` directly:
 
 Never push straight to `main` without a PR — it is protected, and a bypass is logged.
 
+**Route 2 incident, 2026-08-25 (real, not hypothetical):** a `launchdemoform` rebuild PR merged straight to `main` (route 2) without the required resync push — exactly the failure mode warned about above. Caught mid-flight: `image-build-push-prod.yaml`'s step 9 ("Build and push test image, **no latest tag**") had already completed, but step 13 ("Build and push multi-arch **latest** image, after tests pass") — the only step that actually touches the prod tag every workshop repo pulls — was still pending, so cancelling the run at that point left `fortinet-hugo:latest` completely untouched. **If a route-2 merge needs to be undone before the image finishes, `gh run view <id> --json jobs` to check whether the `latest`-tag push step has run yet — cancelling before it is fully safe, cancelling after it is not.** Redone correctly via route 1 (`prreviewJune23` first, confirmed its push-triggered CI green, then PR into `main`).
+
+**FortiDevSec SAST stage: broken/deprecated org-wide as of 2026-08-25, only some repos have it disabled.** Every actively-maintained repo checked that day has `when { expression { false } }` guarding the `Running FortiDevSec scans...` Jenkinsfile stage; several stale sibling repos (`FortiCNAPPRoadshow`, `forticnapp-code-security-demo`, `MGMT-in-AWS`, `fortigate-automation-stitch-workshop`, `fortiweb-threat-protection`, and `fortinet-on-demand-labs-provisioning-and-tracking`) didn't and their `ci/jenkins/build-status` required check failed on completely trivial, unrelated content PRs. If that check fails on an unrelated change anywhere in this org, check the Jenkinsfile for this exact pattern before assuming the PR's content is at fault.
+
 ## Project in One Line
 
 Shared Hugo partials, shortcodes, and themes consumed by all Fortinet CSE workshop sites —
