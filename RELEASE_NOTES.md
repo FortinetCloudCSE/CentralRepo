@@ -4,6 +4,33 @@
 
 ## [Unreleased]
 
+### feat(shortcodes): launchdemoform — reuse credentials across a linked workshop series
+
+Participants attending a multi-day combined session (e.g. K8s 101 → 201 → 202, often
+run back-to-back) no longer get a fresh Azure identity from every workshop's own
+`launchdemoform` click. Before showing the plain "Provision Accounts" button, the
+shortcode now calls a new backend endpoint (`GET /api/provision/lookup`) to check
+whether the participant already has a valid, unexpired credential from earlier in the
+same series — a new `series` field on the backend's lab-definitions links workshops
+together (K8s 101/201/202 already share one lab-definition, so they're linked with
+zero extra config). If found, the participant sees an explicit choice — reuse the
+existing credential, or provision a new one — rather than a silent decision either
+way; declining reuse behaves exactly like today.
+
+Backend side (`fortinet-on-demand-labs-provisioning-and-tracking`): a new per-email
+completion-history Durable Entity records every successful provisioning, and the
+orchestrator short-circuits identity creation (`create_ad_user`/`issue_tap`) when a
+valid same-series credential already exists — full design in that repo's
+`docs/plans/0002_2026-08-25_Jeff-Kopko_linked-workshop-credentials.md` (Status:
+Complete). UserRepo's `content/02Hugo/8_azure_lab_provisioning/index.md` documents
+the participant-facing choice, how to tag a lab-definition into a `series`, and how
+to trace a reused credential as an admin.
+
+**Files changed**
+| File | Change |
+|------|--------|
+| `layouts/shortcodes/launchdemoform.html` | Reuse-lookup call before rendering the plain button; new reuse-choice UI state |
+
 ### chore(branch): rename `prreviewJune23` → `dev`, modernize all 52 downstream repos' CI
 
 CentralRepo's dev-image branch is now `dev`, not `prreviewJune23` — renamed via GitHub's
