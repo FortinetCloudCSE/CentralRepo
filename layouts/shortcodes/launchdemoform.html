@@ -597,7 +597,12 @@
         const current = getStoredEmail();
         const entered = (prompt('Enter the email to use for provisioning:', current || '') || '').trim();
         if (!entered) return;
-        const looksEmail = /.+@.+\..+/.test(entered);
+        // Excludes <, >, " in addition to requiring an @ and a dot — this value
+        // goes into the same shared-domain fortiemail cookie/forti_profile
+        // localStorage that analytics_checkin.html and other consumers across
+        // every workshop site read back, so it must never carry HTML-breaking
+        // characters (see analytics_checkin.html's emailRegex for the same rule).
+        const looksEmail = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(entered);
         if (!looksEmail) { setStatus('Please enter a valid email address.', 'err'); return; }
         setCookieSimple('fortiemail', entered, 5);
         saveProfileEmail(entered);

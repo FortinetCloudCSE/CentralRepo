@@ -148,7 +148,13 @@ const form = document.getElementById('provision-lab');
 const statusEl = document.getElementById('checkin-status');
 const emailInput = document.getElementById('email');
 const submitBtn = form.querySelector('.btn-primary');
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Excludes <, >, " in addition to whitespace/extra-@ — this value is later
+// persisted to a shared-domain cookie/localStorage and rendered back on a
+// later page load, so it must never be able to break out of HTML. Deliberately
+// does NOT exclude ' or ` — both are valid RFC 5322 unquoted local-part
+// characters (e.g. o'brien@example.com) and neither alone can open a new HTML
+// tag or close a quoted attribute the way <, >, and " can.
+const emailRegex = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
 
 // No JS submission to silent endpoint here; explicit check-in always posts to /checkin.
 
@@ -218,12 +224,23 @@ form.addEventListener('submit', function(e) {
     <div class="checkin-card">
       <div class="checkin-title">Welcome!</div>
       <div class="checkin-sub">Thank you for checking in! Your session will persist for 90 days across the Fortinet CSE Workshop estate. You may now proceed with the workshop.</div>
-      ${knownEmail ? (`<div><i>Signed in as: ${knownEmail}</i></div>`) : ''}
       <div class="checkin-actions">
         <button class="btn-secondary" type="button" onclick="reProvision()">Revoke Check-in</button>
       </div>
     </div>
   `;
+  // Built via textContent, never innerHTML — knownEmail is stored cookie/
+  // localStorage data that could carry HTML-breaking characters from an
+  // older or malformed entry (emailRegex only guards new submissions). Only
+  // inserted when there's actually an email, matching the old ternary's
+  // behavior of omitting the element entirely rather than a blank div.
+  if (knownEmail) {
+    const emailLine = document.createElement('div');
+    const emailItalic = document.createElement('i');
+    emailItalic.textContent = 'Signed in as: ' + knownEmail;
+    emailLine.appendChild(emailItalic);
+    container.querySelector('.checkin-sub').insertAdjacentElement('afterend', emailLine);
+  }
 }
  </script>
 
