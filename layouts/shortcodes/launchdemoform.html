@@ -469,7 +469,15 @@
         if (!parsed.token) throw new Error('start endpoint returned no token');
         writeToken(parsed.token);
         writeAttempt({ status: parsed.status, percent: 0, step: parsed.isDuplicate ? 'Resuming existing attempt' : '', error: null });
-        render(); // pending/running branch starts polling via ensurePolling(readToken())
+        render();
+        // /start's own response never carries credentials/error detail (see
+        // parseStartResponse) — even when it reports a status that's already
+        // terminal (e.g. a completed record found for this email+lab), so always
+        // follow up with one /status fetch to get the authoritative record. Without
+        // this, a terminal status returned directly from /start left the attempt
+        // permanently stuck on "Completed" with no credentials ever fetched, since
+        // polling was previously only started for a still-in-flight status.
+        ensurePolling(parsed.token);
       } catch (err) {
         if (DEBUG) console.error('launchdemoform: start failed', err);
         writeAttempt({ status: 'Failed', percent: 0, step: '', error: 'Network error while starting provisioning: ' + (err && err.message ? err.message : err) });
@@ -542,7 +550,14 @@
           renderCredentialCard(creds, expired);
           setStatus(expired ? 'This lab has ended. Click Provision New Accounts to start a new one.' : 'Your accounts are ready.', expired ? '' : 'ok');
         } else {
-          setStatus('Provisioning complete.', 'ok');
+          // A Completed attempt with no stored credentials means /status was never
+          // successfully fetched for this token (e.g. /start itself reported
+          // Completed, which used to skip polling entirely — see startProvisioning).
+          // Retry that fetch here so the page self-heals on reload/focus instead of
+          // showing this placeholder forever.
+          const token = readToken();
+          if (token) ensurePolling(token);
+          setStatus('Fetching your credentials...', 'ok');
         }
         return;
       }
