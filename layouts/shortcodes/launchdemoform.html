@@ -165,6 +165,7 @@
       storageRemove(KEY_ATTEMPT);
       storageRemove(KEY_TOKEN);
       storageRemove(KEY_CREDENTIALS);
+      resetValidityCheck();
     }
     function readDeclinedReuse() { return storageGet(KEY_DECLINED_REUSE) === '1'; }
     function writeDeclinedReuse() { storageSet(KEY_DECLINED_REUSE, '1'); }
@@ -302,11 +303,26 @@
       return typeof creds.expiresAt === 'number' && Date.now() > creds.expiresAt;
     }
 
+    // Identifies a credential by the email that actually owns it (captured as
+    // creds.ownerEmail at each writeCredentials() call site) plus its username — not
+    // by the current
+    // getStoredEmail() (which "Change Email" can move out from under an already-
+    // displayed credential) and not by a provisioning token (the reuse-choice flow
+    // never has one; its credential comes straight from /lookup). Returns null when
+    // either half is missing — e.g. a credential written by a pre-this-fix client —
+    // so an untaggable credential just falls back to the local-only guess below
+    // rather than being treated as a match for anything.
+    function credentialIdentityKey(creds) {
+      if (!creds || !creds.ownerEmail || !creds.username) return null;
+      return creds.ownerEmail.toLowerCase() + '|' + creds.username.toLowerCase();
+    }
+
     // Single source of truth for render() and the click handler alike — see
     // checkCredentialStillValid's comment for why a server-confirmed `valid: false`
     // must override the client's own expiresAt guess rather than sit alongside it.
-    function isCredentialTrulyExpired(creds, token) {
-      if (token && validityCheck.token === token && validityCheck.valid === false) return true;
+    function isCredentialTrulyExpired(creds) {
+      const key = credentialIdentityKey(creds);
+      if (key && validityCheck.key === key && validityCheck.valid === false) return true;
       return creds ? credentialsExpired(creds) : false;
     }
 
@@ -359,21 +375,27 @@
       reuseCheckedForEmail = null;
     }
 
-    async function maybeCheckReuse(email) {
-      reuseCheckState = 'checking';
-      reuseCheckedForEmail = email;
+    // Shared by maybeCheckReuse and checkCredentialStillValid below — same endpoint,
+    // same params, same failure handling; keeping one copy means a contract change
+    // (param rename, added header, timeout) only has to be applied once.
+    async function fetchLookup(email) {
       try {
         const url = API_BASE + '/api/provision/lookup?email=' + encodeURIComponent(email) + '&labDefinition=' + encodeURIComponent(labdefinition);
         const resp = await fetch(url);
-        const data = resp.ok ? await resp.json() : null;
-        reuseOffer = (data && data.found) ? data : null;
+        return resp.ok ? await resp.json() : null;
       } catch (e) {
-        if (DEBUG) console.warn('launchdemoform: reuse lookup failed', e);
-        reuseOffer = null;
-      } finally {
-        reuseCheckState = 'done';
-        render();
+        if (DEBUG) console.warn('launchdemoform: lookup fetch failed', e);
+        return null;
       }
+    }
+
+    async function maybeCheckReuse(email) {
+      reuseCheckState = 'checking';
+      reuseCheckedForEmail = email;
+      const data = await fetchLookup(email);
+      reuseOffer = (data && data.found) ? data : null;
+      reuseCheckState = 'done';
+      render();
     }
 
     // --- Server-side validity check for the currently displayed credential -
@@ -385,21 +407,24 @@
     // labDurationDays window server-side, so `found:false` here is an authoritative
     // "this credential is actually gone" signal — used to override the client's naive
     // local guess rather than trusting it alone.
-    let validityCheck = { token: null, state: 'idle', valid: null };
+    //
+    // Keyed by credentialIdentityKey (owner email + username), not by a provisioning
+    // token — the reuse-choice flow's credential never has one. `pending` guards
+    // against re-triggering a fetch already in flight for the same key; `checkedAt`
+    // lets a long-lived tab periodically re-confirm instead of trusting one check
+    // forever (see VALIDITY_RECHECK_MS below).
+    let validityCheck = { key: null, valid: null, checkedAt: 0, pending: false };
+    const VALIDITY_RECHECK_MS = 5 * 60 * 1000;
 
-    async function checkCredentialStillValid(token) {
-      const email = getStoredEmail();
-      if (!email || !API_BASE) { validityCheck = { token: token, state: 'done', valid: null }; return; }
-      validityCheck = { token: token, state: 'checking', valid: null };
-      try {
-        const url = API_BASE + '/api/provision/lookup?email=' + encodeURIComponent(email) + '&labDefinition=' + encodeURIComponent(labdefinition);
-        const resp = await fetch(url);
-        const data = resp.ok ? await resp.json() : null;
-        validityCheck = { token: token, state: 'done', valid: data ? !!data.found : null };
-      } catch (e) {
-        if (DEBUG) console.warn('launchdemoform: validity check failed', e);
-        validityCheck = { token: token, state: 'done', valid: null };
-      }
+    function resetValidityCheck() { validityCheck = { key: null, valid: null, checkedAt: 0, pending: false }; }
+
+    async function checkCredentialStillValid(key, email) {
+      validityCheck = { key: key, valid: validityCheck.key === key ? validityCheck.valid : null, checkedAt: validityCheck.checkedAt, pending: true };
+      const data = await fetchLookup(email);
+      // A newer credential (different identity key) may have replaced this one while
+      // the fetch was in flight — discard rather than clobber its own, later check.
+      if (credentialIdentityKey(readCredentials()) !== key) return;
+      validityCheck = { key: key, valid: data ? !!data.found : null, checkedAt: Date.now(), pending: false };
       render();
     }
 
@@ -445,6 +470,10 @@
         }
         writeAttempt({ status: parsed.status, percent: parsed.percent, step: parsed.step, error: parsed.error, retryAfterSeconds: parsed.retryAfterSeconds });
         if ((parsed.status || '').toLowerCase() === 'completed' && parsed.credentials) {
+          // Tag with the email that actually owns this credential (see
+          // credentialIdentityKey) rather than trusting a later getStoredEmail() read,
+          // which "Change Email" could have moved on by the time this is displayed.
+          parsed.credentials.ownerEmail = getStoredEmail();
           writeCredentials(parsed.credentials);
         }
         render();
@@ -574,13 +603,15 @@
       if (status === 'completed') {
         const creds = readCredentials();
         const token = readToken();
-        if (creds && token && API_BASE && validityCheck.token !== token) {
-          checkCredentialStillValid(token); // async; re-renders once resolved
+        const identityKey = credentialIdentityKey(creds);
+        if (creds && identityKey && API_BASE && !validityCheck.pending &&
+            (validityCheck.key !== identityKey || (Date.now() - validityCheck.checkedAt) > VALIDITY_RECHECK_MS)) {
+          checkCredentialStillValid(identityKey, creds.ownerEmail); // async; re-renders once resolved
         }
         // Once real credentials are issued they persist in localStorage indefinitely
         // (see file header), so without this expiry check the button stays disabled
         // forever after the lab's access window ends — there was no way back in.
-        const expired = isCredentialTrulyExpired(creds, token);
+        const expired = isCredentialTrulyExpired(creds);
         btn.hidden = false;
         btn.disabled = expired ? disabledByGate : true;
         btn.textContent = expired ? 'Provision New Accounts' : 'Already Provisioned';
@@ -647,8 +678,7 @@
       if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); return; }
       if (status === 'completed') {
         const creds = readCredentials();
-        const token = readToken();
-        if (isCredentialTrulyExpired(creds, token)) { clearAttempt(); startProvisioning(); }
+        if (isCredentialTrulyExpired(creds)) { clearAttempt(); startProvisioning(); }
         return;
       }
       // Any other state: button is disabled, click is a no-op.
@@ -677,6 +707,10 @@
     reuseBtn.addEventListener('click', function () {
       if (!reuseOffer) return;
       const creds = normalizeCredential(reuseOffer.credential);
+      // reuseCheckedForEmail is the email /lookup was actually queried with for this
+      // offer — more precise than re-reading getStoredEmail() here, which could in
+      // principle have moved on by click time.
+      creds.ownerEmail = reuseCheckedForEmail || getStoredEmail();
       writeCredentials(creds);
       writeAttempt({ status: 'Completed', percent: 100, step: 'completed', error: null });
       hideReuseChoice();
