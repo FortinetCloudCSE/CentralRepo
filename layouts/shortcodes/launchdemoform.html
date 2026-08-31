@@ -302,9 +302,9 @@
       return typeof creds.expiresAt === 'number' && Date.now() > creds.expiresAt;
     }
 
-    function renderCredentialCard(creds) {
+    function renderCredentialCard(creds, expired) {
       credsEl.innerHTML = '';
-      if (credentialsExpired(creds)) {
+      if (expired) {
         const warn = document.createElement('div');
         warn.className = 'launchdemoform__credentials-expired';
         warn.textContent = 'This lab’s access window has ended — these credentials no longer work.';
@@ -539,7 +539,7 @@
         btn.textContent = expired ? 'Provision New Accounts' : 'Already Provisioned';
         hideProgress();
         if (creds) {
-          renderCredentialCard(creds);
+          renderCredentialCard(creds, expired);
           setStatus(expired ? 'This lab has ended. Click Provision New Accounts to start a new one.' : 'Your accounts are ready.', expired ? '' : 'ok');
         } else {
           setStatus('Provisioning complete.', 'ok');
