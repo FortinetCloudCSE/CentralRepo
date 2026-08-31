@@ -468,7 +468,18 @@
           poll.delay = POLL_DELAY_MIN;
           poll.lastSignature = signature;
         }
-        writeAttempt({ status: parsed.status, percent: parsed.percent, step: parsed.step, error: parsed.error, retryAfterSeconds: parsed.retryAfterSeconds });
+        writeAttempt({
+          status: parsed.status,
+          percent: parsed.percent,
+          step: parsed.step,
+          error: parsed.error,
+          retryAfterSeconds: parsed.retryAfterSeconds,
+          // An absolute anchor, computed once at the moment this response arrived —
+          // retryAfterSeconds alone is just a snapshot ("N seconds as of right now"),
+          // so a render() that displayed it verbatim without ever re-deriving the
+          // remaining time looked like a frozen number instead of a real countdown.
+          retryAt: typeof parsed.retryAfterSeconds === 'number' ? Date.now() + parsed.retryAfterSeconds * 1000 : null
+        });
         if ((parsed.status || '').toLowerCase() === 'completed' && parsed.credentials) {
           // Tag with the email that actually owns this credential (see
           // credentialIdentityKey) rather than trusting a later getStoredEmail() read,
@@ -551,8 +562,20 @@
       }
     }
 
+    // A live rate-limit countdown re-renders on a tick rather than a timer of its
+    // own driving the DOM directly, so render() stays the single place that decides
+    // what's on screen. Cleared unconditionally at the top of every render() and
+    // only re-armed inside the ratelimited branch below — this guarantees it can
+    // never keep ticking after the state that started it has moved on (a retry
+    // click, a page reload landing on a different status, etc.).
+    let rateLimitTickTimer = null;
+    function stopRateLimitTick() {
+      if (rateLimitTickTimer) { clearInterval(rateLimitTickTimer); rateLimitTickTimer = null; }
+    }
+
     // --- Render: single source of truth for button/progress/credentials --
     function render() {
+      stopRateLimitTick();
       updateWhoText();
       const disabledByGate = gateDisabled();
       const attempt = readAttempt();
@@ -646,17 +669,40 @@
         // already finished) — without a retry affordance the participant would be
         // stuck on this state forever, since nothing will poll it again.
         btn.hidden = false;
-        btn.disabled = disabledByGate;
-        btn.textContent = 'Retry Provisioning';
         hideProgress();
         hideCredentials();
-        const wait = typeof attempt.retryAfterSeconds === 'number' ? Math.ceil(attempt.retryAfterSeconds) : null;
-        setStatus(
-          status === 'ratelimited'
-            ? ('Please wait' + (wait ? ' ~' + wait + 's' : ' a moment') + ' before trying again.')
-            : 'An attempt for this lab is already in progress or complete.',
-          'err'
-        );
+
+        // retryAt (an absolute timestamp, see pollStatus) lets this re-derive the
+        // true remaining wait on every tick instead of displaying a number that was
+        // only ever accurate the instant the response arrived. Old attempts written
+        // before this fix shipped won't have retryAt — falls back to the prior
+        // static-text behavior rather than breaking.
+        const remainingMs = status === 'ratelimited' && typeof attempt.retryAt === 'number'
+          ? attempt.retryAt - Date.now()
+          : null;
+
+        if (remainingMs !== null && remainingMs > 0) {
+          const remaining = Math.ceil(remainingMs / 1000);
+          btn.disabled = true;
+          btn.textContent = 'Retry Provisioning';
+          setStatus('Please wait ~' + remaining + 's before trying again.', 'err');
+          rateLimitTickTimer = setInterval(render, 1000);
+        } else if (remainingMs !== null) {
+          // Counted down to zero — no need to wait for a click to reflect that.
+          btn.disabled = disabledByGate;
+          btn.textContent = 'Retry Provisioning';
+          setStatus('You can try again now.', '');
+        } else {
+          btn.disabled = disabledByGate;
+          btn.textContent = 'Retry Provisioning';
+          const wait = typeof attempt.retryAfterSeconds === 'number' ? Math.ceil(attempt.retryAfterSeconds) : null;
+          setStatus(
+            status === 'ratelimited'
+              ? ('Please wait' + (wait ? ' ~' + wait + 's' : ' a moment') + ' before trying again.')
+              : 'An attempt for this lab is already in progress or complete.',
+            'err'
+          );
+        }
         return;
       }
 
