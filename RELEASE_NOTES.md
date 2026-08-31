@@ -4,6 +4,28 @@
 
 ## [Unreleased]
 
+### fix(security): DOM-based XSS in the shared check-in confirmation partial
+
+`layouts/partials/analytics_checkin.html`'s returning-visitor branch interpolated the
+cookie/localStorage-derived `knownEmail` value directly into `container.innerHTML`
+(`Signed in as: ${knownEmail}`), and the client-side `emailRegex` only rejected
+whitespace/extra `@` — it allowed `<`, `>`, and `"` through (backtick and `'` were also
+briefly excluded in an earlier pass of this fix, then restored — both are valid RFC 5322
+unquoted local-part characters, e.g. `o'brien@example.com`, and neither alone can open an
+HTML tag or close a quoted attribute). Since `fortiemail` is a non-HttpOnly cookie scoped
+to the whole registrable domain and this partial is shared across every FortinetCloudCSE
+workshop site, a crafted "email" value submitted once would execute on the next page load
+anywhere on the shared origin. Fixed by building the "Signed in as" text via
+`createElement`/`textContent` instead of `innerHTML` (removing the injection sink
+entirely, regardless of stored value), and tightening `emailRegex` — plus the same-shaped
+regex in `launchdemoform.html`'s "Change Email" flow, which writes to the same shared
+cookie/localStorage — to reject `<`, `>`, `"` so a bad value can no longer be stored via
+either writer in the first place. Verified: a full `hugo --minify` build passes unchanged,
+`npm test`'s regex/config validators still pass (they don't exercise this specific JS
+literal — no test harness covers inline partial `<script>` blocks in this repo), and the
+new regex was checked directly in Node against both the original XSS payload (rejected)
+and RFC 5322-valid apostrophe/backtick addresses (accepted).
+
 ### feat(shortcodes): launchdemoform — reuse credentials across a linked workshop series
 
 Participants attending a multi-day combined session (e.g. K8s 101 → 201 → 202, often
