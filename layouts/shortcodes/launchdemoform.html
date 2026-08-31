@@ -530,14 +530,17 @@
 
       if (status === 'completed') {
         const creds = readCredentials();
+        // Once real credentials are issued they persist in localStorage indefinitely
+        // (see file header), so without this expiry check the button stays disabled
+        // forever after the lab's access window ends — there was no way back in.
+        const expired = creds ? credentialsExpired(creds) : false;
         btn.hidden = false;
-        btn.disabled = true;
-        btn.textContent = 'Already Provisioned';
+        btn.disabled = expired ? disabledByGate : true;
+        btn.textContent = expired ? 'Provision New Accounts' : 'Already Provisioned';
         hideProgress();
         if (creds) {
           renderCredentialCard(creds);
-          const expired = credentialsExpired(creds);
-          setStatus(expired ? 'This lab has ended.' : 'Your accounts are ready.', expired ? '' : 'ok');
+          setStatus(expired ? 'This lab has ended. Click Provision New Accounts to start a new one.' : 'Your accounts are ready.', expired ? '' : 'ok');
         } else {
           setStatus('Provisioning complete.', 'ok');
         }
@@ -588,7 +591,12 @@
       const attempt = readAttempt();
       const status = attempt ? (attempt.status || '').toLowerCase() : '';
       if (!attempt) { startProvisioning(); return; }
-      if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); }
+      if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); return; }
+      if (status === 'completed') {
+        const creds = readCredentials();
+        if (creds && credentialsExpired(creds)) { clearAttempt(); startProvisioning(); }
+        return;
+      }
       // Any other state: button is disabled, click is a no-op.
     });
 
