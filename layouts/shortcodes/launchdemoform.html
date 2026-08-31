@@ -302,6 +302,14 @@
       return typeof creds.expiresAt === 'number' && Date.now() > creds.expiresAt;
     }
 
+    // Single source of truth for render() and the click handler alike — see
+    // checkCredentialStillValid's comment for why a server-confirmed `valid: false`
+    // must override the client's own expiresAt guess rather than sit alongside it.
+    function isCredentialTrulyExpired(creds, token) {
+      if (token && validityCheck.token === token && validityCheck.valid === false) return true;
+      return creds ? credentialsExpired(creds) : false;
+    }
+
     function renderCredentialCard(creds, expired) {
       credsEl.innerHTML = '';
       if (expired) {
@@ -366,6 +374,33 @@
         reuseCheckState = 'done';
         render();
       }
+    }
+
+    // --- Server-side validity check for the currently displayed credential -
+    // normalizeCredential() can only ever guess expiresAt as Date.now() + labDurationDays
+    // — the /status endpoint's `credential` object carries no completion timestamp (only
+    // /lookup does, and only for entries it still considers reusable), so every re-fetch
+    // of an old completed record looks freshly valid again to the client. /lookup's own
+    // find_reusable_completion already excludes anything past its real completed_at +
+    // labDurationDays window server-side, so `found:false` here is an authoritative
+    // "this credential is actually gone" signal — used to override the client's naive
+    // local guess rather than trusting it alone.
+    let validityCheck = { token: null, state: 'idle', valid: null };
+
+    async function checkCredentialStillValid(token) {
+      const email = getStoredEmail();
+      if (!email || !API_BASE) { validityCheck = { token: token, state: 'done', valid: null }; return; }
+      validityCheck = { token: token, state: 'checking', valid: null };
+      try {
+        const url = API_BASE + '/api/provision/lookup?email=' + encodeURIComponent(email) + '&labDefinition=' + encodeURIComponent(labdefinition);
+        const resp = await fetch(url);
+        const data = resp.ok ? await resp.json() : null;
+        validityCheck = { token: token, state: 'done', valid: data ? !!data.found : null };
+      } catch (e) {
+        if (DEBUG) console.warn('launchdemoform: validity check failed', e);
+        validityCheck = { token: token, state: 'done', valid: null };
+      }
+      render();
     }
 
     function renderReuseChoice(offer) {
@@ -538,10 +573,14 @@
 
       if (status === 'completed') {
         const creds = readCredentials();
+        const token = readToken();
+        if (creds && token && API_BASE && validityCheck.token !== token) {
+          checkCredentialStillValid(token); // async; re-renders once resolved
+        }
         // Once real credentials are issued they persist in localStorage indefinitely
         // (see file header), so without this expiry check the button stays disabled
         // forever after the lab's access window ends — there was no way back in.
-        const expired = creds ? credentialsExpired(creds) : false;
+        const expired = isCredentialTrulyExpired(creds, token);
         btn.hidden = false;
         btn.disabled = expired ? disabledByGate : true;
         btn.textContent = expired ? 'Provision New Accounts' : 'Already Provisioned';
@@ -555,7 +594,6 @@
           // Completed, which used to skip polling entirely — see startProvisioning).
           // Retry that fetch here so the page self-heals on reload/focus instead of
           // showing this placeholder forever.
-          const token = readToken();
           if (token) ensurePolling(token);
           setStatus('Fetching your credentials...', 'ok');
         }
@@ -609,7 +647,8 @@
       if (status === 'failed' || status === 'ratelimited' || status === 'duplicate') { clearAttempt(); startProvisioning(); return; }
       if (status === 'completed') {
         const creds = readCredentials();
-        if (creds && credentialsExpired(creds)) { clearAttempt(); startProvisioning(); }
+        const token = readToken();
+        if (isCredentialTrulyExpired(creds, token)) { clearAttempt(); startProvisioning(); }
         return;
       }
       // Any other state: button is disabled, click is a no-op.
