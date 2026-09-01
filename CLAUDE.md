@@ -74,6 +74,7 @@ layouts/
     fortihugorunner.html          — Dev harness shortcode (local testing only)
     Xperts24Banner.html           — Xperts 2024 themed banner
     Xperts25Banner.html           — Xperts 2025 themed banner
+    Xperts26Banner.html           — Xperts 2026 themed banner
     pathtabs.html                 — Deployment-path tab group + locked-path banner; needs a vocabulary from pathgate/specs.gotmpl
     pathtab.html                  — One path's content, collected by its parent pathtabs block
     pathonly.html                 — Content shown to ONE path with no tab UI; must be called with {{%…%}}

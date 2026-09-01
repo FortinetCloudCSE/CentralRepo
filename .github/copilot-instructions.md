@@ -72,6 +72,7 @@ Embeds external quiz with automatic cookie propagation:
 ```hugo
 {{< Xperts24Banner line1="Text" line2="Text" line3="Text" >}}
 {{< Xperts25Banner line1="Text" line2="Text" line3="Text" >}}
+{{< Xperts26Banner line1="Text" line2="Text" line3="Text" >}}
 ```
 
 ## CSS Theme System

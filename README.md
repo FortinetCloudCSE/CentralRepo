@@ -161,6 +161,7 @@ Usage:
 ```
 {{< Xperts24Banner line1="Line A" line2="Line B" line3="Line C" >}}
 {{< Xperts25Banner line1="Line A" line2="Line B" line3="Line C" >}}
+{{< Xperts26Banner line1="Line A" line2="Line B" line3="Line C" >}}
 ```
 
 ### Deployment paths — pathtabs / pathtab / pathonly
