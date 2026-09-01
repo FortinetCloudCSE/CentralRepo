@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### feat(shortcodes): Xperts26Banner — reusable XPerts 2026 banner for all workshop repos
+
+Adds `{{< Xperts26Banner line1="..." line2="..." line3="..." >}}`, following the
+`Xperts25Banner` pattern: the base image (Nashville skyline, `USA XPERTS26` logo)
+is embedded as a draw.io mxgraph div with `line1`/`line2`/`line3` overlaid as
+editable white 48px text in the blank area below the logo.
+
+- Source images moved to `static/images/xperts-2026-background.png` and
+  `static/images/XPerts26-logo.png` (naming matches the 2025 convention); the
+  logo file isn't wired into `layouts/partials/logo.html` this year — no full
+  `Xperts2026` site theme was requested, only the banner shortcode.
+- Verified locally against `ai-101` with the working-tree CentralRepo mounted
+  (0 WARN, 0 ERROR), and visually in a browser before promotion.
+- Each text line's safe width is only ~490–560px before it overlaps the skyline
+  artwork (measured per-line, not uniform) — same risk existed in the 2025
+  template. Keep each line short.
+
 ### fix(shortcodes): launchdemoform — completed attempts could get permanently stuck, with no way to re-provision after expiry
 
 A real user report ("provisioning form doesn't appear to be doing anything") traced
