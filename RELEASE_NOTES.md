@@ -4,6 +4,36 @@
 
 ## [Unreleased]
 
+### fix(shortcodes): launchdemoform — completed attempts could get permanently stuck, with no way to re-provision after expiry
+
+A real user report ("provisioning form doesn't appear to be doing anything") traced
+through four layered client-side bugs in `layouts/shortcodes/launchdemoform.html`,
+each surfaced only after fixing the one before it:
+
+- Once an attempt reached `status: Completed`, the Provision button was disabled
+  unconditionally — even after the credential's own `credentialsExpired()` check said
+  it had expired — with no way back in short of manually clearing browser storage.
+- `POST /api/provision/start` can itself return an already-terminal status (e.g. the
+  backend finds an existing completed record for that email+lab); the client only
+  ever started polling `/status` — where the actual `credential` object lives — via
+  the fallthrough Pending/Running path, so a terminal status returned directly from
+  `/start` meant credentials were never fetched at all.
+- `/status`'s `credential` object carries no completion timestamp, so
+  `normalizeCredential()`'s `expiresAt = Date.now() + labDurationDays` guess looks
+  freshly valid on every re-fetch regardless of true age. Now cross-checked against
+  the backend's own `GET /api/provision/lookup`, which already tracks real expiry
+  server-side — including redesigning the check to key off credential identity
+  (owner email + username) rather than a provisioning token, since the reuse-credit
+  flow never had one and silently bypassed the first version of this check entirely.
+- The rate-limit "please wait ~Ns" message was a frozen snapshot with nothing driving
+  an update. Now stores an absolute `retryAt` anchor and self-arms a live 1s tick,
+  re-enabling the button automatically at zero.
+
+Companion backend fixes (`fortinet-on-demand-labs-provisioning-and-tracking`,
+separate repo/stack): the per-email rate limiter and the dedup/claim lock each
+independently could permanently block a legitimate re-provision after a credential's
+real backend expiry — see that repo's own release history for the full detail.
+
 ### fix(security): DOM-based XSS in the shared check-in confirmation partial
 
 `layouts/partials/analytics_checkin.html`'s returning-visitor branch interpolated the
