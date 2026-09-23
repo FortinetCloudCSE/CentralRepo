@@ -140,12 +140,10 @@ scope stayed to the banner shortcode as requested.
 - [x] `Status:` set to `Complete`
 
 ## Follow-ups
-- [ ] `layouts/partials/dependencies.html` — a root-owned, untracked file that
-  appeared in the working tree from the local Docker build (theme dependency
-  partial materialized as a side effect of the container's layout-copy step). Not
-  staged or committed. Deleting it via a container (`docker run --rm -v "$PWD":/home/CentralRepo alpine:latest sh -c 'rm -f /home/CentralRepo/layouts/partials/dependencies.html'`)
-  was blocked by the session's permission classifier; harmless to leave, but
-  someone with direct shell access should clean it up.
+- [x] `layouts/partials/dependencies.html` — root-owned Docker build artifact,
+  removed 2026-09-23 via a plain `rm -f` (no container/sudo needed this time —
+  ownership must have shifted since the original block, or the classifier issue
+  was session-specific). Working tree confirmed clean after.
 - [ ] `static/images/XPerts26-logo.png` is unwired — if a full `Xperts2026` site
   theme (`themeVariant`, `theme-Xperts2026.css`, `logo.html` wiring) is wanted
   later, this file is the source to use, same role as 2025's `XPerts25-logo3.png`.
