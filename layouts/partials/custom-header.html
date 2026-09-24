@@ -1269,3 +1269,63 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
 })();
 </script>
 {{ end }}
+
+{{- /* Command / expected-output render hooks — see docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md */}}
+<style>
+  .cmd-block { margin: 1.5rem 0; }
+  .cmd-block .cmd-block-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: 0.35em 0.9em;
+    border-radius: 0.3em 0.3em 0 0;
+    letter-spacing: 0.02em;
+  }
+
+  /* Run-on command blocks: coloured badge header, keep theme highlighting/copy button below */
+  .cmd-run .cmd-block-header { color: #fff; }
+  .cmd-run .cmd-run-icon { opacity: 0.85; }
+  .cmd-run .cmd-run-body > .highlight { margin-top: 0 !important; border-radius: 0 0 0.3em 0.3em; }
+  .cmd-target-bastion .cmd-block-header { background: #30539b; }
+  .cmd-target-local   .cmd-block-header { background: #3a8f5c; }
+  .cmd-target-pod     .cmd-block-header { background: #8a5cc9; }
+  .cmd-target-browser .cmd-block-header { background: #c97d1f; }
+  .cmd-target-other   .cmd-block-header { background: #5a6470; }
+
+  /* Expected-output panels: muted/dashed, no syntax colour, no copy button */
+  .cmd-output {
+    border: 1px dashed #8a8f98;
+    border-radius: 0.3em;
+    background: rgba(128, 128, 128, 0.06);
+  }
+  .cmd-output .cmd-block-header {
+    color: #5a6470;
+    background: transparent;
+    border-bottom: 1px dashed #8a8f98;
+    text-transform: uppercase;
+    font-size: 0.75em;
+  }
+  .cmd-output .cmd-output-body { padding: 0; }
+  .cmd-output .cmd-output-pre {
+    margin: 0;
+    padding: 0.75em 0.9em;
+    background: transparent;
+    border: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #5a6470;
+  }
+  .cmd-output .cmd-output-pre code { color: inherit; background: transparent; }
+  /* belt-and-suspenders: hide any copy button the theme's JS may have attached
+     before custom-footer.html's suppression script removes it outright */
+  .cmd-output .block-copy-to-clipboard-button,
+  .cmd-output .inline-copy-to-clipboard-button { display: none !important; }
+  /* when collapse=true wraps the panel in the theme's expand/notice widget */
+  .box-content > .cmd-output { margin: 0; }
+
+  @media print {
+    .cmd-block { break-inside: avoid; }
+  }
+</style>

@@ -24,3 +24,29 @@
     window.__mediumZoom = mediumZoom(selector, options);
   })();
 </script>
+
+{{- /* Command / expected-output render hooks — see docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
+       theme.js's initCodeClipboard() runs unconditionally on DOMContentLoaded and attaches a copy button
+       to every code/pre block on the page, with no per-block opt-out. custom-footer.html is included
+       later in baseof.html than the theme's own bundled script, so a listener registered here fires
+       after initCodeClipboard() has already run — strip the buttons it added inside .cmd-output panels
+       rather than forking theme.js. */}}
+<script>
+  (function () {
+    function suppressOutputCopyButtons() {
+      document.querySelectorAll('.cmd-output').forEach(function (panel) {
+        panel.querySelectorAll('.block-copy-to-clipboard-button, .inline-copy-to-clipboard-button').forEach(function (btn) {
+          btn.remove();
+        });
+        panel.querySelectorAll('.copy-to-clipboard-code, .copy-to-clipboard').forEach(function (el) {
+          el.classList.remove('copy-to-clipboard-code', 'copy-to-clipboard');
+        });
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', suppressOutputCopyButtons);
+    } else {
+      suppressOutputCopyButtons();
+    }
+  })();
+</script>

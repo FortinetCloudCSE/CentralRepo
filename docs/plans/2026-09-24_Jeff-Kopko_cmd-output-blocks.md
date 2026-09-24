@@ -57,7 +57,28 @@ Log File: none
 - `README.md`, `RELEASE_NOTES.md` (documented)
 
 ## Session Summary
-- (write at end)
+- Built `render-codeblock-output.html` (new `output` fence, muted/dashed panel, optional `lang=`
+  highlighting and `collapse="true"` expand-wrapping) and pass-through `render-codeblock-{bash,sh,shell}.html`
+  + shared `partials/shortcodes/cmd-block.html` (adds a coloured "Run on: <Target>" header only when
+  `run=` is present; delegates untouched to `partials/shortcodes/highlight.html` otherwise).
+  Copy-button suppression for `.cmd-output` panels lives in `custom-header.html` (CSS) and
+  `custom-footer.html` (a DOMContentLoaded listener registered after the theme's own, removing any
+  button `initCodeClipboard()` attached inside an output panel) — no theme.js fork.
+- Verified byte-identical rendering for the no-`run` case: built a real UserRepo checkout against
+  the unmodified vs modified image (`LOCAL=true --target dev`), normalized known non-deterministic
+  tokens (cache-buster, image/tab-group hashes, last-updated stamp), and additionally stripped the
+  two intentionally-added global `<style>`/`<script>` blocks — 0 of 36 built pages differ.
+  Sanity-checked the normalization itself by building the unmodified image twice (also 0 diff).
+- Proved all variants (bastion/local/pod/browser/unrecognised target, `lang=json`, `collapse="true"`,
+  `title=` composed with `run=`, the zero-change fallback) on a new UserRepo demo page,
+  `content/02Hugo/9_commands_and_output/index.md`, built via the same `LOCAL=true` image.
+  Found and fixed one real bug during that testing: `collapse=true` (bare/unquoted) is silently
+  ignored by Hugo's fence-attribute parser — it must be `collapse="true"`; documented this in both
+  the demo page and README.
+- Documented in `README.md` ("Render hooks" section) and `RELEASE_NOTES.md`.
+- Self-reviewed the diff (medium depth) plus a `/code-review medium` pass; no further findings beyond
+  the `collapse` quoting bug already fixed during testing.
+- Did not push, open a PR, or publish an image, per the source plan's STOP rule — see Follow-ups.
 
 ## Promotion
 - [ ] `Decisions & Commentary` walked
@@ -73,4 +94,14 @@ Log File: none
 - Who owns CentralRepo image publishing and timing? Unresolved — this plan stops before push/PR/publish per the source plan's STOP rule.
 
 ## Phase 2a result (fallback verification)
-- (filled in below after build)
+- Built `LOCAL=true --target dev` image (`hugotester-local`) against this worktree, mounted UserRepo, added a throwaway page
+  ` ```bash {title="Run on: bastion"} ` + ` ```text {title="Expected output"} `.
+- Confirmed: renders with the literal title text visible ("Run on: bastion" / "Expected output"), no CentralRepo change needed.
+  Mechanism: `partials/shortcodes/highlight.html`'s `title` branch delegates to `partials/shortcodes/tab.html` — so the
+  fallback renders as a single-entry Relearn tab widget carrying the title as its tab label, not a bespoke header bar.
+  It reads as "titled" but looks like a tab, not like the badge/icon header the new hooks build in 2b. Good enough as
+  a zero-change fallback; not a substitute for 2b's actual UX.
+- Byte-identity baseline: built UserRepo against the unmodified image twice and diffed after normalizing known
+  non-deterministic tokens (cache-buster `?<digits>`, `R-image-<md5>`, `data-tab-group=<md5>`/bare 32-hex tab-switch
+  ids, and the last-updated stamp in both weekday-string and ISO form) — 0 files differ. This confirms the normalize
+  script is sound for the real before/after diff in the next step.

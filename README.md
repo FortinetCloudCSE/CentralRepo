@@ -49,6 +49,46 @@ Key behaviors:
 - `prefill-useremail.html`: exposes helpers and pre-fills common email fields and UUID in other forms based on cookies and `forti_profile`.
 - `content-header.html`, `content-footer.html`, `menu-footer.html`, `custom-header.html`, `favicon.html`, etc.: site chrome helpers untouched by the check-in logic.
 
+## Render hooks
+
+### Command / expected-output blocks
+
+Plain markdown code fences, no shortcode nesting. Zero visual change for any workshop that
+doesn't use the new attributes — `render-codeblock-{bash,sh,shell}.html` delegate to the
+theme's own highlighting partial exactly as before when `run` is absent.
+
+Add `{run="<target>"}` to a `bash`, `sh` or `shell` fence for a coloured **"Run on: &lt;Target&gt;"**
+header. Four targets get a fixed colour (`bastion`, `local`, `pod`, `browser`); anything else
+gets a neutral badge. `title` still composes with `run` — Relearn's own titled/tab rendering
+happens inside the run-on header. Copy-to-clipboard and syntax highlighting are unchanged.
+
+````markdown
+```bash {run="bastion"}
+kubectl get pods
+```
+````
+
+A new `output` fence renders a muted/dashed panel labelled "Expected output", with no shell
+syntax colouring and **no copy button** (so it can't be mistaken for something to paste):
+
+````markdown
+```output
+NAME   READY   STATUS
+```
+````
+
+Attributes on `output`:
+- `lang="json"` (or any Chroma lexer name) — syntax-highlights the panel's content.
+- `collapse="true"` — wraps the panel in the theme's expand/notice widget, collapsed by default.
+  **Must be quoted** — Hugo's fence-attribute parser does not accept a bare `collapse=true`.
+
+Implementation: `layouts/_default/_markup/render-codeblock-{bash,sh,shell,output}.html` and the
+shared `layouts/partials/shortcodes/cmd-block.html`. Styling lives in `custom-header.html`;
+the copy-button suppression for `.cmd-output` panels is a small script in `custom-footer.html`
+that runs after the theme's own `initCodeClipboard()` and removes any button it attached inside
+an output panel — no theme.js fork. Full design notes: `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
+Demo page: UserRepo `content/02Hugo/9_commands_and_output/index.md`.
+
 ## Shortcodes and usage
 
 ### launchdemoform
