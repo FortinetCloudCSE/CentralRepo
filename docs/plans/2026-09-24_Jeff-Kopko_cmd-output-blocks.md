@@ -45,7 +45,7 @@ Log File: none
 
 ## Decisions & Commentary
 - New render hooks live under `layouts/_default/_markup/`, following the existing `render-codeblock-{mermaid,math,tree}.html` pattern — one partial call each, sharing a common partial to avoid duplicating the target-badge/output-panel logic across `bash`/`sh`/`shell`.
-- Copy-button suppression: `initCodeClipboard()` in `theme.js` runs unconditionally on `DOMContentLoaded` over `document.querySelectorAll('code, .pre-only')` — there is no per-block opt-out hook. Rather than fork it, a `custom-footer.html` script runs on `DOMContentLoaded` and defers via `setTimeout(0)`. The deferral is required: theme.js is loaded with `defer`, so it registers its listener *after* the inline footer script and fires second. A plain listener ran too early; that was caught by a headless-Chromium DOM check on 2026-09-24, and the fix was re-verified the same way (0 copy buttons in 4 output panels, 7/7 run blocks keep theirs). The script removes any `.block-copy-to-clipboard-button` / `.inline-copy-to-clipboard-button` found inside `.cmd-output` panels, plus strips the `copy-to-clipboard`/`copy-to-clipboard-code` classes so a stray keyboard-triggered `copy` handler doesn't special-case the text either. CSS additionally hides `.cmd-output .block-copy-to-clipboard-button` as a second line of defense (covers a future theme.js change that stops using that exact class before this script is revisited).
+- Copy-button suppression: `initCodeClipboard()` in `theme.js` runs unconditionally on `DOMContentLoaded` over `document.querySelectorAll('code, .pre-only')` — there is no per-block opt-out hook. Rather than fork it, a `custom-footer.html` script runs on `DOMContentLoaded` and defers via `setTimeout(0)`. **The deferral is required, not cosmetic**: `theme.js` is loaded with `defer` (`themes/hugo-theme-relearn/layouts/partials/dependencies/theme.html`), so its top-level `ready()` call — and the `DOMContentLoaded` listener it registers — only run after HTML parsing finishes. A plain inline `<script>` with no `src` (this one) runs synchronously *during* parsing, registering its own listener first; DOM listeners for the same event fire in registration order, so an unguarded listener here ran, and no-opped, *before* `initCodeClipboard()` ever attached anything — `/code-review medium` caught this by reading `dependencies/theme.html` and tracing the `defer` semantics; a first draft of this Decisions entry had the ordering backwards. Fixed with `setTimeout(fn, 0)` inside the `DOMContentLoaded` handler: the callback runs as a new macrotask only after the entire synchronous `DOMContentLoaded` dispatch — every listener registered for that event, including theme.js's, which registers later but still fires within that same dispatch — has completed, deferring past `initCodeClipboard()` regardless of registration order. **Independently verified in a real headless-Chromium session** (Playwright, this session, 2026-09-24: served the built demo page with a `fortiuser`/`fortiemail` cookie pair so the analytics check-in redirect doesn't bounce to the live site, aborted the external analytics/CDN requests, loaded the page, and queried the live DOM) — 0 copy buttons and 0 `copy-to-clipboard*` classes across the page's 4 `.cmd-output` panels, and all 7 `.cmd-run` command blocks keep theirs (10 total copy buttons on the page: 7 block + inline-code ones from prose). The script removes any `.block-copy-to-clipboard-button` / `.inline-copy-to-clipboard-button` found inside `.cmd-output` panels, plus strips the `copy-to-clipboard`/`copy-to-clipboard-code` classes so a stray keyboard-triggered `copy` handler doesn't special-case the text either. CSS additionally hides `.cmd-output .block-copy-to-clipboard-button` as a second line of defense (covers a future theme.js change that stops using that exact class before this script is revisited).
 - `output` is a new Chroma-less "language": Hugo always dispatches `render-codeblock-<type>` by the fence's first info-string word, so ` ```output ` cannot collide with any real Chroma lexer name.
 
 ## Files Changed
@@ -76,8 +76,26 @@ Log File: none
   ignored by Hugo's fence-attribute parser — it must be `collapse="true"`; documented this in both
   the demo page and README.
 - Documented in `README.md` ("Render hooks" section) and `RELEASE_NOTES.md`.
-- Self-reviewed the diff (medium depth) plus a `/code-review medium` pass; no further findings beyond
-  the `collapse` quoting bug already fixed during testing.
+- Self-reviewed the diff (medium depth) plus two `/code-review medium` passes (the first ran against
+  the wrong cwd and found nothing; rerun with an explicit path against the worktree). The second pass
+  found one real, severe bug: the copy-button-suppression script's `DOMContentLoaded` listener actually
+  fired *before* `initCodeClipboard()`, not after — my original reasoning about DOM inclusion order was
+  backwards; `theme.js` loads with `defer`, so it registers its listener later than a plain inline
+  script does, not earlier. Fixed with `setTimeout(fn, 0)` (see Decisions). It also flagged that a
+  bareword `{run}` attribute (no `=value`) would break `cmd-block.html`'s string functions — empirically
+  false: Hugo's fence-attribute parser hard-errors on *any* bareword attribute at markdown-parse time,
+  before any render hook runs (reproduced on a stock, unmodified `{title}` fence with no `run=` hook
+  involved at all) — pre-existing Hugo behavior across the whole site, not a regression from this change.
+  Two polish CSS tweaks (border-radius on the actual `<pre>` instead of the `.highlight` wrapper;
+  transparent background on `lang=` output panels so Chroma's inline bg doesn't break the muted look)
+  were also applied and verified not to affect the byte-identical no-`run` case (rebuilt, re-diffed: still
+  0/36 pages differ).
+- Independently verified the suppression fix in a real headless-Chromium session (Playwright, installed
+  fresh in this environment) against the actual built demo page, served with a `fortiuser`/`fortiemail`
+  cookie pair (otherwise the analytics check-in redirects every non-home page to the live production
+  site instead of the local build) and the external analytics/CDN requests aborted: 0 copy buttons and
+  0 `copy-to-clipboard*` classes across all 4 `.cmd-output` panels; all 7 `.cmd-run` command blocks keep
+  theirs.
 - Did not push, open a PR, or publish an image, per the source plan's STOP rule — see Follow-ups.
 
 ## Promotion
@@ -90,7 +108,7 @@ Log File: none
 - [ ] Backport the convention into `ai-101` content once the CentralRepo image ships (xperts-ai-101 plan 0001 Phase 3).
 
 ## Risks / Open Questions
-- Does Relearn 8's copy button attach to blocks rendered by a custom hook, and can it be suppressed per block without forking `theme.js`? **Resolved in 2b**: yes it attaches (nothing in `initCodeClipboard()` excludes custom-hook output), and yes it can be suppressed post-hoc via a `DOMContentLoaded` + `setTimeout(0)` strip (verified in headless Chromium) — see Decisions above.
+- Does Relearn 8's copy button attach to blocks rendered by a custom hook, and can it be suppressed per block without forking `theme.js`? **Resolved in 2b**: yes it attaches (nothing in `initCodeClipboard()` excludes custom-hook output), and yes it can be suppressed post-hoc via a `DOMContentLoaded` + `setTimeout(0)` strip — a naive (non-deferred) version of this was wrong and caught by review; the fix is independently verified in a real headless-Chromium session (Playwright) — see Decisions above.
 - Who owns CentralRepo image publishing and timing? Unresolved — this plan stops before push/PR/publish per the source plan's STOP rule.
 
 ## Phase 2a result (fallback verification)
