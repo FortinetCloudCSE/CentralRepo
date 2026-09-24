@@ -1,0 +1,40 @@
+{{- /*
+  New language hook: ```output``` fences. Renders a muted/dashed panel
+  labelled "Expected output" with no shell syntax colouring by default.
+  Optional attributes: lang="json" (or any Chroma lexer) for highlighting
+  inside the panel; collapse="true" (must be quoted) wraps it in the
+  theme's expand/notice widget. The copy-to-clipboard button is suppressed for `.cmd-output`
+  via CSS + a post-hoc DOM script (custom-header.html / custom-footer.html) —
+  see docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
+*/}}
+{{- $page := .Page }}
+{{- $attrs := .Attributes }}
+{{- $content := trim .Inner "\n\r" }}
+{{- $lang := index $attrs "lang" }}
+{{- $collapseRaw := index $attrs "collapse" }}
+{{- $collapse := eq $collapseRaw "true" }}
+{{- $label := "Expected output" }}
+
+{{- $body := "" }}
+{{- if $lang }}
+  {{- $body = partial "shortcodes/highlight.html" (dict
+    "page"    $page
+    "content" $content
+    "type"    $lang
+  ) }}
+{{- else }}
+  {{- $body = printf "<pre class=\"cmd-output-pre\"><code>%s</code></pre>" (transform.HTMLEscape $content) | safeHTML }}
+{{- end }}
+
+{{- $panel := printf "<div class=\"cmd-block cmd-output\"><div class=\"cmd-block-header\"><span class=\"cmd-output-label\">%s</span></div><div class=\"cmd-output-body\">%s</div></div>" $label $body }}
+
+{{- if $collapse }}
+  {{- partial "shortcodes/expand.html" (dict
+    "page"     $page
+    "content"  ($panel | safeHTML)
+    "title"    $label
+    "expanded" false
+  ) }}
+{{- else }}
+  {{- $panel | safeHTML }}
+{{- end }}

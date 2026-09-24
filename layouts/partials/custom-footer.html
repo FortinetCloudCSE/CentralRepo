@@ -24,3 +24,29 @@
     window.__mediumZoom = mediumZoom(selector, options);
   })();
 </script>
+
+{{- /* Command / expected-output render hooks — see docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
+       theme.js's initCodeClipboard() runs on DOMContentLoaded and attaches a copy button to every
+       code/pre block, with no per-block opt-out. theme.js is loaded with `defer`, so it registers its
+       DOMContentLoaded listener AFTER this inline script does — ours fires first. The setTimeout(0)
+       pushes the strip past every DOMContentLoaded handler, i.e. after initCodeClipboard(). */}}
+<script>
+  (function () {
+    function suppressOutputCopyButtons() {
+      document.querySelectorAll('.cmd-output').forEach(function (panel) {
+        panel.querySelectorAll('.block-copy-to-clipboard-button, .inline-copy-to-clipboard-button').forEach(function (btn) {
+          btn.remove();
+        });
+        panel.querySelectorAll('.copy-to-clipboard-code, .copy-to-clipboard').forEach(function (el) {
+          el.classList.remove('copy-to-clipboard-code', 'copy-to-clipboard');
+        });
+      });
+    }
+    function deferred() { setTimeout(suppressOutputCopyButtons, 0); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', deferred);
+    } else {
+      deferred();
+    }
+  })();
+</script>
