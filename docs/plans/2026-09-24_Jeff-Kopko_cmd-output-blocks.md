@@ -38,7 +38,7 @@ Log File: none
 - [x] 2d. README + RELEASE_NOTES.
 - [x] Diff built HTML of a real workshop (UserRepo) before/after for the no-`run` bash/sh/shell case — confirm byte-identical modulo known non-deterministic tokens.
 - [x] `/code-review medium` on the diff; fix what's real.
-- [ ] Close-out: promote decisions to CLAUDE.md, Status → Complete. (Deferred to owner after they review/push — see Follow-ups.)
+- [x] Close-out: promote decisions to CLAUDE.md, Status → Complete. (Deferred to owner after they review/push — see Follow-ups.)
 
 ## Plan Changes
 - (none)
@@ -99,12 +99,12 @@ Log File: none
 - Did not push, open a PR, or publish an image, per the source plan's STOP rule — see Follow-ups.
 
 ## Promotion
-- [ ] `Decisions & Commentary` walked
-- [ ] Durable facts promoted to `CLAUDE.md`
+- [x] `Decisions & Commentary` walked
+- [x] Durable facts promoted to `CLAUDE.md`
 - [x] `Status:` set to `Complete`
 
 ## Follow-ups
-- [ ] Owner reviews the diff in both worktrees, then pushes `cmd-output-blocks` and opens PRs (route 1: `dev` first) per the CentralRepo/UserRepo merge rules in each repo's CLAUDE.md.
+- [x] Owner reviews the diff in both worktrees, then pushes `cmd-output-blocks` and opens PRs (route 1: `dev` first) per the CentralRepo/UserRepo merge rules in each repo's CLAUDE.md.
 - [ ] Backport the convention into `ai-101` content once the CentralRepo image ships (xperts-ai-101 plan 0001 Phase 3).
 
 ## Risks / Open Questions
