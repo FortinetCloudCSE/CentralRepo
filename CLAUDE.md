@@ -85,6 +85,8 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 - **Non-active relearn tab panels are hidden by `theme.css`, not `format-print.css`** — the print-file attribution is a live mis-citation in two other repos' docs, don't propagate it.
 - **An `XpertsNNBanner` shortcode is a draw.io export with three nested encoding layers** — reproduce programmatically (build XML → `json.dumps` → `html.escape`), never hand-edit the giant single-line div.
 - **A `dev`→`main` promotion here routinely trips `gh-merge-verify`'s CI-skip-token pre-flight even on a small clean diff** — old `[skip ci]` plan commits can still appear in the PR's commit ancestry. Fix: `-- --subject "..." --body "..."`, not `--allow-skip-token`.
+- **Never write `htmlEscape` anywhere under `layouts/`** — CI assertion A11 greps for it and fails `dev`; use `transform.HTMLEscape`. Bit #115.
+- **Promotion PR conflicts after a squash to `main`**: `main`'s squash copies conflict with `dev`'s originals. Merge `origin/main` into `dev` keeping `dev`'s side, push, wait for green `dev` CI, then re-run the promotion. Detail: [docs/claude/gotchas.md](docs/claude/gotchas.md#command--output-render-hooks).
 
 Full incident history and the deployment-path gate's ~20 detailed rules (pre-paint CSS mechanics, `pathgate/specs.gotmpl`, sidebar/search scoping, `errorf` triggers): [docs/claude/gotchas.md](docs/claude/gotchas.md).
 
