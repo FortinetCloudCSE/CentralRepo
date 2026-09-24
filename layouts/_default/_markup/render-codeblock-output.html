@@ -23,7 +23,7 @@
     "type"    $lang
   ) }}
 {{- else }}
-  {{- $body = printf "<pre class=\"cmd-output-pre\"><code>%s</code></pre>" (htmlEscape $content) | safeHTML }}
+  {{- $body = printf "<pre class=\"cmd-output-pre\"><code>%s</code></pre>" (transform.HTMLEscape $content) | safeHTML }}
 {{- end }}
 
 {{- $panel := printf "<div class=\"cmd-block cmd-output\"><div class=\"cmd-block-header\"><span class=\"cmd-output-label\">%s</span></div><div class=\"cmd-output-body\">%s</div></div>" $label $body }}
