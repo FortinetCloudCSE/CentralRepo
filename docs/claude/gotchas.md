@@ -73,3 +73,14 @@
 
 - **`main` has `enforce_admins: true`** (2026-08-20, part of `ai-101` plan `plans/0004_...md`'s branch-protection hardening — an admin push used to bypass the PR requirement with only a warning; now it's a hard reject, same as everyone else). Required-check contexts are unchanged — still just the no-op `ci/jenkins/build-status` — deliberately left open rather than guessed at; see that plan's Open Questions.
 - **Before making `ci.yml`'s `lint-and-validate`/`hugo-build` a required check, fix its `paths-ignore` first, or it will block every doc-only PR forever, not just until CI runs.** `ci.yml`'s `pull_request` trigger uses `paths-ignore: ["**.md"]` — a PR touching only `.md` files never makes the workflow run at all, so a required check with that name would simply never report on such a PR. GitHub treats "check never ran" as permanently blocking, not as "passing" or "pending" — a wait never fixes it. Hit for real in `ai-101` (`lint`/`handouts`, same shape, `paths:` not `paths-ignore`) the same day this repo's `enforce_admins` was flipped; fixed there by moving the path filtering from the trigger into a job step that still reports. Do the same here before requiring `ci.yml`.
+
+## Command / output render hooks
+
+Shipped 2026-09-24 (#115/#116/#117, image v26.3.an). Plan: `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
+
+- `render-codeblock-{bash,sh,shell}.html` must stay a byte-identical pass-through to `partials/shortcodes/highlight.html` when `run` is absent. Verify any edit by diffing a full UserRepo build before and after.
+- theme.js is loaded with `defer`, so an inline script's `DOMContentLoaded` listener runs **before** `initCodeClipboard()`. Anything that post-processes the theme's copy buttons must defer again (`setTimeout(0)`). The first version got this wrong and only headless Chromium caught it: `--dump-dom` and count `.block-copy-to-clipboard-button` per panel.
+- Hugo code-fence attributes must be quoted: `collapse=true` is silently ignored, `collapse="true"` works.
+- Headless render of a workshop page redirects to the home page through the check-in gate. For local tests, sed `location.href="https://fortinetcloudcse.github.io/<repo>/"` to `void 0` in a copied build.
+- Promotion conflict, 2026-09-24: `main` held squash copies (#112–#114) of Xperts26Banner commits that were still on `dev` as originals. PR #117 was unmergeable until `origin/main` was merged into `dev` (keeping `dev`'s side) and `dev` CI went green again. This recurs after every squash-to-main unless `dev` is resynced.
+

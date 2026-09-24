@@ -2,7 +2,7 @@
 Date: 2026-09-24
 Owner: Jeff Kopko
 Slug: cmd-output-blocks
-Status: Approved
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md
@@ -101,7 +101,7 @@ Log File: none
 ## Promotion
 - [ ] `Decisions & Commentary` walked
 - [ ] Durable facts promoted to `CLAUDE.md`
-- [ ] `Status:` set to `Complete`
+- [x] `Status:` set to `Complete`
 
 ## Follow-ups
 - [ ] Owner reviews the diff in both worktrees, then pushes `cmd-output-blocks` and opens PRs (route 1: `dev` first) per the CentralRepo/UserRepo merge rules in each repo's CLAUDE.md.
@@ -123,3 +123,6 @@ Log File: none
   non-deterministic tokens (cache-buster `?<digits>`, `R-image-<md5>`, `data-tab-group=<md5>`/bare 32-hex tab-switch
   ids, and the last-updated stamp in both weekday-string and ISO form) — 0 files differ. This confirms the normalize
   script is sound for the real before/after diff in the next step.
+
+## Outcome (2026-09-24)
+Shipped via #115 → dev, #116 (A11 `htmlEscape` → `transform.HTMLEscape`), dev merge of main's squash duplicates, #117 → main; prod image v26.3.an. xperts-ai-101 #7 and UserRepo #84 are live on the new blocks. Gotchas promoted to CLAUDE.md and docs/claude/gotchas.md.
