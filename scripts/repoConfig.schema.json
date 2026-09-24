@@ -23,6 +23,7 @@
     "provisionApiBaseUrl":  { "type": "string" },
     "videoHeaderSrc":       { "type": "string" },
     "videoHeaderInterval":  { "type": ["string", "number"] },
+    "disableInlineCopyToClipBoard": { "type": "boolean" },
     "bannerLine1":          { "type": "string" },
     "bannerLine2":          { "type": "string" },
     "bannerLine3":          { "type": "string" },

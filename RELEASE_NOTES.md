@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### feat(config): per-workshop `disableInlineCopyToClipBoard`
+
+`scripts/repoConfig.json` accepts an optional boolean `disableInlineCopyToClipBoard`
+(schema + `hugo.jinja`). Default `false` keeps today's behaviour for every repo. The
+theme only adds inline copy icons to inline code longer than 5 characters, which
+reads as random in prose and tables. Opting out removes them; code-block copy
+buttons are unaffected. First adopter: xperts-ai-101.
+
 ### feat(render-hooks): standard command / expected-output blocks
 
 Adds a plain-markdown convention every workshop can opt into, with zero visual

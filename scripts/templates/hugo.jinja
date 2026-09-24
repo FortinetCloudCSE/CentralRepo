@@ -133,8 +133,9 @@ enableEmoji = true
   # Javascript and CSS cache are automatically busted when new version of site is generated. 
   # Set this to true to disable this behavior (some proxies don't handle well this optimization)
   disableAssetsBusting = false
-  # Set this to true to disable copy-to-clipboard button for inline code.
-  disableInlineCopyToClipBoard = false
+  # Copy-to-clipboard button on inline code (theme adds it to inline code > 5 chars).
+  # Per-workshop opt-out via repoConfig.json "disableInlineCopyToClipBoard": true; default keeps it.
+  disableInlineCopyToClipBoard = {{ "true" if disableInlineCopyToClipBoard else "false" }}
   # A title for shortcuts in menu is set by default. Set this to true to disable it. 
   disableShortcutsTitle = false
 
