@@ -1,0 +1,50 @@
+{{- /*
+  Shared partial for the run= command-block render hooks
+  (render-codeblock-{bash,sh,shell}.html). Pass-through to the theme's
+  own highlight partial, byte-identical, when `run` is absent. When
+  `run` is present, adds a "Run on: <Target>" header badge, colour-keyed
+  per target, and keeps the theme's highlighting/copy button untouched.
+  See docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
+*/}}
+{{- $page := .page }}
+{{- $attrsRaw := .attributes }}
+{{- $content := .content }}
+{{- $options := .options }}
+{{- $type := .type }}
+
+{{- $run := index $attrsRaw "run" }}
+
+{{- if not $run }}
+  {{- partial "shortcodes/highlight.html" (dict
+    "page"       $page
+    "attributes" $attrsRaw
+    "content"    $content
+    "options"    $options
+    "type"       $type
+  ) }}
+{{- else }}
+  {{- $attrs := dict }}
+  {{- range $k, $v := $attrsRaw }}
+    {{- if ne $k "run" }}
+      {{- $attrs = $attrs | merge (dict $k $v) }}
+    {{- end }}
+  {{- end }}
+  {{- $body := partial "shortcodes/highlight.html" (dict
+    "page"       $page
+    "attributes" $attrs
+    "content"    $content
+    "options"    $options
+    "type"       $type
+  ) }}
+  {{- $knownTargets := slice "bastion" "local" "pod" "browser" }}
+  {{- $targetKey := lower $run }}
+  {{- $targetClass := "other" }}
+  {{- if in $knownTargets $targetKey }}
+    {{- $targetClass = $targetKey }}
+  {{- end }}
+  {{- $targetLabel := printf "%s%s" (upper (substr $run 0 1)) (substr $run 1) }}
+<div class="cmd-block cmd-run cmd-target-{{ $targetClass }}">
+  <div class="cmd-block-header"><i class="fa-fw fas fa-terminal cmd-run-icon" aria-hidden="true"></i><span class="cmd-run-badge">{{ printf "Run on: %s" $targetLabel }}</span></div>
+  <div class="cmd-run-body">{{ $body | safeHTML }}</div>
+</div>
+{{- end }}

@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+### feat(render-hooks): standard command / expected-output blocks
+
+Adds a plain-markdown convention every workshop can opt into, with zero visual
+change for repos that don't:
+
+- ` ```bash {run="bastion"} ` (also `sh`/`shell`) renders a coloured "Run on: &lt;Target&gt;"
+  header above the normal highlighted, copyable block. Fixed colours for
+  `bastion`/`local`/`pod`/`browser`; other values get a neutral badge. `title`
+  still composes with `run`.
+- ` ```output ` is a new fence renders a muted/dashed "Expected output" panel with
+  no shell syntax colouring and no copy button. Optional `lang="json"` (or any
+  Chroma lexer) highlights inside the panel; optional `collapse="true"` (must be
+  quoted) wraps it in the theme's expand widget.
+- `render-codeblock-{bash,sh,shell}.html` are byte-identical pass-throughs to
+  the theme's own highlight partial when `run` is absent — verified by diffing
+  a full UserRepo build before/after (0 files differ once the two
+  intentionally-added global CSS/JS blocks are excluded).
+- The copy-to-clipboard button is suppressed on `.cmd-output` panels from
+  CentralRepo's own asset layer (`custom-footer.html`), without forking the
+  theme's `theme.js` — a script registered after the theme's own
+  `initCodeClipboard()` removes any button it attached inside an output panel.
+- See `README.md` → "Render hooks" and `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
+
 ### feat(shortcodes): Xperts26Banner — reusable XPerts 2026 banner for all workshop repos
 
 Adds `{{< Xperts26Banner line1="..." line2="..." line3="..." >}}`, following the
