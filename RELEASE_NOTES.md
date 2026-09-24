@@ -23,8 +23,10 @@ change for repos that don't:
   intentionally-added global CSS/JS blocks are excluded).
 - The copy-to-clipboard button is suppressed on `.cmd-output` panels from
   CentralRepo's own asset layer (`custom-footer.html`), without forking the
-  theme's `theme.js` — a script registered after the theme's own
-  `initCodeClipboard()` removes any button it attached inside an output panel.
+  theme's `theme.js`. theme.js is `defer`-loaded, so the strip runs on
+  `DOMContentLoaded` + `setTimeout(0)`, after `initCodeClipboard()` has attached
+  its buttons (verified in headless Chromium). The output fence escapes with
+  `transform.HTMLEscape`, because CI assertion A11 bans `htmlEscape` in layouts.
 - See `README.md` → "Render hooks" and `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
 
 ### feat(shortcodes): Xperts26Banner — reusable XPerts 2026 banner for all workshop repos
