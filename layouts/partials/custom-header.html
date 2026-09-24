@@ -1287,7 +1287,8 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
   /* Run-on command blocks: coloured badge header, keep theme highlighting/copy button below */
   .cmd-run .cmd-block-header { color: #fff; }
   .cmd-run .cmd-run-icon { opacity: 0.85; }
-  .cmd-run .cmd-run-body > .highlight { margin-top: 0 !important; border-radius: 0 0 0.3em 0.3em; }
+  .cmd-run .cmd-run-body > .highlight { margin-top: 0 !important; }
+  .cmd-run .cmd-run-body pre { margin-top: 0; border-top: none; border-radius: 0 0 0.3em 0.3em; }
   .cmd-target-bastion .cmd-block-header { background: #30539b; }
   .cmd-target-local   .cmd-block-header { background: #3a8f5c; }
   .cmd-target-pod     .cmd-block-header { background: #8a5cc9; }
@@ -1318,6 +1319,8 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
     color: #5a6470;
   }
   .cmd-output .cmd-output-pre code { color: inherit; background: transparent; }
+  /* lang= panels: drop the theme's inner code box so it reads as one panel (Chroma sets bg inline) */
+  .cmd-output .cmd-output-body pre { margin: 0; border: none; background: transparent !important; }
   /* belt-and-suspenders: hide any copy button the theme's JS may have attached
      before custom-footer.html's suppression script removes it outright */
   .cmd-output .block-copy-to-clipboard-button,
