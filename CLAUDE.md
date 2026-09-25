@@ -3,17 +3,17 @@
 > Global preferences (planning workflow, code quality, operations): `~/.claude/CLAUDE.md`
 > Copilot instructions: `.github/copilot-instructions.md` (detailed architecture & dev workflows)
 > **On-demand docs** (read only when relevant — not auto-loaded):
-> - [docs/claude/reference.md](docs/claude/reference.md) — Key File Map + full Site Parameters (repoConfig.json) reference
-> - [docs/claude/gotchas.md](docs/claude/gotchas.md) — Critical Patterns (analytics/cookies, deployment-path gate, Docker/image build, UserRepo propagation), plus Working Branch + CI/CD incident history. Grep before touching any of those.
+> - [reference.md](docs/claude/reference.md) — file map, stack table, CI/CD trigger table, Site Parameters/schema, Common Tasks detail.
+> - [gotchas.md](docs/claude/gotchas.md) — grep before touching: analytics/cookies, the deployment-path gate (`pathgate`/`pathtabs`/`pathonly`/`custom-header.html`), Docker/image build, CI, `UserRepo` propagation, `launchdemoform`, a shortcode, or a `dev`→`main` promotion.
 
 ## Working Branch
 
 `main` builds the **prod** ECR image; `dev` builds the **dev** image. Two routes into `main`, not equivalent:
 
-1. **Dev-first (the documented route):** edit on `dev` → push (dev image rebuilds) → PR `dev` → `main` → prod image rebuilds. Use this when the change needs proving in a real workshop build first.
-2. **Feature branch → PR → `main`** — fine only if already tested via the `LOCAL=true` dev image, and **you push `main` → `dev` in the same session afterward** (`git push origin origin/main:refs/heads/dev`, a fast-forward as long as nothing was committed to `dev` directly). Skipping the resync has caused real incidents — divergence invisible in dev-image test results, and a near-miss where a route-2 merge needed cancelling mid-image-build. Detail: [docs/claude/gotchas.md](docs/claude/gotchas.md#working-branch--incident-detail).
+1. **Dev-first (documented route):** edit on `dev` → push → PR `dev` → `main`. Use when the change needs proving in a real workshop build first.
+2. **Feature branch → PR → `main`** — fine only if already tested via `LOCAL=true`, and **you push `main` → `dev` afterward in the same session** (`git push origin origin/main:refs/heads/dev`, fast-forward only). Skipping this resync has caused real incidents. Detail: [gotchas.md](docs/claude/gotchas.md#working-branch--incident-detail).
 
-**Never push straight to `main` without a PR** — protected, and a bypass is logged. FortiDevSec SAST is broken/deprecated org-wide since 2026-08-25 — if `ci/jenkins/build-status` fails on an unrelated PR anywhere in the org, check the Jenkinsfile's `false`-guarded stage before assuming the PR is at fault.
+**Never push straight to `main` without a PR** — protected (`enforce_admins: true`), a bypass is logged. If `ci/jenkins/build-status` fails on an unrelated PR anywhere in the org, check for the deprecated FortiDevSec Jenkinsfile stage before assuming the PR is at fault (org-wide since 2026-08-25, [gotchas.md](docs/claude/gotchas.md)).
 
 ## Project in One Line
 
@@ -22,16 +22,7 @@ centralizes check-in, analytics, quiz integration, and UX helpers into a Docker-
 
 ## Stack Quick Reference
 
-| Layer | Tech | Notes |
-|-------|------|-------|
-| Static site generator | Hugo (`hugomods/hugo:std-0.165.0`, **pinned**) | Relearn theme (git submodule) |
-| Templating | Go templates + Jinja2 (config gen) | `repoConfig.json` → `hugo.toml` |
-| Build/Runtime | Docker multi-stage (dev/prod) | tini entrypoint, Python 3 for scripts |
-| CI/CD | GitHub Actions (image build/push) | Also: Jenkins (legacy), AWS CodeBuild (legacy) |
-| Hosting | AWS CloudFront + S3 (per-workshop) | CloudFormation templates in `pipeline/` |
-| Security | FortiDevSec (SAST, secrets, SCA, IaC, container) | Fails pipeline at risk rating ≥7 |
-
-Module map (layouts/partials, shortcodes, scripts, themes/): [docs/claude/reference.md](docs/claude/reference.md).
+Hugo (`hugomods/hugo:std-0.165.0`, pinned, Relearn theme submodule) + Go templates/Jinja2 config gen, built via multi-stage Docker, deployed via GitHub Actions to AWS CloudFront+S3 per workshop; FortiDevSec SAST/SCA/IaC gates the pipeline (fails at risk rating ≥7). Full stack table + module map (layouts/partials, shortcodes, scripts, themes/): [reference.md](docs/claude/reference.md).
 
 ## Build & Run Commands
 
@@ -57,70 +48,28 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 ## Critical Rules
 
 - **`google_analytics_authorMode.html` — NEVER DELETE.** `hugoServer_authorMode.sh` renames this to `google_analytics.html` at dev startup; delete it and dev server mode silently breaks.
-- **Dual-repo pattern**: CentralRepo provides layouts/themes; UserRepo (workshop content) mounts to `/home/UserRepo` in Docker. Config flow: `repoConfig.json` → Jinja2 → `hugo.toml`.
-- **`fortiemail` cookie has 2+ writers** (analytics_checkin form, launchdemoform's "Change Email") — a validation/escaping fix must land in both. Never render via `innerHTML`; exclude `<`, `>`, `"` but not `'`/backtick (valid RFC 5322 chars).
+- **Dual-repo pattern**: CentralRepo provides layouts/themes; UserRepo (workshop content, a protected-`main` template repo) mounts to `/home/UserRepo` in Docker — config flows `repoConfig.json` → Jinja2 → `hugo.toml`. **Repo-local files silently shadow CentralRepo's** (`local_copy.sh` `cp`s UserRepo's shortcodes/partials over CentralRepo's) — a repo-local `custom-header.html` loses the whole deployment-path gate. Full detail: `README.md` → "Notes & gotchas".
 - **`quizframe.html` is the live CTF quiz iframe; `quizdown.html`/`carousel.html`/`orig_*.html` are dead code slated for deletion.**
-- **Dockerfile fetches from GitHub at build time** — local file changes are NOT picked up without `LOCAL=true`.
+- **Dockerfile fetches from GitHub at build time** — local file changes are NOT picked up without `LOCAL=true` (see Build & Run above).
 - **Hugo base image is pinned (`Dockerfile:15`) — keep it pinned.** An unpinned tag once changed the renderer under 65 workshop repos with no commit to explain it.
-- **`paths-ignore` on both image workflows is deliberately narrow** — `'*.md'` is root-level only. Anything under `scripts/`, `layouts/`, `assets/`, `i18n/`, `static/`, `archetypes/`, `themes/`, or the `Dockerfile` reaches the image. A wrong entry means a change ships to nobody with no visible failure.
-- **Assume a push rebuilds the image unless you've checked `gh run list`** — reading the path filter is not the same as observing the trigger.
-- **`launchdemoform`'s backend has three independent locks** (rate limiter, dedup/claim, per-email history) — a client-side fix only ever covers one. "This should be unblocked now" still not working means check which lock you're actually looking at.
-- **CORS**: TEC Analytics `/checkin/silent` needs `CORS_ALLOW_ALL_DEV=1` on the API for dev origins.
-- **`hugo.toml` is gitignored** — generated at container startup. Do not commit it.
-- **`CLAUDE.md` is tracked — do not re-add it to `.gitignore`.** Root-level `*.md` is already excluded from image rebuilds, so committing costs nothing; it was ignored for months once and every session started blind.
-- **Two-hop deploy path**: edit → merge to `main` → prod image rebuilds → each workshop repo picks it up on its *next* build. Don't debug a workshop site against an unbuilt CentralRepo commit.
-- **A green image-build run is not proof `:latest` moved** — read the push step's log for the digest. `docker pull` on a tag you hold locally can serve a stale manifest; `docker rmi -f` first. ECR Public can also serve the old `:latest` to fresh GitHub runners for minutes after a prod push: a workshop deploy that runs right after it silently builds with the previous image. Check the site's `CloudCSE Version` and re-run the deploy (`gh workflow run static.yml`) if it's stale (hit 2026-09-24, xperts-ai-101).
-- **Dev image build is tied to the `dev` branch by name in two places that must agree**: the workflow's push trigger and the Dockerfile's `ADD`. Prod independently pins `#main`.
-- **A push-triggered workflow's branch filter is evaluated from the pushed commit's own YAML**, not what was live before — editing a trigger's branch name in the same commit you push to the old branch means nothing fires.
-- **Deleting a file via `batch_repo_update.py`'s `FILES_TO_DELETE` ≠ retiring it** — grep the org for content that still references it (shortcode calls) before adding anything, or repos accumulate a silent hard build failure.
-- **`UserRepo` is a real template repo with protected `main`** — any automation touching it needs a PR flow. It's the single propagation point for both fixes and breakage into every future workshop repo.
-- **A green Pages-deploy checkmark from before 2026-08-25 isn't proof a site built** — `docker wait` with no exit-code capture reported failed builds as CI success until then. Fixed org-wide.
-- **Repo-local files shadow CentralRepo's, silently** — `local_copy.sh` does a non-recursive `cp` of UserRepo's shortcodes/partials over CentralRepo's. A repo-local `custom-header.html` replaces CentralRepo's outright, losing the whole deployment-path gate. Full detail in `README.md` → "Notes & gotchas".
-- **A shortcode's `.Page.Store` guard is per page, NOT per output format** — a `once per page` asset block lands in whichever format builds first and is silently absent from the rest (e.g. `allpages.html`'s print page).
-- **Clean `public/` inside a container, not on the host** — the container writes it as root; a partial host-side `rm -rf` fails halfway and the next build lands on stale files.
-- **A fresh `git worktree add` leaves `themes/hugo-theme-relearn` empty** — `cp -a` the theme in from a populated checkout, or the build dies on `unknown output format "print"`.
-- **`static.yml` has two roles, split**: `.github/workflows/static.yml` is CentralRepo's own build; `scripts/static.yml` is the canonical template copied into workshop repos. Edit the wrong one and you break the wrong thing.
-- **`batch_repo_update.py` is the executed contract; `repo_upgrade_spec.json` in workshop repos is only documentation** — the script never reads the spec file, so they drift silently.
-- **`errorignore` beats `pageRef` for a `menu.shortcuts` WARN on a non-page target** (e.g. a PDF) — `pageRef` only resolves pages.
-- **Non-active relearn tab panels are hidden by `theme.css`, not `format-print.css`** — the print-file attribution is a live mis-citation in two other repos' docs, don't propagate it.
-- **An `XpertsNNBanner` shortcode is a draw.io export with three nested encoding layers** — reproduce programmatically (build XML → `json.dumps` → `html.escape`), never hand-edit the giant single-line div.
-- **A `dev`→`main` promotion here routinely trips `gh-merge-verify`'s CI-skip-token pre-flight even on a small clean diff** — old `[skip ci]` plan commits can still appear in the PR's commit ancestry. Fix: `-- --subject "..." --body "..."`, not `--allow-skip-token`.
-- **Never write `htmlEscape` anywhere under `layouts/`** — CI assertion A11 greps for it and fails `dev`; use `transform.HTMLEscape`. Bit #115.
-- **Promotion PR conflicts after a squash to `main`**: `main`'s squash copies conflict with `dev`'s originals. Merge `origin/main` into `dev` keeping `dev`'s side, push, wait for green `dev` CI, then re-run the promotion. Detail: [docs/claude/gotchas.md](docs/claude/gotchas.md#command--output-render-hooks).
+- **`fortiemail` cookie has 2+ writers** (analytics_checkin form, launchdemoform's "Change Email") — a validation/escaping fix must land in both, never via `innerHTML`. CORS: TEC Analytics `/checkin/silent` needs `CORS_ALLOW_ALL_DEV=1` on the API for dev origins. Detail: [gotchas.md](docs/claude/gotchas.md).
+- **Assume a push rebuilds the image unless you've checked `gh run list`** — `paths-ignore` on both image workflows is root-level `*.md` only, narrower than it looks. Dev image build is tied to the `dev` branch by name in two places that must agree (push trigger + Dockerfile `ADD`); prod pins `#main` independently.
+- **Two-hop deploy path**: edit → merge to `main` → prod image rebuilds → each workshop repo picks it up on its *next* build — don't debug a workshop site against an unmerged commit. **A green image-build run or Pages-deploy checkmark is not proof it shipped** — check the push step's digest / build exit code; ECR Public can also serve a stale `:latest` to fresh runners for minutes after a prod push (re-run `gh workflow run static.yml` if `CloudCSE Version` looks stale, hit 2026-09-24).
+- **`hugo.toml` is gitignored** (generated at startup, don't commit); **`CLAUDE.md` IS tracked — never re-add to `.gitignore`** (root `*.md` is excluded from image rebuilds, so this costs nothing; it was ignored for months once and every session started blind).
 
-Full incident history and the deployment-path gate's ~20 detailed rules (pre-paint CSS mechanics, `pathgate/specs.gotmpl`, sidebar/search scoping, `errorf` triggers): [docs/claude/gotchas.md](docs/claude/gotchas.md).
+Full incident history, the `launchdemoform` triple-lock gotcha, and the deployment-path gate's ~20 detailed rules: [gotchas.md](docs/claude/gotchas.md).
 
 ## Site Parameters (repoConfig.json)
 
-`deploymentPaths` gates the whole workshop's path vocabulary (order is load-bearing — first entry is the default; renaming a `title` silently resets returning readers, renaming a `key` fails the build loudly). `errorignore` is a list of regexes suppressing relearn URL warnings for non-page targets. Full JSON shape + schema detail: [docs/claude/reference.md](docs/claude/reference.md#site-parameters-repoconfigjson).
+`deploymentPaths` gates the whole workshop's path vocabulary (order is load-bearing — first entry is the default; renaming a `title` silently resets returning readers, renaming a `key` fails the build loudly). `errorignore` is a list of regexes suppressing relearn URL warnings for non-page targets. Full JSON shape + schema detail: [reference.md](docs/claude/reference.md#site-parameters-repoconfigjson).
 
 ## CI/CD Workflows
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `image-build-push-dev.yaml` | Push to `dev`, minus `paths-ignore` | Build & push dev Docker image |
-| `image-build-push-prod.yaml` | Push to `main`, minus `paths-ignore` | Build & push prod Docker image (`fortinet-hugo:latest`) |
-| `versioning.yml` | — | Version management |
-| `.github/workflows/static.yml` | Push to `main` | CentralRepo's own site build + GitHub Pages deploy (`docker build --target=prod`) |
-| `scripts/static.yml` | (not a CentralRepo workflow) | Template copied into workshop repos; pulls the prod image from ECR |
-
-`main` has `enforce_admins: true` — an admin push no longer bypasses the PR requirement. Detail on the `ci.yml` required-check `paths-ignore` trap: [docs/claude/gotchas.md](docs/claude/gotchas.md#cicd--detail).
+Five workflows (dev/prod image build, versioning, CentralRepo's own Pages build, and the `scripts/static.yml` template copied into workshop repos) — full trigger table: [reference.md#cicd-workflows](docs/claude/reference.md#cicd-workflows). `main` has `enforce_admins: true` — an admin push no longer bypasses the PR requirement. `ci.yml` required-check `paths-ignore` trap: [gotchas.md](docs/claude/gotchas.md#cicd--detail).
 
 ## Common Tasks
 
-**Add a new shortcode:** Create `layouts/shortcodes/<name>.html` (partial content only — no `<!DOCTYPE html>` wrapper), document params in README.md, test with `hugoServer_authorMode.sh` or against a real workshop repo via the `LOCAL=true` dev image. Never also land a copy in a workshop repo — `local_copy.sh` makes the local one win silently.
-
-**Add or reorder a deployment path:** Edit `deploymentPaths` in the workshop repo's `scripts/repoConfig.json`, then add a matching `pathtab` to **every** `pathtabs` block in that repo — a block missing any configured path is a build `errorf`. Prefer appending: reordering changes every page's default path.
-
-**Add a new theme variant:** Create `assets/css/theme-<Name>.css` with CSS custom property overrides, add a matching entry to the variants table in README.md, reference as `"themeVariant": "<Name>"` in repoConfig.json.
-
-**Update shared partials:** Edit in `layouts/partials/` — changes propagate to ALL workshop sites on next Docker image build. Test thoroughly via the `LOCAL=true` dev image before merging to dev/main.
-
-**Bump the Hugo version:** change the pin in `Dockerfile:15` in its own PR, build the `LOCAL=true` dev image against at least one real workshop repo, and diff the rendered output before merging. Never revert to an unpinned tag.
-
-**Debug check-in issues:** Check browser cookies (`fortiuser`, `fortiemail`), verify CORS config on TEC Analytics API, check browser console for silent check-in errors.
-
-**Promote dev → prod:** Merge `dev` → `main`; prod image build triggers automatically via `image-build-push-prod.yaml`.
+New shortcode, new deployment path, new theme variant, shared-partial edit, Hugo version bump, check-in debugging, dev→prod promotion — step-by-step for each: [reference.md#common-tasks-detail](docs/claude/reference.md#common-tasks-detail). Always test via the `LOCAL=true` dev image before merging; never land a duplicate shortcode/partial copy in a workshop repo (`local_copy.sh` makes the local one win silently).
 
 ## Testing
 

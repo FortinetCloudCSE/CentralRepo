@@ -2,6 +2,17 @@
 
 > Detail doc for `CLAUDE.md`. Read to locate a partial/shortcode/script, not for gotchas (`gotchas.md`).
 
+## Stack Quick Reference
+
+| Layer | Tech | Notes |
+|-------|------|-------|
+| Static site generator | Hugo (`hugomods/hugo:std-0.165.0`, **pinned**) | Relearn theme (git submodule) |
+| Templating | Go templates + Jinja2 (config gen) | `repoConfig.json` → `hugo.toml` |
+| Build/Runtime | Docker multi-stage (dev/prod) | tini entrypoint, Python 3 for scripts |
+| CI/CD | GitHub Actions (image build/push) | Also: Jenkins (legacy), AWS CodeBuild (legacy) |
+| Hosting | AWS CloudFront + S3 (per-workshop) | CloudFormation templates in `pipeline/` |
+| Security | FortiDevSec (SAST, secrets, SCA, IaC, container) | Fails pipeline at risk rating ≥7 |
+
 ```
 layouts/
   partials/
@@ -90,3 +101,31 @@ fdevsec.yaml                      — FortiDevSec scanner config
 - **`deploymentPaths`** — gates the whole workshop. Required by any page carrying a `deploymentPath` front-matter param, and by `pathtabs`/`pathtab`/`pathonly` unless the page declares its own `deploymentPaths` in front matter (page-scoped alternative; the two are mutually exclusive — see the gate section). **This is the single source of a repo's site-wide path vocabulary** — a consuming repo's tooling should derive its path list from here rather than hardcoding it. `key` is what `pathtab path="…"` matches; `title` is the tab label. **Order is load-bearing:** the first entry is the tab Hugo marks active server-side, so it is both the first-time default and the banner text with JS off. **Renaming a `title` silently resets every returning reader** — relearn keys the stored selection on `anchorize(title)` (`themes/hugo-theme-relearn/layouts/partials/shortcodes/tabs.html:42`), so old selections stop matching with no build error. Renaming a `key` is the loud kind of change: every `pathtab path=` must follow or the build fails.
 - **`errorignore`** — list of regexes, matched unanchored with `findRE` against the offending URL in `themes/hugo-theme-relearn/layouts/partials/_relearn/urlErrorReport.gotmpl:5,15-19`. Site-wide across the link/image/include/openapi checks, so prefer an anchored pattern over `\.pdf$`.
 - Both params are emitted by `scripts/templates/hugo.jinja` only when present and non-empty, so omitting them changes no existing site. Both are declared in `scripts/repoConfig.schema.json`; `deploymentPaths` entries are `additionalProperties: false` with `key` and `title` required.
+
+## CI/CD Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `image-build-push-dev.yaml` | Push to `dev`, minus `paths-ignore` | Build & push dev Docker image |
+| `image-build-push-prod.yaml` | Push to `main`, minus `paths-ignore` | Build & push prod Docker image (`fortinet-hugo:latest`) |
+| `versioning.yml` | Push to `main`, or manual | Version tagging & release |
+| `.github/workflows/static.yml` | Push to `main` | CentralRepo's own site build + GitHub Pages deploy (`docker build --target=prod`) |
+| `scripts/static.yml` | (not a CentralRepo workflow) | Template copied into workshop repos; pulls the prod image from ECR |
+
+## Common Tasks Detail
+
+> Summary + always-apply constraints: `CLAUDE.md` → Common Tasks.
+
+**Add a new shortcode:** Create `layouts/shortcodes/<name>.html` (partial content only — no `<!DOCTYPE html>` wrapper), document params in README.md, test with `hugoServer_authorMode.sh` or against a real workshop repo via the `LOCAL=true` dev image.
+
+**Add or reorder a deployment path:** Edit `deploymentPaths` in the workshop repo's `scripts/repoConfig.json`, then add a matching `pathtab` to **every** `pathtabs` block in that repo — a block missing any configured path is a build `errorf`. Prefer appending: reordering changes every page's default path.
+
+**Add a new theme variant:** Create `assets/css/theme-<Name>.css` with CSS custom property overrides, add a matching entry to the variants table in README.md, reference as `"themeVariant": "<Name>"` in repoConfig.json.
+
+**Update shared partials:** Edit in `layouts/partials/` — changes propagate to ALL workshop sites on next Docker image build.
+
+**Bump the Hugo version:** change the pin in `Dockerfile:15` in its own PR, build the `LOCAL=true` dev image against at least one real workshop repo, and diff the rendered output before merging. Never revert to an unpinned tag.
+
+**Debug check-in issues:** Check browser cookies (`fortiuser`, `fortiemail`), verify CORS config on TEC Analytics API, check browser console for silent check-in errors.
+
+**Promote dev → prod:** Merge `dev` → `main`; prod image build triggers automatically via `image-build-push-prod.yaml`. Watch for the squash-conflict and CI-skip-token gotchas: [gotchas.md](gotchas.md).
