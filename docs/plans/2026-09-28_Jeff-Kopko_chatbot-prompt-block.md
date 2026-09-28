@@ -93,6 +93,16 @@ Log File: none
   `transform.HTMLEscape` before interpolation, matching that existing convention. Re-verified
   after the fix: the `chatbot` target and the `label`/`icon`/`color` override test both still
   render correctly.
+- Visual bug only caught by an actual screenshot, not the HTML diff: the icon `<img>` rendered
+  centered with a huge gap before the badge text instead of sitting next to it. Cause:
+  `themes/hugo-theme-relearn`'s own CSS has `#R-body img { display: block; margin: 0 auto; ... }`
+  (an ID selector, for centering content images) — as a flex item, `margin: 0 auto` on a
+  block-level `<img>` consumes all free space and centers it, pushing later siblings to the far
+  end. My first fix (`.cmd-run .cmd-run-icon-img { ... margin: 0 }`, two classes) had lower
+  specificity than `#R-body img` (one ID) and was silently ignored. Fixed by matching the ID's
+  specificity: `#R-body .cmd-run .cmd-run-icon-img { display: inline-block; margin: 0; flex:
+  none; ... }`. This is a real gotcha for any future icon/image work in a `cmd-block.html`-style
+  header — check `#R-body img` in `theme.min.css` before assuming a class-only override will win.
 
 ## Files Changed
 - `static/images/fortiai-assist.svg` (new, copied from xperts-ai-101 `plans/FortiAI-Assist.svg`)
