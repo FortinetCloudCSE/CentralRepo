@@ -1,10 +1,25 @@
 {{- /*
   Shared partial for the run= command-block render hooks
-  (render-codeblock-{bash,sh,shell}.html). Pass-through to the theme's
+  (render-codeblock-{bash,sh,shell,text}.html). Pass-through to the theme's
   own highlight partial, byte-identical, when `run` is absent. When
-  `run` is present, adds a "Run on: <Target>" header badge, colour-keyed
-  per target, and keeps the theme's highlighting/copy button untouched.
-  See docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
+  `run` is present, adds a header badge, colour-keyed per target, and
+  keeps the theme's highlighting/copy button untouched.
+
+  Known targets (`bastion`, `local`, `pod`, `browser`, `chatbot`) get a
+  fixed colour (in custom-header.html) and, for `chatbot`, a default label
+  and icon suited to a chat-UI prompt instead of a terminal command. Any
+  other `run` value falls back to a neutral badge reading "Run on: <Target>".
+
+  Every target's label, icon and header colour can be overridden per block,
+  regardless of target, with the `label`, `icon` and `color` attributes:
+    ```text {run="chatbot" label="Ask FortiAI-Assist" color="#7a3fc4"}
+    ...
+    ```
+  `icon` accepts "terminal" (default), "fortiai" (this partial's built-in
+  FortiAI-Assist mark), or any Font Awesome class string, e.g. "fas fa-robot".
+
+  See docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md and
+  docs/plans/2026-09-28_Jeff-Kopko_chatbot-prompt-block.md.
 */}}
 {{- $page := .page }}
 {{- $attrsRaw := .attributes }}
@@ -23,9 +38,10 @@
     "type"       $type
   ) }}
 {{- else }}
+  {{- $reserved := slice "run" "label" "icon" "color" }}
   {{- $attrs := dict }}
   {{- range $k, $v := $attrsRaw }}
-    {{- if ne $k "run" }}
+    {{- if not (in $reserved $k) }}
       {{- $attrs = $attrs | merge (dict $k $v) }}
     {{- end }}
   {{- end }}
@@ -36,15 +52,46 @@
     "options"    $options
     "type"       $type
   ) }}
-  {{- $knownTargets := slice "bastion" "local" "pod" "browser" }}
+  {{- $knownTargets := slice "bastion" "local" "pod" "browser" "chatbot" }}
   {{- $targetKey := lower $run }}
   {{- $targetClass := "other" }}
   {{- if in $knownTargets $targetKey }}
     {{- $targetClass = $targetKey }}
   {{- end }}
-  {{- $targetLabel := printf "%s%s" (upper (substr $run 0 1)) (substr $run 1) }}
+
+  {{- $defaultLabels := dict "chatbot" "Ask the chatbot" }}
+  {{- $targetTitle := printf "%s%s" (upper (substr $run 0 1)) (substr $run 1) }}
+  {{- $label := printf "Run on: %s" $targetTitle }}
+  {{- if isset $defaultLabels $targetKey }}
+    {{- $label = index $defaultLabels $targetKey }}
+  {{- end }}
+  {{- with index $attrsRaw "label" }}
+    {{- $label = . }}
+  {{- end }}
+
+  {{- $defaultIcons := dict "chatbot" "fortiai" }}
+  {{- $icon := "terminal" }}
+  {{- if isset $defaultIcons $targetKey }}
+    {{- $icon = index $defaultIcons $targetKey }}
+  {{- end }}
+  {{- with index $attrsRaw "icon" }}
+    {{- $icon = . }}
+  {{- end }}
+  {{- $iconHTML := "" }}
+  {{- if eq $icon "fortiai" }}
+    {{- $iconHTML = printf "<img class=\"fa-fw cmd-run-icon cmd-run-icon-img\" src=\"%s\" alt=\"\" aria-hidden=\"true\">" (relURL "images/fortiai-assist.svg") }}
+  {{- else if eq $icon "terminal" }}
+    {{- $iconHTML = "<i class=\"fa-fw fas fa-terminal cmd-run-icon\" aria-hidden=\"true\"></i>" }}
+  {{- else }}
+    {{- $iconHTML = printf "<i class=\"fa-fw %s cmd-run-icon\" aria-hidden=\"true\"></i>" (transform.HTMLEscape $icon) }}
+  {{- end }}
+
+  {{- $headerAttr := "" }}
+  {{- with index $attrsRaw "color" }}
+    {{- $headerAttr = printf " style=\"background:%s\"" (transform.HTMLEscape .) }}
+  {{- end }}
 <div class="cmd-block cmd-run cmd-target-{{ $targetClass }}">
-  <div class="cmd-block-header"><i class="fa-fw fas fa-terminal cmd-run-icon" aria-hidden="true"></i><span class="cmd-run-badge">{{ printf "Run on: %s" $targetLabel }}</span></div>
+  <div class="cmd-block-header"{{ $headerAttr | safeHTMLAttr }}>{{ $iconHTML | safeHTML }}<span class="cmd-run-badge">{{ $label }}</span></div>
   <div class="cmd-run-body">{{ $body | safeHTML }}</div>
 </div>
 {{- end }}

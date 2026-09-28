@@ -54,19 +54,46 @@ Key behaviors:
 ### Command / expected-output blocks
 
 Plain markdown code fences, no shortcode nesting. Zero visual change for any workshop that
-doesn't use the new attributes — `render-codeblock-{bash,sh,shell}.html` delegate to the
+doesn't use the new attributes — `render-codeblock-{bash,sh,shell,text}.html` delegate to the
 theme's own highlighting partial exactly as before when `run` is absent.
 
-Add `{run="<target>"}` to a `bash`, `sh` or `shell` fence for a coloured **"Run on: &lt;Target&gt;"**
-header. Four targets get a fixed colour (`bastion`, `local`, `pod`, `browser`); anything else
-gets a neutral badge. `title` still composes with `run` — Relearn's own titled/tab rendering
-happens inside the run-on header. Copy-to-clipboard and syntax highlighting are unchanged.
+Add `{run="<target>"}` to a `bash`, `sh`, `shell` or `text` fence for a coloured header badge.
+Five targets are standard choices with a fixed colour, icon and label:
+
+| Target | Header | Colour |
+|---|---|---|
+| `bastion` | Run on: Bastion | blue |
+| `local` | Run on: Local | green |
+| `pod` | Run on: Pod | purple |
+| `browser` | Run on: Browser | orange (`#c97d1f`) |
+| `chatbot` | Ask the chatbot | orange (`#e07b1a`), FortiAI-Assist icon |
+
+Any other `run` value gets a neutral grey badge reading "Run on: &lt;Target&gt;". `title` still
+composes with `run` — Relearn's own titled/tab rendering happens inside the run-on header.
+Copy-to-clipboard and syntax highlighting are unchanged.
 
 ````markdown
 ```bash {run="bastion"}
 kubectl get pods
 ```
+
+```text {run="chatbot"}
+Who is in the Engineering department?
+```
 ````
+
+Every block's header text, icon and colour are also author-editable per block, on any target,
+with the `label`, `icon` and `color` attributes — use this for a one-off badge that isn't one of
+the five standard targets:
+
+````markdown
+```text {run="chatbot" label="Ask FortiAI-Assist" icon="fas fa-robot" color="#7a3fc4"}
+Explain this alert.
+```
+````
+
+`icon` accepts `terminal` (default), `fortiai` (the built-in FortiAI-Assist mark, `static/images/fortiai-assist.svg`),
+or any Font Awesome class string (e.g. `fas fa-robot`).
 
 A new `output` fence renders a muted/dashed panel labelled "Expected output", with no shell
 syntax colouring and **no copy button** (so it can't be mistaken for something to paste):
@@ -82,11 +109,13 @@ Attributes on `output`:
 - `collapse="true"` — wraps the panel in the theme's expand/notice widget, collapsed by default.
   **Must be quoted** — Hugo's fence-attribute parser does not accept a bare `collapse=true`.
 
-Implementation: `layouts/_default/_markup/render-codeblock-{bash,sh,shell,output}.html` and the
+Implementation: `layouts/_default/_markup/render-codeblock-{bash,sh,shell,text,output}.html` and the
 shared `layouts/partials/shortcodes/cmd-block.html`. Styling lives in `custom-header.html`;
 the copy-button suppression for `.cmd-output` panels is a small script in `custom-footer.html`
 that runs after the theme's own `initCodeClipboard()` and removes any button it attached inside
-an output panel — no theme.js fork. Full design notes: `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
+an output panel — no theme.js fork. Full design notes: `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`
+(`run=`/`output` fences) and `docs/plans/2026-09-28_Jeff-Kopko_chatbot-prompt-block.md` (`chatbot`
+target, `text` fence support, `label`/`icon`/`color` overrides).
 Demo page: UserRepo `content/02Hugo/9_commands_and_output/index.md`.
 
 ## Shortcodes and usage

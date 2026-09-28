@@ -78,8 +78,11 @@
 ## Command / output render hooks
 
 Shipped 2026-09-24 (#115/#116/#117, image v26.3.an). Plan: `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
+Extended 2026-09-28 with a `chatbot` target, `text` fence support, and author-editable
+`label`/`icon`/`color` overrides on any target. Plan: `docs/plans/2026-09-28_Jeff-Kopko_chatbot-prompt-block.md`.
 
-- `render-codeblock-{bash,sh,shell}.html` must stay a byte-identical pass-through to `partials/shortcodes/highlight.html` when `run` is absent. Verify any edit by diffing a full UserRepo build before and after.
+- `render-codeblock-{bash,sh,shell,text}.html` must stay a byte-identical pass-through to `partials/shortcodes/highlight.html` when `run` is absent. Verify any edit by diffing a full UserRepo build before and after.
+- Any author-controlled `run=` attribute value that lands in a `safeHTML`/`safeHTMLAttr` sink in `cmd-block.html` (currently `icon`, `color`) must go through `transform.HTMLEscape` first — Go's `html/template` does not re-escape values already marked safe. `label` is exempt because it's emitted via plain `{{ $label }}`, which auto-escapes normally. `/code-review medium` caught a real miss of this on the first pass of the 2026-09-28 extension.
 - theme.js is loaded with `defer`, so an inline script's `DOMContentLoaded` listener runs **before** `initCodeClipboard()`. Anything that post-processes the theme's copy buttons must defer again (`setTimeout(0)`). The first version got this wrong and only headless Chromium caught it: `--dump-dom` and count `.block-copy-to-clipboard-button` per panel.
 - Hugo code-fence attributes must be quoted: `collapse=true` is silently ignored, `collapse="true"` works.
 - Headless render of a workshop page redirects to the home page through the check-in gate. For local tests, sed `location.href="https://fortinetcloudcse.github.io/<repo>/"` to `void 0` in a copied build.

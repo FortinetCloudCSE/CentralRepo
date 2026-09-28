@@ -37,6 +37,25 @@ change for repos that don't:
   `transform.HTMLEscape`, because CI assertion A11 bans `htmlEscape` in layouts.
 - See `README.md` → "Render hooks" and `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
 
+### feat(render-hooks): `chatbot` run target, `text` fence support, author-editable label/icon/color
+
+Extends the `run=` command-block convention above:
+
+- New standard target `chatbot`: header reads "Ask the chatbot" (not "Run on: ..."), orange
+  (`#e07b1a`) badge, icon is a new built-in FortiAI-Assist mark (`static/images/fortiai-assist.svg`)
+  instead of the terminal glyph. For authoring chat-UI prompts, not shell commands.
+- `run=` now also works on `text` fences (`render-codeblock-text.html`, same
+  byte-identical-pass-through-when-`run`-is-absent guarantee as `bash`/`sh`/`shell`), since a
+  chatbot prompt isn't a shell command.
+- New optional attributes on any `run=` block, any target: `label` (overrides the header text
+  entirely), `icon` (`terminal`, `fortiai`, or any Font Awesome class string), `color` (inline
+  header background, any CSS colour) — lets an author make a fully custom one-off badge without
+  a new named target.
+- First adopter: xperts-ai-101 (`03Agents/1_lab`, `04MCP/1_lab`, `05Security/1_lab` — replaces
+  inconsistent `> \`prompt\``/plain-text-fence/mistargeted `run="Lab Agent"` styling for chat-UI
+  prompts with the standard `chatbot` target).
+- See `README.md` → "Render hooks" and `docs/plans/2026-09-28_Jeff-Kopko_chatbot-prompt-block.md`.
+
 ### feat(shortcodes): Xperts26Banner — reusable XPerts 2026 banner for all workshop repos
 
 Adds `{{< Xperts26Banner line1="..." line2="..." line3="..." >}}`, following the
