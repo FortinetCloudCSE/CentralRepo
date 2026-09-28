@@ -1287,12 +1287,15 @@ html[data-deployment-path=""] .topbar-button.pathnav:not(.pathnav--any) {
   /* Run-on command blocks: coloured badge header, keep theme highlighting/copy button below */
   .cmd-run .cmd-block-header { color: #fff; }
   .cmd-run .cmd-run-icon { opacity: 0.85; }
+  /* #R-body img (theme.css) is an ID selector — must match/beat its specificity here */
+  #R-body .cmd-run .cmd-run-icon-img { display: inline-block; width: 1.1em; height: 1.1em; margin: 0; opacity: 1; flex: none; }
   .cmd-run .cmd-run-body > .highlight { margin-top: 0 !important; }
   .cmd-run .cmd-run-body pre { margin-top: 0; border-top: none; border-radius: 0 0 0.3em 0.3em; }
   .cmd-target-bastion .cmd-block-header { background: #30539b; }
   .cmd-target-local   .cmd-block-header { background: #3a8f5c; }
   .cmd-target-pod     .cmd-block-header { background: #8a5cc9; }
   .cmd-target-browser .cmd-block-header { background: #c97d1f; }
+  .cmd-target-chatbot .cmd-block-header { background: #e07b1a; }
   .cmd-target-other   .cmd-block-header { background: #5a6470; }
 
   /* Expected-output panels: muted/dashed, no syntax colour, no copy button */
