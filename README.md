@@ -106,6 +106,8 @@ NAME   READY   STATUS
 
 Attributes on `output`:
 - `lang="json"` (or any Chroma lexer name) — syntax-highlights the panel's content.
+- `hl_lines="2"` — emphasises those lines with a background band (e.g. the one value the reader must
+  check). Quoted; accepts a list/range such as `"1-2 4"`. Plain text (no lexer) unless `lang` is also set.
 - `collapse="true"` — wraps the panel in the theme's expand/notice widget, collapsed by default.
   **Must be quoted** — Hugo's fence-attribute parser does not accept a bare `collapse=true`.
 

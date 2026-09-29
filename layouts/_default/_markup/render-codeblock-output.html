@@ -2,7 +2,8 @@
   New language hook: ```output``` fences. Renders a muted/dashed panel
   labelled "Expected output" with no shell syntax colouring by default.
   Optional attributes: lang="json" (or any Chroma lexer) for highlighting
-  inside the panel; collapse="true" (must be quoted) wraps it in the
+  inside the panel; hl_lines="2" (quoted; "1-2 4" also works) to emphasise
+  lines with a background band; collapse="true" (must be quoted) wraps it in the
   theme's expand/notice widget. The copy-to-clipboard button is suppressed for `.cmd-output`
   via CSS + a post-hoc DOM script (custom-header.html / custom-footer.html) —
   see docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md.
@@ -11,16 +12,21 @@
 {{- $attrs := .Attributes }}
 {{- $content := trim .Inner "\n\r" }}
 {{- $lang := index $attrs "lang" }}
+{{- $hlLines := index .Options "hl_lines" }}
 {{- $collapseRaw := index $attrs "collapse" }}
 {{- $collapse := eq $collapseRaw "true" }}
 {{- $label := "Expected output" }}
 
+{{- $hlOpts := dict }}
+{{- with $hlLines }}{{- $hlOpts = dict "hl_lines" . }}{{- end }}
+
 {{- $body := "" }}
-{{- if $lang }}
+{{- if or $lang $hlLines }}
   {{- $body = partial "shortcodes/highlight.html" (dict
     "page"    $page
     "content" $content
-    "type"    $lang
+    "type"    ($lang | default "text")
+    "options" $hlOpts
   ) }}
 {{- else }}
   {{- $body = printf "<pre class=\"cmd-output-pre\"><code>%s</code></pre>" (transform.HTMLEscape $content) | safeHTML }}
