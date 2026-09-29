@@ -37,6 +37,15 @@ change for repos that don't:
   `transform.HTMLEscape`, because CI assertion A11 bans `htmlEscape` in layouts.
 - See `README.md` → "Render hooks" and `docs/plans/2026-09-24_Jeff-Kopko_cmd-output-blocks.md`.
 
+### feat(render-hooks): `hl_lines` on `output` fences
+
+` ```output {hl_lines="2"} ` emphasises the listed lines (Chroma `hl_lines` syntax, quoted; `"1-2 4"`
+works) with a background band, so an author can point at the one line a reader must check. Hugo
+puts `hl_lines` in the render hook's `.Options`, not `.Attributes`; when set, the block goes through
+the theme's `highlight` partial with the `text` lexer (or `lang=` if given). Blocks without it render
+exactly as before. Composes with `lang` and `collapse`. Verified in the prod Hugo image with the hook
+mounted over its copy. See `README.md` → "Render hooks".
+
 ### feat(render-hooks): `chatbot` run target, `text` fence support, author-editable label/icon/color
 
 Extends the `run=` command-block convention above:
