@@ -1,6 +1,7 @@
 {{- $marketingCode := .Site.Params.marketingCode | default "" }}
 {{- $workshopID := .Site.Params.repoName | default "" }}
 {{- $workshopTitle := .Site.Params.workshopTitle | default "" }}
+{{- $workshopUrl := .Site.Home.Permalink }}
 {{- $quizUrl := .Site.Params.quizUrl | default "" }}
 {{- $analyticsBase := .Site.Params.analyticsBaseUrl | default "https://tecanalytics.forticloudcse.com" -}}
 
@@ -9,6 +10,7 @@
   data-marketing-code="{{ $marketingCode }}"
   data-workshop-id="{{ $workshopID }}"
   data-workshop-title="{{ $workshopTitle }}"
+  data-workshop-url="{{ $workshopUrl }}"
   data-quiz-url="{{ $quizUrl }}"
 ></div>
 
@@ -41,6 +43,7 @@ const ANALYTICS_BASE = container.getAttribute('data-analytics-base');
 const MARKETING_CODE = container.getAttribute('data-marketing-code');
 const WORKSHOP_ID    = container.getAttribute('data-workshop-id');
 const WORKSHOP_TITLE = container.getAttribute('data-workshop-title');
+const WORKSHOP_URL = container.getAttribute('data-workshop-url');
 const QUIZ_URL       = container.getAttribute('data-quiz-url');
 
 function setCookie(name, value, days, domainOverride) {
@@ -130,6 +133,7 @@ container.innerHTML = `
     <input type="hidden" id="marketing_code" name="Event" value="${MARKETING_CODE}" />
     <input type="hidden" id="workshop_id" name="workshopID" value="${WORKSHOP_ID}" />
     <input type="hidden" id="workshop_title" name="workshopTitle" value="${WORKSHOP_TITLE}" />
+    <input type="hidden" id="workshop_url" name="workshopUrl" value="${WORKSHOP_URL}" />
     <input type="hidden" id="quiz_url" name="quizUrl" value="${QUIZ_URL}" />
     <div class="checkin-actions">
       <button type="submit" class="btn-primary">Check-in</button>
