@@ -5,9 +5,9 @@
   "required": ["repoName", "workshopTitle", "themeVariant"],
   "additionalProperties": false,
   "properties": {
-    "repoName":         { "type": "string", "minLength": 1 },
+    "repoName":         { "type": "string", "minLength": 1, "pattern": "^[^/]+$", "not": { "const": "UserRepo" } },
     "author":           { "type": "string" },
-    "workshopTitle":    { "type": "string", "minLength": 1 },
+    "workshopTitle":    { "type": "string", "minLength": 1, "not": { "const": "Hugo for Fortinet TECWorkshops" } },
     "themeVariant": {
       "type": "string",
       "enum": ["Workshop", "Demo", "UseCase", "Spotlight", "Xperts2024", "Xperts2025",

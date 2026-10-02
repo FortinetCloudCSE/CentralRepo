@@ -104,7 +104,7 @@ jobs:
           sleep 2
           done
           # Check for expected homepage content
-          curl -sf http://localhost:$TESTPORT/CentralRepo/ | grep -q "<title>Hugo for Fortinet TECWorkshops</title>"
+          curl -sf http://localhost:$TESTPORT/CentralRepo/ | grep -q "<title>CentralRepo Test Workshop</title>"
       - name: Build and push multi-arch latest image (after tests pass)
         if: success()
         run: |

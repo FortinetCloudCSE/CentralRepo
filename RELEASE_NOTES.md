@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### feat(checkin): send `workshopUrl`; reject template-default config
+
+`analytics_checkin.html` and `silent_cross_site_checkin.html` now POST `workshopUrl`
+(`.Site.Home.Permalink`, the site root, not the visited page) alongside the unchanged
+`workshopID`/`workshopTitle`. Optional on the TEC Analytics API (plan 2102 A6 validates
+`https://fortinetcloudcse.github.io/<workshopID>/...`), so deploy order does not matter.
+
+`repoConfig.schema.json` rejects `workshopTitle` "Hugo for Fortinet TECWorkshops" and
+`repoName` `UserRepo` or containing `/`. CentralRepo's own test site title is now
+"CentralRepo Test Workshop" (both image-build smoke tests updated to match).
+
 ### feat(config): per-workshop `disableInlineCopyToClipBoard`
 
 `scripts/repoConfig.json` accepts an optional boolean `disableInlineCopyToClipBoard`
