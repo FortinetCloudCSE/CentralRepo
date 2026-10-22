@@ -59,19 +59,20 @@ Migrating repos; creating tags; creating/changing AWS roles; touching `batch_rep
 
 ## Steps
 - [ ] Plan committed
-- [ ] `pages-deploy.yml` written
-- [ ] `scripts/static.yml` thin caller (`@dev`)
-- [ ] CentralRepo `.github/workflows/static.yml` Node 24 bump
-- [ ] Local: YAML parse + actionlint (workflow and caller)
-- [ ] Local: pull-loop stub tests (N failures then success; always fail -> exit 1)
-- [ ] Local: build script against `git archive` UserRepo with local image
-- [ ] Local: `act` attempt
+- [x] `pages-deploy.yml` written
+- [x] `scripts/static.yml` thin caller (`@dev`)
+- [x] CentralRepo `.github/workflows/static.yml` Node 24 bump
+- [x] Local: YAML parse + actionlint (workflow and caller)
+- [x] Local: pull-loop stub tests (N failures then success; always fail -> exit 1)
+- [x] Local: build script against `git archive` UserRepo with local image
+- [x] Local: `act` attempt
 - [ ] Push `ecr-auth:dev` (fast-forward)
 - [ ] Canary run(s) on UserRepo branch
 - [ ] Follow-up (before promotion): switch caller ref `@dev` -> stable ref
 
 ## Verified vs not (updated as we go)
-Verified: node24 status of the five actions; paths-ignore analysis; survey counts. Not yet verified: everything under Steps.
+Verified locally: node24 status of the five actions; paths-ignore analysis; survey counts; YAML parses; actionlint 1.7.7 reports no errors on the reusable workflow, the caller (inputs/permissions/`uses:` validated) or CentralRepo's own static.yml (only pre-existing shellcheck style/info notes); pull loop with stub docker (6 failures then success -> pass at attempt 7; 7 or 99 failures -> exit 1 after 7 attempts); real build of a `git archive` of UserRepo with the local `fortinet-hugo:latest` (exit 0, 23 entries in docs/); a deliberately broken shortcode gives exit 1 plus `::error::`; `act` 0.2.89 `-n` dry run expands caller -> reusable workflow (local path) and plans every step. `act` cannot prove Pages/OIDC/environment behaviour or cross-repo `uses:` resolution.
+Not verified until the canary: cross-repo resolution of `@dev`, org reusable-workflow policy, github-pages environment gating, real ECR pull, the OIDC login path (needs a pull-only role).
 
 ## Plan Changes
 none
