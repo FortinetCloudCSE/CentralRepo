@@ -66,8 +66,8 @@ Migrating repos; creating tags; creating/changing AWS roles; touching `batch_rep
 - [x] Local: pull-loop stub tests (N failures then success; always fail -> exit 1)
 - [x] Local: build script against `git archive` UserRepo with local image
 - [x] Local: `act` attempt
-- [ ] Push `ecr-auth:dev` (fast-forward)
-- [ ] Canary run(s) on UserRepo branch
+- [x] Push `ecr-auth:dev` (fast-forward) -> 2e8c599; triggered CI and the dev image build
+- [x] Canary run 1 on UserRepo branch `canary-reusable-workflow` (run 39873846887): `@dev` resolved and the job `deploy / deploy` was created, but the `github-pages` environment rejected the branch before any step ran ("not allowed to deploy to github-pages due to environment protection rules"). Build/pull/upload steps NOT exercised in CI. No second run (it would be rejected identically); next step needs an allowed ref or an environment rule change by the user.
 - [ ] Follow-up (before promotion): switch caller ref `@dev` -> stable ref
 
 ## Verified vs not (updated as we go)
