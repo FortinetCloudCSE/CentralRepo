@@ -68,11 +68,15 @@ Migrating repos; creating tags; creating/changing AWS roles; touching `batch_rep
 - [x] Local: `act` attempt
 - [x] Push `ecr-auth:dev` (fast-forward) -> 2e8c599; triggered CI and the dev image build
 - [x] Canary run 1 on UserRepo branch `canary-reusable-workflow` (run 39873846887): `@dev` resolved and the job `deploy / deploy` was created, but the `github-pages` environment rejected the branch before any step ran ("not allowed to deploy to github-pages due to environment protection rules"). Build/pull/upload steps NOT exercised in CI. No second run (it would be rejected identically); next step needs an allowed ref or an environment rule change by the user.
-- [ ] Follow-up (before promotion): switch caller ref `@dev` -> stable ref
+- [x] Canary run 2 (run 39976277921, after allowing the branch in UserRepo's `github-pages` environment): every step passed, including pull (attempt 1, anonymous), build, Upload artifact and Deploy to GitHub Pages; no Node 20 warnings (only an unrelated punycode warning from inside the Hugo image)
+- [x] Ref strategy decided: moving major tag `v1`, created only after a passing canary. Tag `v1` created on 2e8c599 (the tested commit); `scripts/static.yml` now calls `@v1`
+- [ ] Promote dev -> main (PR), then MOVE `v1` to the main commit (`git tag -fa v1 <sha> && git push -f origin v1`) so the tag tracks main
+- [ ] Phase 3: staggered migration (3-5 repos at a time) via `batch_repo_update.py`
+- [ ] Phase 4: pull-only AWS role, then set `ecr_role_arn` in the caller
 
 ## Verified vs not (updated as we go)
 Verified locally: node24 status of the five actions; paths-ignore analysis; survey counts; YAML parses; actionlint 1.7.7 reports no errors on the reusable workflow, the caller (inputs/permissions/`uses:` validated) or CentralRepo's own static.yml (only pre-existing shellcheck style/info notes); pull loop with stub docker (6 failures then success -> pass at attempt 7; 7 or 99 failures -> exit 1 after 7 attempts); real build of a `git archive` of UserRepo with the local `fortinet-hugo:latest` (exit 0, 23 entries in docs/); a deliberately broken shortcode gives exit 1 plus `::error::`; `act` 0.2.89 `-n` dry run expands caller -> reusable workflow (local path) and plans every step. `act` cannot prove Pages/OIDC/environment behaviour or cross-repo `uses:` resolution.
-Not verified until the canary: cross-repo resolution of `@dev`, org reusable-workflow policy, github-pages environment gating, real ECR pull, the OIDC login path (needs a pull-only role).
+Verified by canary run 2: cross-repo resolution of `@dev`, org reusable-workflow policy, github-pages environment gating (after the branch was allowed), anonymous ECR pull, build, upload and deploy. Not verified: the `@v1` form of the ref (same commit as `@dev`, expected identical), the OIDC login path (needs a pull-only role).
 
 ## Plan Changes
 none

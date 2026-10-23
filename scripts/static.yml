@@ -28,8 +28,8 @@ concurrency:
 
 jobs:
   deploy:
-    # TODO before promoting dev -> main: change @dev to the stable ref (e.g. @v1).
-    uses: FortinetCloudCSE/CentralRepo/.github/workflows/pages-deploy.yml@dev
+    # @v1 is a moving major tag: fixes ship by moving it, and a bad change is caught on a canary first.
+    uses: FortinetCloudCSE/CentralRepo/.github/workflows/pages-deploy.yml@v1
     with:
       runner_type: ${{ inputs.runner_type || 'ubuntu-latest' }}
       image_variant: ${{ inputs.image_variant || 'prod' }}
