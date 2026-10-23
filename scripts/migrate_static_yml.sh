@@ -34,7 +34,7 @@ migrate() {
   git checkout -q -b migrate-reusable-pages && cp "$NEW" .github/workflows/static.yml && git commit -qam "ci: call CentralRepo reusable pages-deploy workflow (@v1)" || return 1
   git push -q -u origin migrate-reusable-pages 2>/dev/null || { log "$r" fail "push"; return 1; }
   local head; head=$(git rev-parse HEAD)
-  for i in $(seq 1 20); do
+  for i in $(seq 1 ${JENKINS_TRIES:-20}); do
     st=$(gh api "repos/$R/commits/$head/status" --jq '[.statuses[]|select(.context=="ci/jenkins/build-status")|.state][0]')
     [ "$st" = success ] && break; [ "$st" = failure ] || [ "$st" = error ] && break; sleep 15
   done
