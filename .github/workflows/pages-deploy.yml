@@ -1,0 +1,148 @@
+# Reusable Hugo -> GitHub Pages deploy job for FortinetCloudCSE workshop repos.
+# Callers (scripts/static.yml) own: the `on:` triggers, `concurrency: group: pages`
+# (cancel-in-progress: false) and `permissions: contents: read, pages: write, id-token: write`.
+name: Pages deploy (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      image_variant:
+        description: 'Container image to run: prod (fortinet-hugo) or dev (hugotester)'
+        type: string
+        default: prod
+      runner_type:
+        description: 'runs-on label: ubuntu-latest, self-hosted or org-runners'
+        type: string
+        default: ubuntu-latest
+      ecr_role_arn:
+        description: 'OIDC role for authenticated ECR Public pulls (prod only). Pass an empty string to pull anonymously.'
+        type: string
+        default: 'arn:aws:iam::228122752878:role/GitHubECRPullOIDC'
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ${{ inputs.runner_type }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Clean Docker cache
+        run: docker system prune -f
+
+      - name: Select container image (default)
+        run: |
+          echo "IMAGE=public.ecr.aws/k4n6m5h8/fortinet-hugo:latest" >> "$GITHUB_ENV"
+          echo "LOCAL_IMAGE=fortinet-hugo:latest" >> "$GITHUB_ENV"
+          echo "IMAGE_REPO=public.ecr.aws/k4n6m5h8/fortinet-hugo" >> "$GITHUB_ENV"
+
+      - name: Select container image (dev override)
+        if: ${{ inputs.image_variant == 'dev' }}
+        run: |
+          echo "IMAGE=public.ecr.aws/k4n6m5h8/hugotester:latest" >> "$GITHUB_ENV"
+          echo "LOCAL_IMAGE=hugotester:latest" >> "$GITHUB_ENV"
+          echo "IMAGE_REPO=public.ecr.aws/k4n6m5h8/hugotester" >> "$GITHUB_ENV"
+
+      # Authenticated pulls get a far higher ECR Public rate limit than anonymous ones.
+      # Best-effort: if the role is not assumable the pull below falls back to anonymous.
+      - name: Configure AWS credentials (ECR Public pull)
+        id: aws
+        if: ${{ inputs.ecr_role_arn != '' && inputs.image_variant != 'dev' }}
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ inputs.ecr_role_arn }}
+          aws-region: us-east-1
+
+      - name: Login to ECR Public
+        id: ecr_login
+        if: ${{ steps.aws.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | \
+            docker login --username AWS --password-stdin public.ecr.aws
+
+      - name: Warn if pulling anonymously
+        if: ${{ steps.aws.outcome != 'skipped' && steps.ecr_login.outcome != 'success' }}
+        run: echo "::warning::ECR Public login failed; pulling anonymously (subject to toomanyrequests throttling)"
+
+      # Pull with exponential backoff + jitter to handle ECR "toomanyrequests"
+      - name: Pull image (with retries)
+        env:
+          MAX_ATTEMPTS: "7"   # ~2 minutes worst-case backoff
+        shell: bash
+        run: |
+          attempt=1
+          while :; do
+            echo "Pull attempt $attempt/$MAX_ATTEMPTS: $IMAGE"
+            if docker pull "$IMAGE"; then
+              echo "Pull succeeded"
+              break
+            fi
+
+            if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
+              echo "::error::Failed to pull $IMAGE after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+
+            # Exponential backoff with jitter: (2^attempt) + random(0..3)
+            sleep_secs=$(( (1 << attempt) + (RANDOM % 4) ))
+            echo "Transient error (likely throttle). Sleeping ${sleep_secs}s before retry..."
+            sleep "$sleep_secs"
+            attempt=$(( attempt + 1 ))
+          done
+
+      - name: Tag image locally
+        run: |
+          docker tag "$IMAGE" "$LOCAL_IMAGE"
+
+      - name: Build static app
+        shell: bash
+        run: |
+          CONT_ID=$(docker run -d -v "${{ github.workspace }}:/home/UserRepo" "$LOCAL_IMAGE" build)
+
+          cleanup() {
+            docker rm -f "$CONT_ID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          STATUS=$(docker wait "$CONT_ID")
+          docker logs "$CONT_ID"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::Static site build failed with exit code $STATUS"
+            exit "$STATUS"
+          fi
+
+          rm -rf "${{ github.workspace }}/docs"
+          docker cp "$CONT_ID:/home/CentralRepo/public" "${{ github.workspace }}/docs"
+
+      - name: Logout of ECR Public
+        if: ${{ always() }}
+        run: docker logout public.ecr.aws || true
+
+      - name: Remove images
+        shell: bash
+        run: |
+          IMAGES=$(docker images "$IMAGE_REPO" -aq)
+          if [ -n "$IMAGES" ]; then
+            docker rmi -f $IMAGES
+          fi
+
+      - name: Clear Docker cache
+        run: docker builder prune -f
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
