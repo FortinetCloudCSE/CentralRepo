@@ -15,9 +15,9 @@ on:
         type: string
         default: ubuntu-latest
       ecr_role_arn:
-        description: 'Optional OIDC role for authenticated ECR Public pulls (prod only). Empty = anonymous pull.'
+        description: 'OIDC role for authenticated ECR Public pulls (prod only). Pass an empty string to pull anonymously.'
         type: string
-        default: ''
+        default: 'arn:aws:iam::228122752878:role/GitHubECRPullOIDC'
 
 jobs:
   deploy:

@@ -72,11 +72,12 @@ Migrating repos; creating tags; creating/changing AWS roles; touching `batch_rep
 - [x] Ref strategy decided: moving major tag `v1`, created only after a passing canary. Tag `v1` created on 2e8c599 (the tested commit); `scripts/static.yml` now calls `@v1`
 - [ ] Promote dev -> main (PR), then MOVE `v1` to the main commit (`git tag -fa v1 <sha> && git push -f origin v1`) so the tag tracks main
 - [ ] Phase 3: staggered migration (3-5 repos at a time) via `batch_repo_update.py`
-- [ ] Phase 4: pull-only AWS role, then set `ecr_role_arn` in the caller
+- [x] Phase 4: pull-only AWS role `GitHubECRPullOIDC` created (docs/aws/); `ecr_role_arn` default in `pages-deploy.yml` set to its ARN (no per-repo change)
 
 ## Verified vs not (updated as we go)
 Verified locally: node24 status of the five actions; paths-ignore analysis; survey counts; YAML parses; actionlint 1.7.7 reports no errors on the reusable workflow, the caller (inputs/permissions/`uses:` validated) or CentralRepo's own static.yml (only pre-existing shellcheck style/info notes); pull loop with stub docker (6 failures then success -> pass at attempt 7; 7 or 99 failures -> exit 1 after 7 attempts); real build of a `git archive` of UserRepo with the local `fortinet-hugo:latest` (exit 0, 23 entries in docs/); a deliberately broken shortcode gives exit 1 plus `::error::`; `act` 0.2.89 `-n` dry run expands caller -> reusable workflow (local path) and plans every step. `act` cannot prove Pages/OIDC/environment behaviour or cross-repo `uses:` resolution.
 Verified by canary run 2: cross-repo resolution of `@dev`, org reusable-workflow policy, github-pages environment gating (after the branch was allowed), anonymous ECR pull, build, upload and deploy. Not verified: the `@v1` form of the ref (same commit as `@dev`, expected identical), the OIDC login path (needs a pull-only role).
 
 ## Plan Changes
-none
+- 2026-10-23 (approved by Jeff, executed by an agent): created IAM role `GitHubECRPullOIDC` in account 228122752878 (trust: existing GitHub OIDC provider, aud=sts.amazonaws.com, sub `repo:FortinetCloudCSE/*:*`, job_workflow_ref `FortinetCloudCSE/CentralRepo/.github/workflows/pages-deploy.yml@*`; inline policy `GitHubECRPullPolicy`: ecr-public:GetAuthorizationToken + sts:GetServiceBearerToken; 1h max session; JSON in `docs/aws/`). The `ecr_role_arn` input default is now that role ARN instead of empty, so every caller authenticates with no per-repo change; callers pass `''` to opt out. Supersedes the Non-goal "creating/changing AWS roles". Migration is limited to UserRepo, xperts-ai-101 and ai-101 for now.
+- The job_workflow_ref condition is accepted by IAM; whether it matches at assume time is verified by the OIDC canary (result recorded below).
