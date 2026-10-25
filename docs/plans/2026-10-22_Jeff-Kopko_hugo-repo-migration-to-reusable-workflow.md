@@ -2,7 +2,7 @@
 Date: 2026-10-22
 Owner: Jeff Kopko
 Slug: hugo-repo-migration-to-reusable-workflow
-Status: Draft
+Status: In Progress
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-10-22_Jeff-Kopko_hugo-repo-migration-to-reusable-workflow.md
@@ -462,6 +462,7 @@ Not verified: that a private repo can call the public reusable workflow and assu
 5. Run both classes in one sitting or two? And do you want to be present for FortiShield (private, hot) and gate N1/N2/O1 yourself?  don't touch FortiShield (it's private anyway)
 
 ## Plan Changes
+- 2026-10-25: Status In Progress. Results so far: 82 of 84 public candidates migrated and verified through the PR route (waves N1-N11, O1-O8 and retry waves R1-R11); each Pages run succeeded with 'Login to ECR Public' and 'Authenticated as'. Two repos (zero-touch-provisioning, ai-102-with-fortiappsec) failed the local build on the removed quizdown shortcode and are being fixed (content fix + migration in one PR). Lessons recorded: (1) the first poll of a brand-new Jenkins job can build another branch, so the helper pushes one empty re-trigger commit; (2) an expired AWS SSO login made the driver treat an unreadable Jenkins secret as 'no job' and skip 50 repos, so the driver now requires /whoAmI 200 before each repo and stops otherwise; (3) repos created with GitHub's immutable OIDC subject need the second sub pattern in the GitHubECRPullOIDC trust policy; (4) several repos have enforce_admins=true or a required Jenkins check, so PRs (not direct commits) were used throughout, about 6-9 min per repo. Legacy-form static.yml repos (style-guide, fortimanager-cloud-deployments, FortiWeb-Advanced-Threat-Lab, UserRepoDoc) are being assessed; the private ones (advanced-routing-sdwan-azure, user-managed-scaling, FortiShield) are out of scope.
 - 2026-10-23: diagnosed the two 404 roots (quizdown shortcode removed -> Hugo build fails -> old template deploys stale assets-only public/); added a local build pre-flight for all candidates and the two content fixes.
 - 2026-10-23: Jeff's answers — Q1 direct admin commits to protected main (helper checks enforce_admins=false per repo, falls back to a PR if true); Q2 upgrade the legacy-form repos (public ones only: private are out of scope); Q3 fix the two 404 roots before migrating them; Q4 flagship order per recommendation; Q5 never touch FortiShield. Org Actions policy read (admin:org): all actions and workflows allowed, sha pinning not required — no org change needed.
 - 2026-10-23: scope rule added — private/internal repos excluded (removes user-managed-scaling and FortiShield; total 81; wave O9 dropped).
