@@ -33,11 +33,20 @@ migrate() {
   cd "$d" || return 1
   git checkout -q -b migrate-reusable-pages && cp "$NEW" .github/workflows/static.yml && git commit -qam "ci: call CentralRepo reusable pages-deploy workflow (@v1)" || return 1
   git push -q -u origin migrate-reusable-pages 2>/dev/null || { log "$r" fail "push"; return 1; }
-  local head; head=$(git rev-parse HEAD)
-  for i in $(seq 1 ${JENKINS_TRIES:-20}); do
-    st=$(gh api "repos/$R/commits/$head/status" --jq '[.statuses[]|select(.context=="ci/jenkins/build-status")|.state][0]')
-    [ "$st" = success ] && break; [ "$st" = failure ] || [ "$st" = error ] && break; sleep 15
-  done
+  local head st; head=$(git rev-parse HEAD)
+  poll_jenkins() {
+    for i in $(seq 1 ${JENKINS_TRIES:-20}); do
+      st=$(gh api "repos/$R/commits/$head/status" --jq '[.statuses[]|select(.context=="ci/jenkins/build-status")|.state][0]')
+      [ "$st" = success ] && break; [ "$st" = failure ] || [ "$st" = error ] && break; sleep 15
+    done
+  }
+  poll_jenkins
+  if [ -z "$st" ] || [ "$st" = null ]; then
+    # A brand-new Jenkins job's first poll can build another branch; one empty commit gives it a changed revision.
+    log "$r" jenkins "no status; one empty re-trigger commit"
+    git commit -q --allow-empty -m "ci: retrigger Jenkins" && git push -q origin migrate-reusable-pages 2>/dev/null || { log "$r" fail "retrigger push"; return 1; }
+    head=$(git rev-parse HEAD); poll_jenkins
+  fi
   [ "$st" = success ] || { log "$r" jenkins "state=$st"; return 1; }
   local url; url=$(gh pr create -R "$R" --base main --head migrate-reusable-pages --title "ci: call CentralRepo reusable pages-deploy workflow (@v1)" --body "Replaces .github/workflows/static.yml with the thin caller from CentralRepo scripts/static.yml.
 
