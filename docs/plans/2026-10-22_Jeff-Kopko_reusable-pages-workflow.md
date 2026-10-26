@@ -2,7 +2,7 @@
 Date: 2026-10-22
 Owner: Jeff Kopko
 Slug: reusable-pages-workflow
-Status: Approved
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-10-22_Jeff-Kopko_reusable-pages-workflow.md
@@ -58,7 +58,7 @@ CentralRepo's own `.github/workflows/static.yml` is a different job (builds its 
 Migrating repos; creating tags; creating/changing AWS roles; touching `batch_repo_update.py`; changing Hugo image contents; pushing main.
 
 ## Steps
-- [ ] Plan committed
+- [x] Plan committed
 - [x] `pages-deploy.yml` written
 - [x] `scripts/static.yml` thin caller (`@dev`)
 - [x] CentralRepo `.github/workflows/static.yml` Node 24 bump
@@ -70,8 +70,8 @@ Migrating repos; creating tags; creating/changing AWS roles; touching `batch_rep
 - [x] Canary run 1 on UserRepo branch `canary-reusable-workflow` (run 39873846887): `@dev` resolved and the job `deploy / deploy` was created, but the `github-pages` environment rejected the branch before any step ran ("not allowed to deploy to github-pages due to environment protection rules"). Build/pull/upload steps NOT exercised in CI. No second run (it would be rejected identically); next step needs an allowed ref or an environment rule change by the user.
 - [x] Canary run 2 (run 39976277921, after allowing the branch in UserRepo's `github-pages` environment): every step passed, including pull (attempt 1, anonymous), build, Upload artifact and Deploy to GitHub Pages; no Node 20 warnings (only an unrelated punycode warning from inside the Hugo image)
 - [x] Ref strategy decided: moving major tag `v1`, created only after a passing canary. Tag `v1` created on 2e8c599 (the tested commit); `scripts/static.yml` now calls `@v1`
-- [ ] Promote dev -> main (PR), then MOVE `v1` to the main commit (`git tag -fa v1 <sha> && git push -f origin v1`) so the tag tracks main
-- [ ] Phase 3: staggered migration (3-5 repos at a time) via `batch_repo_update.py`
+- [x] Promote dev -> main (PR #124, main 5f18071) and MOVE `v1` to 5f18071
+- [x] Phase 3: staggered migration, done per the migration plan (single-file PRs via migrate_static_yml.sh, not batch_repo_update.py)
 - [x] Phase 4: pull-only AWS role `GitHubECRPullOIDC` created (docs/aws/); `ecr_role_arn` default in `pages-deploy.yml` set to its ARN (no per-repo change)
 
 ## Verified vs not (updated as we go)
@@ -81,3 +81,12 @@ Verified by canary run 2: cross-repo resolution of `@dev`, org reusable-workflow
 ## Plan Changes
 - 2026-10-23 (approved by Jeff, executed by an agent): created IAM role `GitHubECRPullOIDC` in account 228122752878 (trust: existing GitHub OIDC provider, aud=sts.amazonaws.com, sub `repo:FortinetCloudCSE/*:*`, job_workflow_ref `FortinetCloudCSE/CentralRepo/.github/workflows/pages-deploy.yml@*`; inline policy `GitHubECRPullPolicy`: ecr-public:GetAuthorizationToken + sts:GetServiceBearerToken; 1h max session; JSON in `docs/aws/`). The `ecr_role_arn` input default is now that role ARN instead of empty, so every caller authenticates with no per-repo change; callers pass `''` to opt out. Supersedes the Non-goal "creating/changing AWS roles". Migration is limited to UserRepo, xperts-ai-101 and ai-101 for now.
 - The job_workflow_ref condition is accepted by IAM; whether it matches at assume time is verified by the OIDC canary (result recorded below).
+
+## Session Summary
+The reusable workflow shipped: canary on UserRepo, authenticated OIDC pull, promotion (PR #124), tag `v1` on main, and 83 public workshop repos plus style-guide migrated (see the migration plan). ECR "toomanyrequests" no longer hits the Pages deploys.
+
+## Files Changed
+`.github/workflows/pages-deploy.yml` (new), `scripts/static.yml` (thin caller), `.github/workflows/static.yml` (Node 24 actions), `docs/aws/*` (role trust and policy), `scripts/migrate_static_yml.sh`, plans.
+
+## Follow-ups
+Revoke the Jenkins automation token; see the migration plan's Follow-ups for the rest.

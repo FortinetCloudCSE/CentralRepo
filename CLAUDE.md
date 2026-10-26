@@ -49,7 +49,7 @@ docker run --rm -v /path/to/UserRepo:/home/UserRepo:ro hugotester-local build
 
 - **`google_analytics_authorMode.html` — NEVER DELETE.** `hugoServer_authorMode.sh` renames this to `google_analytics.html` at dev startup; delete it and dev server mode silently breaks.
 - **Dual-repo pattern**: CentralRepo provides layouts/themes; UserRepo (workshop content, a protected-`main` template repo) mounts to `/home/UserRepo` in Docker — config flows `repoConfig.json` → Jinja2 → `hugo.toml`. **Repo-local files silently shadow CentralRepo's** (`local_copy.sh` `cp`s UserRepo's shortcodes/partials over CentralRepo's) — a repo-local `custom-header.html` loses the whole deployment-path gate. Full detail: `README.md` → "Notes & gotchas".
-- **`quizframe.html` is the live CTF quiz iframe; `quizdown.html`/`carousel.html`/`orig_*.html` are dead code slated for deletion.**
+- **`quizframe.html` is the live CTF quiz iframe (`quizdown` removed 2026-05-28); `carousel.html`/`orig_*.html` are dead code.**
 - **Dockerfile fetches from GitHub at build time** — local file changes are NOT picked up without `LOCAL=true` (see Build & Run above).
 - **Hugo base image is pinned (`Dockerfile:15`) — keep it pinned.** An unpinned tag once changed the renderer under 65 workshop repos with no commit to explain it.
 - **`fortiemail` cookie has 2+ writers** (analytics_checkin form, launchdemoform's "Change Email") — a validation/escaping fix must land in both, never via `innerHTML`. CORS: TEC Analytics `/checkin/silent` needs `CORS_ALLOW_ALL_DEV=1` on the API for dev origins. Detail: [gotchas.md](docs/claude/gotchas.md).
@@ -65,7 +65,7 @@ Full incident history, the `launchdemoform` triple-lock gotcha, and the deployme
 
 ## CI/CD Workflows
 
-Five workflows (dev/prod image build, versioning, CentralRepo's own Pages build, and the `scripts/static.yml` template copied into workshop repos) — full trigger table: [reference.md#cicd-workflows](docs/claude/reference.md#cicd-workflows). `main` has `enforce_admins: true` — an admin push no longer bypasses the PR requirement. `ci.yml` required-check `paths-ignore` trap: [gotchas.md](docs/claude/gotchas.md#cicd--detail).
+Workflows (dev/prod image build, versioning, own Pages build, and `scripts/static.yml`, which calls `pages-deploy.yml@v1`: edit that, never per repo; [traps](docs/claude/gotchas.md#reusable-pages-workflow)) — full trigger table: [reference.md#cicd-workflows](docs/claude/reference.md#cicd-workflows). `main` has `enforce_admins: true` (admins can't bypass PRs). `ci.yml` required-check `paths-ignore` trap: [gotchas.md](docs/claude/gotchas.md#cicd--detail).
 
 ## Common Tasks
 
