@@ -5,7 +5,7 @@
   "description": "Dev tooling for CentralRepo testing — not a deployable package",
   "scripts": {
     "validate:regex": "node scripts/test/validate_regex.js",
-    "validate:config": "python3 scripts/test/validate_config.py",
+    "validate:config": "python3 scripts/test/validate_config.py && python3 scripts/test/test_validate_config.py",
     "test": "npm run validate:regex && npm run validate:config"
   }
 }
