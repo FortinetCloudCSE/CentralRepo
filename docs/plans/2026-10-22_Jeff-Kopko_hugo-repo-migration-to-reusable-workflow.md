@@ -2,7 +2,7 @@
 Date: 2026-10-22
 Owner: Jeff Kopko
 Slug: hugo-repo-migration-to-reusable-workflow
-Status: In Progress
+Status: Complete
 Supersedes: none
 Superseded-By: none
 Plan File: docs/plans/2026-10-22_Jeff-Kopko_hugo-repo-migration-to-reusable-workflow.md
@@ -434,18 +434,18 @@ Total ~5-6 h of attended wall clock, best split into two sittings (N-class, then
 Hybrid: write the helper inline, then run the waves from one tmux session with the helper (sequential by design; a fan-out would defeat the no-simultaneous-pulls rule). Reason: high blast radius across ~83 public repos, strictly ordered, each step gated on the previous run.
 
 ## Steps
-- [ ] Precondition: UserRepo, xperts-ai-101, ai-101 migrated and green; `v1` on main; default `ecr_role_arn` live on `v1`
-- [ ] Decide open questions Q1-Q5
-- [ ] Pre-flight (new): for every candidate, shallow-clone and build locally with the already-pulled `fortinet-hugo:latest` (no ECR traffic); require exit 0 and a non-empty `public/index.html`. Reason: the old template ignores the container exit code and uploads the image's stale `public/` (assets only), so a repo can be green yet serve 404 (found in zero-touch-provisioning and ai-102-with-fortiappsec: live `{{< quizdown >}}` at content/02Hugo/3_create_md/index.md:136, shortcode removed from CentralRepo 2026-05-28). Repos that fail get a content fix BEFORE migration, otherwise the new fail-fast workflow turns the silent 404 into a red run.
-- [ ] Fix zero-touch-provisioning and ai-102-with-fortiappsec (remove or replace the quizdown block; one content commit each; Jeff said fix first)
-- [ ] Write `scripts/migrate_static_yml.sh` (dry-run default, md5 allow-list, ledger); test dry-run against the 83 (no writes)
-- [ ] Wave N1 + gate
-- [ ] Wave N2 + gate
-- [ ] Waves N3-N11
-- [ ] Wave O1 + gate
-- [ ] Waves O2-O8
-- [ ] Wave O9 (FortiShield, Jeff present)
-- [ ] Manual-review list resolved (delete dead static.yml / upgrade style-guide and fortimanager-cloud-deployments)
+- [x] Precondition: UserRepo, xperts-ai-101, ai-101 migrated and green; `v1` on main; default `ecr_role_arn` live on `v1`
+- [x] Decide open questions Q1-Q5
+- [x] Pre-flight (new): for every candidate, shallow-clone and build locally with the already-pulled `fortinet-hugo:latest` (no ECR traffic); require exit 0 and a non-empty `public/index.html`. Reason: the old template ignores the container exit code and uploads the image's stale `public/` (assets only), so a repo can be green yet serve 404 (found in zero-touch-provisioning and ai-102-with-fortiappsec: live `{{< quizdown >}}` at content/02Hugo/3_create_md/index.md:136, shortcode removed from CentralRepo 2026-05-28). Repos that fail get a content fix BEFORE migration, otherwise the new fail-fast workflow turns the silent 404 into a red run.
+- [x] Fix zero-touch-provisioning and ai-102-with-fortiappsec (remove or replace the quizdown block; one content commit each; Jeff said fix first)
+- [x] Write `scripts/migrate_static_yml.sh` (dry-run default, md5 allow-list, ledger); test dry-run against the 83 (no writes)
+- [x] Wave N1 + gate
+- [x] Wave N2 + gate
+- [x] Waves N3-N11
+- [x] Wave O1 + gate
+- [x] Waves O2-O8
+- [x] Wave O9 dropped: FortiShield is private (out of scope); never touched
+- [x] Manual-review list resolved (style-guide upgraded in PR #3; fortimanager-cloud-deployments and UserRepoDoc deleted by Rob Reris; FortiWeb-Advanced-Threat-Lab private; ai-102-with-fortiappsec obsolete, being deleted) — was: (delete dead static.yml / upgrade style-guide and fortimanager-cloud-deployments)
 - [ ] Add `.github/dependabot.yml` to CentralRepo `dev` (coordinator batch)
 - [ ] Update `repo_upgrade_spec.json` note (UserRepo), CentralRepo `gotchas.md` / `reference.md` / `RELEASE_NOTES.md`
 - [ ] Re-run the inventory: expect 0 repos on md5 f0aff64a/1583cc75; close-out
@@ -467,3 +467,14 @@ Not verified: that a private repo can call the public reusable workflow and assu
 - 2026-10-23: Jeff's answers — Q1 direct admin commits to protected main (helper checks enforce_admins=false per repo, falls back to a PR if true); Q2 upgrade the legacy-form repos (public ones only: private are out of scope); Q3 fix the two 404 roots before migrating them; Q4 flagship order per recommendation; Q5 never touch FortiShield. Org Actions policy read (admin:org): all actions and workflows allowed, sha pinning not required — no org change needed.
 - 2026-10-23: scope rule added — private/internal repos excluded (removes user-managed-scaling and FortiShield; total 81; wave O9 dropped).
 none
+
+## Session Summary
+83 public repos plus style-guide now call `pages-deploy.yml@v1`; each Pages run succeeded with the OIDC login and a live site. About 6-9 minutes per repo on the PR route (Jenkins + Lacework). Skipped by design: private repos (user-managed-scaling, advanced-routing-sdwan-azure, FortiWeb-Advanced-Threat-Lab, FortiShield) and ai-102-with-fortiappsec (obsolete; its `mcpdemo.html` could not build and the build ignores `static/`). zero-touch-provisioning was fixed (quizdown block removed) and migrated. Lessons are in `docs/claude/gotchas.md#reusable-pages-workflow`.
+
+## Files Changed
+`scripts/migrate_static_yml.sh` (new; PR-based, dry-run default, re-trigger), `docs/aws/GitHubECRPullOIDC.trust.json` (second `sub` pattern), this plan, `docs/claude/gotchas.md`, `CLAUDE.md`.
+
+## Follow-ups
+- Not done: `.github/dependabot.yml` for the action versions in `pages-deploy.yml`; the `repo_upgrade_spec.json` note in UserRepo; re-running the inventory to confirm zero repos on the old md5s.
+- Revoke the Jenkins automation token and delete the Secrets Manager secret `workshop/jenkins/claude-automation`.
+- Optional: copy a repo's `static/` into the build in `scripts/local_copy.sh`.
