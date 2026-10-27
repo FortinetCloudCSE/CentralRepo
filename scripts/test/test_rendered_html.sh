@@ -102,5 +102,13 @@ if ! grep -q 'os.Getenv "HUGO_VERSION_TAG"' "$REPO_ROOT/layouts/partials/menu-fo
 fi
 pass "A14: menu-footer.html contains HUGO_VERSION_TAG pattern for Dockerfile version injection"
 
+# A15: hugo.jinja must not set a bare boolean `mermaid` site param. Relearn treats it as an explicit
+# on/off switch that overrides codefence/shortcode auto-detection, so `mermaid = false` silently
+# stops mermaid.min.js loading on every workshop site.
+if grep -Eq '^[[:space:]]*mermaid[[:space:]]*=[[:space:]]*(true|false)' "$REPO_ROOT/scripts/templates/hugo.jinja"; then
+  fail "A15: hugo.jinja sets a boolean mermaid param — disables mermaid auto-detection on every workshop site"
+fi
+pass "A15: hugo.jinja leaves mermaid to auto-detection"
+
 echo ""
 echo "All assertions passed for: $PUBLIC_DIR"
