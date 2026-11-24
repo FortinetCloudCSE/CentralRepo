@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### fix(ci): make GitHub Pages deployments safe to rerun
+
+The deploy job waits for the build to finish. Full reruns upload a fresh artifact
+for each attempt, and deploy-only reruns reuse the artifact from the build.
+
 ### feat(checkin): send `workshopUrl`; reject template-default config
 
 `analytics_checkin.html` and `silent_cross_site_checkin.html` now POST `workshopUrl`

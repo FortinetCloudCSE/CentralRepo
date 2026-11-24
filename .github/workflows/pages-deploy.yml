@@ -20,11 +20,13 @@ on:
         default: 'arn:aws:iam::228122752878:role/GitHubECRPullOIDC'
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ${{ inputs.runner_type }}
+    env:
+      # GitHub retains artifacts across attempts of the same run. Name each build's upload separately.
+      PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -141,8 +143,20 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
           path: './docs'
 
+  # A same-job lookup can find zero artifacts immediately after a successful upload.
+  # Finish the build job first. A deploy-only rerun then reuses that build's artifact name.
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ${{ inputs.runner_type }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: ${{ needs.build.outputs.artifact_name }}
